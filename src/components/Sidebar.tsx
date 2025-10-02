@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3 } from 'lucide-react';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -14,6 +14,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
   const menuItems = [
     { id: 'overview', icon: Activity, label: 'Overview' },
+    { id: 'search', icon: Search, label: 'Search' },
     { id: 'pipelines', icon: GitBranch, label: 'Pipelines' },
     { id: 'projects', icon: Boxes, label: 'Projects' },
     { id: 'runners', icon: PlayCircle, label: 'Runners' },

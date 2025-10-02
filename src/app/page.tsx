@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Overview from '@/components/Overview';
+import SearchTab from '@/components/SearchTab';
 import PipelinesTab from '@/components/PipelinesTab';
 import ProjectsTab from '@/components/ProjectsTab';
 import RunnersTab from '@/components/RunnersTab';
@@ -25,6 +26,8 @@ export default function Home() {
     switch (activeTab) {
       case 'overview':
         return <Overview />;
+      case 'search':
+        return <SearchTab />;
       case 'pipelines':
         return <PipelinesTab />;
       case 'projects':
