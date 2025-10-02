@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Activity, GitBranch, CheckCircle, XCircle, Clock, PlayCircle } from 'lucide-react';
 import StatsCard from './StatsCard';
 import PipelineCard from './PipelineCard';
+import PipelineDetailsModal from './PipelineDetailsModal';
+import PipelineListModal from './PipelineListModal';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI } from '@/lib/gitlab-api';
+import { Pipeline } from '@/lib/gitlab-api';
 
 export default function Overview() {
   const {
@@ -20,6 +23,10 @@ export default function Overview() {
     autoRefresh,
     refreshInterval
   } = useDashboardStore();
+
+  const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [showPipelineList, setShowPipelineList] = useState<{ title: string; status?: string } | null>(null);
 
   const loadData = async () => {
     try {
@@ -64,30 +71,38 @@ export default function Overview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="Total Pipelines"
-          value={stats?.total || 0}
-          icon={GitBranch}
-          color="blue"
-        />
-        <StatsCard
-          title="Running"
-          value={stats?.running || 0}
-          icon={Activity}
-          color="blue"
-        />
-        <StatsCard
-          title="Successful"
-          value={stats?.success || 0}
-          icon={CheckCircle}
-          color="green"
-        />
-        <StatsCard
-          title="Failed"
-          value={stats?.failed || 0}
-          icon={XCircle}
-          color="red"
-        />
+        <div onClick={() => setShowPipelineList({ title: 'All Pipelines' })} className="cursor-pointer">
+          <StatsCard
+            title="Total Pipelines"
+            value={stats?.total || 0}
+            icon={GitBranch}
+            color="blue"
+          />
+        </div>
+        <div onClick={() => setShowPipelineList({ title: 'Running Pipelines', status: 'running' })} className="cursor-pointer">
+          <StatsCard
+            title="Running"
+            value={stats?.running || 0}
+            icon={Activity}
+            color="blue"
+          />
+        </div>
+        <div onClick={() => setShowPipelineList({ title: 'Successful Pipelines', status: 'success' })} className="cursor-pointer">
+          <StatsCard
+            title="Successful"
+            value={stats?.success || 0}
+            icon={CheckCircle}
+            color="green"
+          />
+        </div>
+        <div onClick={() => setShowPipelineList({ title: 'Failed Pipelines', status: 'failed' })} className="cursor-pointer">
+          <StatsCard
+            title="Failed"
+            value={stats?.failed || 0}
+            icon={XCircle}
+            color="red"
+          />
+        </div>
       </div>
 
       <div>
@@ -111,12 +126,35 @@ export default function Overview() {
               <PipelineCard
                 key={pipeline.id}
                 pipeline={pipeline}
-                onClick={() => {}}
+                onClick={() => {
+                  setSelectedPipeline(pipeline);
+                  setSelectedProjectId(pipeline.project_id);
+                }}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      {showPipelineList && (
+        <PipelineListModal
+          title={showPipelineList.title}
+          status={showPipelineList.status}
+          onClose={() => setShowPipelineList(null)}
+        />
+      )}
+
+      {selectedPipeline && selectedProjectId && (
+        <PipelineDetailsModal
+          pipeline={selectedPipeline}
+          projectId={selectedProjectId}
+          onClose={() => {
+            setSelectedPipeline(null);
+            setSelectedProjectId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

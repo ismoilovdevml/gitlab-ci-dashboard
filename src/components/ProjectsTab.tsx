@@ -5,10 +5,13 @@ import { ExternalLink, Star, GitFork, Clock } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { formatRelativeTime } from '@/lib/utils';
+import { Project } from '@/lib/gitlab-api';
+import ProjectDetailsModal from './ProjectDetailsModal';
 
 export default function ProjectsTab() {
   const { projects, setProjects, gitlabUrl, gitlabToken } = useDashboardStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
     if (gitlabToken) {
@@ -40,7 +43,8 @@ export default function ProjectsTab() {
         {projects.map((project) => (
           <div
             key={project.id}
-            className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-all group"
+            onClick={() => setSelectedProject(project)}
+            className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-all group cursor-pointer"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -103,6 +107,13 @@ export default function ProjectsTab() {
           </div>
         ))}
       </div>
+
+      {selectedProject && (
+        <ProjectDetailsModal
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+        />
+      )}
     </div>
   );
 }
