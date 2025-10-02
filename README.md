@@ -1,140 +1,80 @@
-# GitLab CI/CD Dashboard
+# GitLab CI/CD Dashboard 🚀
 
-Enterprise-level GitLab CI/CD monitoring dashboard built with Next.js 14, TypeScript, and Tailwind CSS.
+Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines.
+
+![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![Docker](https://img.shields.io/badge/docker-ready-brightgreen)
 
 ## Features
 
-- 📊 **Real-time Monitoring** - Auto-refresh every 10 seconds
-- 🚀 **Pipeline Management** - View, retry, and cancel pipelines
-- 📝 **Live Logs** - Real-time log streaming for running jobs with syntax highlighting
-- 🎯 **Multi-Project Support** - Monitor all your GitLab projects in one place
-- 🏃 **Runner Status** - Track GitLab runner availability and health
-- 🌙 **Dark/Light Theme** - Modern UI with theme switching
-- 🔍 **Advanced Filtering** - Search and filter pipelines by status
-- 📈 **Statistics Dashboard** - Quick overview of pipeline metrics
+- 📊 Real-time pipeline monitoring with auto-refresh
+- 🎨 GitLab-style pipeline visualization (stages & jobs)
+- 📝 Live log streaming with syntax highlighting
+- 🔄 Manage pipelines (retry, cancel) from dashboard
+- 🌓 Dark & Light themes
+- 🔔 Smart notifications for pipeline events
+- 📱 Responsive design
 
 ## Quick Start
 
-### Docker (Recommended)
+### Using Docker
 
 ```bash
-# Clone repository
-git clone <repository-url>
-cd gitlabci-dashboard
-
-# Start with Docker Compose
-docker-compose up -d
-
-# Open browser
-open http://localhost:3000
+docker run -d \
+  -p 3000:3000 \
+  --name gitlab-dashboard \
+  --restart unless-stopped \
+  ghcr.io/ismoilovdevml/gitlab-cicd-dashboard:latest
 ```
 
-### Local Development
+Open `http://localhost:3000` in your browser.
 
-```bash
-# Install dependencies
-npm install
+### Connect to GitLab
 
-# Create .env.local file
-cat > .env.local << EOF
-GITLAB_URL=https://gitlab.com
-GITLAB_TOKEN=your-gitlab-token-here
-NEXT_PUBLIC_GITLAB_URL=https://gitlab.com
-NEXT_PUBLIC_GITLAB_TOKEN=your-gitlab-token-here
-EOF
+1. Click **Settings** in the sidebar
+2. Enter your GitLab details:
+   - **GitLab URL**: `https://gitlab.com` or your self-hosted URL
+   - **API Token**: Personal access token with `api` scope
+3. Click **Save Configuration**
 
-# Run development server
-npm run dev
-
-# Open browser
-open http://localhost:3000
-```
-
-## Configuration
-
-### GitLab Token
-
-1. Go to GitLab → Settings → Access Tokens
-2. Create token with scopes: `api`, `read_api`, `read_repository`
-3. Add token to Settings page in dashboard or `.env.local` file
-
-### Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GITLAB_URL` | GitLab instance URL | Yes |
-| `GITLAB_TOKEN` | GitLab personal access token | Yes |
-| `NEXT_PUBLIC_GITLAB_URL` | Public GitLab URL | Yes |
-| `NEXT_PUBLIC_GITLAB_TOKEN` | Public GitLab token | Yes |
-
-## Usage
-
-### Dashboard Overview
-- View active pipelines, success/failure rates
-- See recent activity (last 10 pipelines)
-- Click stats cards to filter pipelines
-
-### Pipelines
-- Search and filter all pipelines
-- Retry or cancel pipelines
-- View detailed job logs
-
-### Projects
-- Monitor all GitLab projects
-- View project pipeline statistics
-- Access project details
-
-### Runners
-- Track runner status and availability
-- Monitor runner health
-- View runner tags and descriptions
-
-### Settings
-- Configure GitLab URL and token
-- Switch between dark/light themes
-- Enable/disable auto-refresh
+**Get API Token:**
+- Go to GitLab → Settings → Access Tokens
+- Create token with `api` scope
+- Copy and paste in dashboard
 
 ## Tech Stack
 
-- **Framework**: Next.js 14
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand
-- **API**: GitLab API v4
-- **Container**: Docker + Docker Compose
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
+- **State**: Zustand + LocalStorage
+- **Deployment**: Docker + GitHub Actions + GHCR
+- **Runtime**: Node.js 20
 
-## CI/CD
+## Development
 
-GitHub Actions workflow included for:
-- Linting and type checking
-- Building application
-- Docker image creation and testing
-- Automatic deployment
-
-Test locally:
 ```bash
-# Install act
-brew install act
+# Clone and install
+git clone <repo-url>
+cd gitlab-cicd-dashboard
+npm install
 
-# Run workflow locally
-act -j build-and-test --container-architecture linux/amd64
+# Run dev server
+npm run dev
+
+# Build for production
+npm run build
 ```
 
-## Project Structure
+## Deployment
 
-```
-├── src/
-│   ├── app/              # Next.js app router
-│   ├── components/       # React components
-│   ├── lib/             # GitLab API client
-│   └── store/           # Zustand store
-├── .github/
-│   └── workflows/       # GitHub Actions
-├── docker-compose.yml   # Docker configuration
-├── Dockerfile          # Container image
-└── tailwind.config.ts  # Tailwind CSS config
-```
+Push to `main` branch → GitHub Actions automatically builds and pushes to GHCR.
+
+**Make image public:**
+1. Go to GitHub → Packages → gitlab-cicd-dashboard
+2. Package settings → Change visibility → Public
 
 ## License
 
 MIT
+
+---
+
+**Built with ❤️ using Next.js & TypeScript**

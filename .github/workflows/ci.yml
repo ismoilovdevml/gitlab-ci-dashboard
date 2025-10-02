@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
   build-and-test:
@@ -30,47 +30,67 @@ jobs:
       run: npm run build
 
     - name: Build Docker image
-      run: docker build -t gitlab-cicd-dashboard:${{ github.sha }} .
+      run: docker build -t gitlab-cicd-dashboard:test .
 
-    # - name: Test Docker image
-    #   run: |
-    #     docker run -d -p 3000:3000 \
-    #       -e GITLAB_URL=https://gitlab.com \
-    #       -e GITLAB_TOKEN=test-token \
-    #       --name test-dashboard \
-    #       gitlab-cicd-dashboard:${{ github.sha }}
+    - name: Test Docker image
+      run: |
+        docker run -d -p 3000:3000 \
+          --name test-dashboard \
+          gitlab-cicd-dashboard:test
 
-    #     sleep 10
+        # Wait for application to start
+        sleep 10
 
-    #     # Check if container is running
-    #     docker ps | grep test-dashboard
+        # Check if container is running
+        docker ps | grep test-dashboard
 
-    #     # Check if app responds
-    #     curl -f http://localhost:3000 || exit 1
+        # Check if app responds
+        curl -f http://localhost:3000 || exit 1
 
-    #     docker stop test-dashboard
-    #     docker rm test-dashboard
+        # Cleanup
+        docker stop test-dashboard
+        docker rm test-dashboard
 
-  # docker-publish:
-  #   runs-on: ubuntu-latest
-  #   needs: build-and-test
-  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  docker-publish:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
 
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v4
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-  #   - name: Login to Docker Hub
-  #     uses: docker/login-action@v3
-  #     with:
-  #       username: ${{ secrets.DOCKER_USERNAME }}
-  #       password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-  #   - name: Build and push
-  #     uses: docker/build-push-action@v5
-  #     with:
-  #       context: .
-  #       push: true
-  #       tags: |
-  #         ${{ secrets.DOCKER_USERNAME }}/gitlab-cicd-dashboard:latest
-  #         ${{ secrets.DOCKER_USERNAME }}/gitlab-cicd-dashboard:${{ github.sha }}
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=raw,value=latest
+          type=sha,prefix=main-
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
