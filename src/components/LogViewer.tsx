@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Download, Maximize2, Search, Filter } from 'lucide-react';
+import { X, Download, Maximize2, Search } from 'lucide-react';
 
 interface LogViewerProps {
   logs: string;
@@ -17,8 +17,6 @@ export default function LogViewer({
   logs,
   jobName,
   jobStatus,
-  projectId,
-  jobId,
   onClose,
   onRefreshLogs
 }: LogViewerProps) {
@@ -26,7 +24,7 @@ export default function LogViewer({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'error' | 'warning' | 'info'>('all');
   const [autoScroll, setAutoScroll] = useState(true);
-  const [isLive, setIsLive] = useState(jobStatus === 'running');
+  const isLive = jobStatus === 'running';
 
   // Auto-refresh for running jobs
   useEffect(() => {

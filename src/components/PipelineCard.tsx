@@ -2,7 +2,7 @@
 
 import { Pipeline } from '@/lib/gitlab-api';
 import { getStatusColor, getStatusIcon, formatRelativeTime, formatDuration } from '@/lib/utils';
-import { ExternalLink, Play, RotateCw, X } from 'lucide-react';
+import { ExternalLink, RotateCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PipelineCardProps {
@@ -103,6 +103,7 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
       {pipeline.user && (
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">
           {pipeline.user.avatar_url && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={pipeline.user.avatar_url}
               alt={pipeline.user.name}

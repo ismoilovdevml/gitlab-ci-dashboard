@@ -22,6 +22,7 @@ export default function PipelinesTab() {
 
   useEffect(() => {
     loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadProjects = async () => {
@@ -41,6 +42,7 @@ export default function PipelinesTab() {
     if (selectedProject) {
       loadPipelines();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject]);
 
   const loadPipelines = async () => {

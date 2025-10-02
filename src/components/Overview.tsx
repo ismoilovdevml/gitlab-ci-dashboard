@@ -57,9 +57,9 @@ export default function Overview() {
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
         .slice(0, 10);
       setRecentPipelines(recent);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to load data:', error);
-      setError(error?.message || 'Failed to load data');
+      setError(error instanceof Error ? error.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
@@ -75,6 +75,7 @@ export default function Overview() {
         return () => clearInterval(interval);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, refreshInterval, gitlabToken, gitlabUrl]);
 
   return (
@@ -215,6 +216,7 @@ export default function Overview() {
 
                     {/* User Avatar */}
                     {pipeline.user?.avatar_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={pipeline.user.avatar_url}
                         alt={pipeline.user.name}
@@ -289,7 +291,7 @@ export default function Overview() {
                 <GitBranch className="w-5 h-5 text-orange-500" />
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Today's Runs</p>
+                <p className="text-xs text-zinc-500">Today&apos;s Runs</p>
                 <p className="text-2xl font-bold text-white">
                   {recentPipelines.filter(p => {
                     const today = new Date();

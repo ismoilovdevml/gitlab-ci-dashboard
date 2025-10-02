@@ -12,6 +12,7 @@ export default function RunnersTab() {
 
   useEffect(() => {
     loadRunners();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadRunners = async () => {

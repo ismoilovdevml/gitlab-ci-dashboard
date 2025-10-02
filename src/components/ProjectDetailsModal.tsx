@@ -28,6 +28,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
 
   useEffect(() => {
     loadProjectData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
   const loadProjectData = async () => {
@@ -59,6 +60,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
           <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               {project.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={project.avatar_url} alt={project.name} className="w-16 h-16 rounded-lg" />
               ) : (
                 <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">

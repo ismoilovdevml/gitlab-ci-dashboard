@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, ExternalLink, Clock, User, GitCommit, PlayCircle, RotateCw, XCircle } from 'lucide-react';
+import { X, ExternalLink, Clock, GitCommit, PlayCircle, RotateCw, XCircle } from 'lucide-react';
 import { Pipeline, Job } from '@/lib/gitlab-api';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
@@ -24,6 +24,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
 
   useEffect(() => {
     loadJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pipeline.id]);
 
   const loadJobs = async () => {
@@ -171,6 +172,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
               <p className="text-xs text-zinc-500 mb-1">Triggered by</p>
               <div className="flex items-center gap-2 bg-zinc-900 px-3 py-2 rounded">
                 {pipeline.user?.avatar_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={pipeline.user.avatar_url} className="w-6 h-6 rounded-full" alt="" />
                 )}
                 <span className="text-white">{pipeline.user?.name || 'Unknown'}</span>

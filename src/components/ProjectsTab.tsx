@@ -10,25 +10,22 @@ import ProjectDetailsModal from './ProjectDetailsModal';
 
 export default function ProjectsTab() {
   const { projects, setProjects, gitlabUrl, gitlabToken } = useDashboardStore();
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
     if (gitlabToken) {
       loadProjects();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gitlabToken, gitlabUrl]);
 
   const loadProjects = async () => {
     try {
-      setIsLoading(true);
       const api = getGitLabAPI(gitlabUrl, gitlabToken);
       const projectsList = await api.getProjects(1, 50);
       setProjects(projectsList);
     } catch (error) {
       console.error('Failed to load projects:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -49,6 +46,7 @@ export default function ProjectsTab() {
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 {project.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={project.avatar_url}
                     alt={project.name}

@@ -25,6 +25,7 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
 
   useEffect(() => {
     loadPipelines();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

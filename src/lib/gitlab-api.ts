@@ -265,7 +265,7 @@ export function getGitLabAPI(customUrl?: string, customToken?: string): GitLabAP
         const parsed = JSON.parse(stored);
         token = parsed.state?.gitlabToken || '';
       }
-    } catch (e) {
+    } catch {
       // Ignore parsing errors
     }
   }
