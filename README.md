@@ -23,7 +23,7 @@ docker run -d \
   -p 3000:3000 \
   --name gitlab-dashboard \
   --restart unless-stopped \
-  ghcr.io/ismoilovdevml/gitlab-cicd-dashboard:latest
+  ismoilovdevml/gitlab-cicd-dashboard:latest
 ```
 
 Open `http://localhost:3000` in your browser.
@@ -45,7 +45,7 @@ Open `http://localhost:3000` in your browser.
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **State**: Zustand + LocalStorage
-- **Deployment**: Docker + GitHub Actions + GHCR
+- **Deployment**: Docker + GitHub Actions + Docker Hub
 - **Runtime**: Node.js 20
 
 ## Development
@@ -65,11 +65,7 @@ npm run build
 
 ## Deployment
 
-Push to `main` branch → GitHub Actions automatically builds and pushes to GHCR.
-
-**Make image public:**
-1. Go to GitHub → Packages → gitlab-cicd-dashboard
-2. Package settings → Change visibility → Public
+Push to `main` branch → GitHub Actions automatically builds and pushes to Docker Hub.
 
 ## License
 
