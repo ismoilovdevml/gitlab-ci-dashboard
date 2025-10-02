@@ -1,10 +1,27 @@
 'use client';
 
-import { Settings, RefreshCw, Bell, Moon } from 'lucide-react';
+import { useState } from 'react';
+import { Settings, RefreshCw, Bell, Moon, Eye, EyeOff, Save, AlertCircle } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 
 export default function SettingsTab() {
-  const { autoRefresh, refreshInterval, setAutoRefresh, setRefreshInterval } = useDashboardStore();
+  const {
+    autoRefresh,
+    refreshInterval,
+    gitlabUrl,
+    gitlabToken,
+    theme,
+    setAutoRefresh,
+    setRefreshInterval,
+    setGitlabUrl,
+    setGitlabToken,
+    setTheme,
+  } = useDashboardStore();
+
+  const [showToken, setShowToken] = useState(false);
+  const [localUrl, setLocalUrl] = useState(gitlabUrl);
+  const [localToken, setLocalToken] = useState(gitlabToken);
+  const [saved, setSaved] = useState(false);
 
   const refreshIntervals = [
     { value: 5000, label: '5 seconds' },
@@ -12,6 +29,17 @@ export default function SettingsTab() {
     { value: 30000, label: '30 seconds' },
     { value: 60000, label: '1 minute' },
   ];
+
+  const handleSaveGitLabConfig = () => {
+    setGitlabUrl(localUrl);
+    setGitlabToken(localToken);
+    setSaved(true);
+    setTimeout(() => {
+      setSaved(false);
+      // Reload page to apply new config
+      window.location.reload();
+    }, 1500);
+  };
 
   return (
     <div className="space-y-6">
@@ -86,22 +114,53 @@ export default function SettingsTab() {
               <label className="text-sm text-zinc-400 block mb-2">GitLab URL</label>
               <input
                 type="text"
-                value={process.env.NEXT_PUBLIC_GITLAB_URL || 'https://gitlab.com'}
-                disabled
-                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-500 cursor-not-allowed"
+                value={localUrl}
+                onChange={(e) => setLocalUrl(e.target.value)}
+                placeholder="https://gitlab.com"
+                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-orange-500"
               />
             </div>
 
             <div>
               <label className="text-sm text-zinc-400 block mb-2">API Token</label>
-              <input
-                type="password"
-                value="••••••••••••••••"
-                disabled
-                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-500 cursor-not-allowed"
-              />
-              <p className="text-xs text-zinc-600 mt-2">
-                Token is configured via environment variables
+              <div className="relative">
+                <input
+                  type={showToken ? 'text' : 'password'}
+                  value={localToken}
+                  onChange={(e) => setLocalToken(e.target.value)}
+                  placeholder="glpat-xxxxxxxxxxxxx"
+                  className="w-full px-4 py-2 pr-10 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-orange-500 font-mono text-sm"
+                />
+                <button
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+                >
+                  {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveGitLabConfig}
+              disabled={!localUrl || !localToken}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition-colors font-medium"
+            >
+              {saved ? (
+                <>
+                  <AlertCircle className="w-4 h-4" />
+                  Saved! Reloading...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Configuration
+                </>
+              )}
+            </button>
+
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+              <p className="text-xs text-blue-400">
+                💡 <strong>Tip:</strong> Get your token from GitLab → Settings → Access Tokens with <code className="bg-blue-500/20 px-1 rounded">api</code> scope
               </p>
             </div>
           </div>
@@ -123,13 +182,32 @@ export default function SettingsTab() {
             <div>
               <label className="text-sm text-zinc-400 block mb-2">Theme</label>
               <div className="grid grid-cols-2 gap-2">
-                <button className="px-4 py-2 bg-zinc-800 border border-orange-500 rounded-lg text-white font-medium">
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`px-4 py-2 bg-zinc-800 border rounded-lg font-medium transition-colors ${
+                    theme === 'dark'
+                      ? 'border-orange-500 text-white'
+                      : 'border-zinc-700 text-zinc-500 hover:text-white'
+                  }`}
+                >
                   Dark
                 </button>
-                <button className="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-500 cursor-not-allowed">
-                  Light (Soon)
+                <button
+                  onClick={() => setTheme('light')}
+                  className={`px-4 py-2 bg-zinc-800 border rounded-lg font-medium transition-colors ${
+                    theme === 'light'
+                      ? 'border-orange-500 text-white'
+                      : 'border-zinc-700 text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  Light
                 </button>
               </div>
+              {theme === 'light' && (
+                <p className="text-xs text-zinc-600 mt-2">
+                  ⚠️ Light theme coming soon
+                </p>
+              )}
             </div>
           </div>
         </div>

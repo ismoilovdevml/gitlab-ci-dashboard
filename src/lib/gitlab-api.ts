@@ -245,19 +245,49 @@ class GitLabAPI {
 }
 
 let gitlabApiInstance: GitLabAPI | null = null;
+let cachedUrl: string | null = null;
+let cachedToken: string | null = null;
 
-export function getGitLabAPI(): GitLabAPI {
-  if (!gitlabApiInstance) {
-    const url = process.env.GITLAB_URL || process.env.NEXT_PUBLIC_GITLAB_URL || 'https://gitlab.com';
-    const token = process.env.GITLAB_TOKEN || process.env.NEXT_PUBLIC_GITLAB_TOKEN || '';
+export function getGitLabAPI(customUrl?: string, customToken?: string): GitLabAPI {
+  const url = customUrl ||
+               (typeof window !== 'undefined' ? localStorage.getItem('gitlab-dashboard-storage') : null) ||
+               process.env.GITLAB_URL ||
+               process.env.NEXT_PUBLIC_GITLAB_URL ||
+               'https://gitlab.com';
 
+  let token = customToken || process.env.GITLAB_TOKEN || process.env.NEXT_PUBLIC_GITLAB_TOKEN || '';
+
+  // Try to get token from localStorage if in browser
+  if (typeof window !== 'undefined' && !token) {
+    try {
+      const stored = localStorage.getItem('gitlab-dashboard-storage');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        token = parsed.state?.gitlabToken || '';
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+  }
+
+  // Recreate instance if URL or token changed
+  if (!gitlabApiInstance || cachedUrl !== url || cachedToken !== token) {
     if (!token) {
       throw new Error('GitLab token not configured');
     }
 
     gitlabApiInstance = new GitLabAPI(url, token);
+    cachedUrl = url;
+    cachedToken = token;
   }
+
   return gitlabApiInstance;
+}
+
+export function resetGitLabAPI() {
+  gitlabApiInstance = null;
+  cachedUrl = null;
+  cachedToken = null;
 }
 
 export default GitLabAPI;

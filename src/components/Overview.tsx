@@ -11,9 +11,12 @@ export default function Overview() {
   const {
     activePipelines,
     stats,
+    gitlabUrl,
+    gitlabToken,
     setActivePipelines,
     setStats,
     setIsLoading,
+    setError,
     autoRefresh,
     refreshInterval
   } = useDashboardStore();
@@ -21,7 +24,10 @@ export default function Overview() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const api = getGitLabAPI();
+      setError(null);
+
+      // Get API instance with custom URL and token from store
+      const api = getGitLabAPI(gitlabUrl, gitlabToken);
 
       const [pipelines, pipelineStats] = await Promise.all([
         api.getAllActivePipelines(),
@@ -30,21 +36,25 @@ export default function Overview() {
 
       setActivePipelines(pipelines);
       setStats(pipelineStats);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load data:', error);
+      setError(error?.message || 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    // Only load if we have token
+    if (gitlabToken) {
+      loadData();
 
-    if (autoRefresh) {
-      const interval = setInterval(loadData, refreshInterval);
-      return () => clearInterval(interval);
+      if (autoRefresh) {
+        const interval = setInterval(loadData, refreshInterval);
+        return () => clearInterval(interval);
+      }
     }
-  }, [autoRefresh, refreshInterval]);
+  }, [autoRefresh, refreshInterval, gitlabToken, gitlabUrl]);
 
   return (
     <div className="space-y-6">

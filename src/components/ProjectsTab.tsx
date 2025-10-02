@@ -7,17 +7,19 @@ import { getGitLabAPI } from '@/lib/gitlab-api';
 import { formatRelativeTime } from '@/lib/utils';
 
 export default function ProjectsTab() {
-  const { projects, setProjects } = useDashboardStore();
+  const { projects, setProjects, gitlabUrl, gitlabToken } = useDashboardStore();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    loadProjects();
-  }, []);
+    if (gitlabToken) {
+      loadProjects();
+    }
+  }, [gitlabToken, gitlabUrl]);
 
   const loadProjects = async () => {
     try {
       setIsLoading(true);
-      const api = getGitLabAPI();
+      const api = getGitLabAPI(gitlabUrl, gitlabToken);
       const projectsList = await api.getProjects(1, 50);
       setProjects(projectsList);
     } catch (error) {
