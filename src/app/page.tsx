@@ -22,12 +22,16 @@ export default function Home() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
         return <Overview />;
       case 'search':
-        return <SearchTab />;
+        return <SearchTab onNavigate={handleNavigate} />;
       case 'pipelines':
         return <PipelinesTab />;
       case 'projects':

@@ -33,7 +33,11 @@ interface SearchResult {
   web_url?: string
 }
 
-export default function SearchTab() {
+interface SearchTabProps {
+  onNavigate: (tab: string) => void
+}
+
+export default function SearchTab({ onNavigate }: SearchTabProps) {
   const { gitlabUrl, gitlabToken, projects, setSelectedProject: setStoreProject, setSelectedPipeline } = useDashboardStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -320,35 +324,33 @@ export default function SearchTab() {
     return `${mins}m ${secs}s`
   }
 
-  const handleResultClick = (result: SearchResult) => {
-    setSelectedResult(result)
-  }
-
-  const handleOpenInGitLab = (url: string) => {
-    window.open(url, '_blank')
-  }
-
-  const handleViewDetails = async (result: SearchResult) => {
+  const handleResultClick = async (result: SearchResult) => {
+    // Navigate to appropriate tab and set the selected item
     if (result.type === 'project') {
       const project = projects.find(p => p.id === result.id)
       if (project) {
         setStoreProject(project)
-        // Could navigate to projects tab here if needed
+        onNavigate('projects')
       }
     } else if (result.type === 'pipeline' && result.projectId) {
       try {
         const api = getGitLabAPI(gitlabUrl, gitlabToken)
         const pipeline = await api.getPipeline(result.projectId, result.id)
         setSelectedPipeline(pipeline)
-        // Could navigate to pipelines tab here if needed
+        onNavigate('pipelines')
       } catch (error) {
         console.error('Error fetching pipeline details:', error)
       }
+    } else if (result.type === 'job') {
+      // For jobs, open in GitLab since we don't have a dedicated jobs tab
+      if (result.web_url) {
+        window.open(result.web_url, '_blank')
+      }
     }
-    // For jobs, we can open in GitLab directly
-    if (result.web_url) {
-      handleOpenInGitLab(result.web_url)
-    }
+  }
+
+  const handleViewDetails = (result: SearchResult) => {
+    setSelectedResult(result)
   }
 
   return (
@@ -626,10 +628,19 @@ export default function SearchTab() {
             </div>
 
             <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setSelectedResult(null)
+                  handleResultClick(selectedResult)
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+              >
+                View in Dashboard
+              </button>
               {selectedResult.web_url && (
                 <button
-                  onClick={() => handleOpenInGitLab(selectedResult.web_url!)}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                  onClick={() => window.open(selectedResult.web_url, '_blank')}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open in GitLab
@@ -749,16 +760,18 @@ export default function SearchTab() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleViewDetails(result)
-                    }}
-                    className="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    View
-                  </button>
+                  <div className="ml-4 flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleViewDetails(result)
+                      }}
+                      className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                      title="View details"
+                    >
+                      Details
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
