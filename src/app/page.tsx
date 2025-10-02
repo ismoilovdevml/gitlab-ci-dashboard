@@ -6,6 +6,7 @@ import Overview from '@/components/Overview';
 import PipelinesTab from '@/components/PipelinesTab';
 import ProjectsTab from '@/components/ProjectsTab';
 import RunnersTab from '@/components/RunnersTab';
+import InsightsTab from '@/components/InsightsTab';
 import ArtifactsTab from '@/components/ArtifactsTab';
 import ContainerRegistryTab from '@/components/ContainerRegistryTab';
 import SettingsTab from '@/components/SettingsTab';
@@ -30,6 +31,8 @@ export default function Home() {
         return <ProjectsTab />;
       case 'runners':
         return <RunnersTab />;
+      case 'insights':
+        return <InsightsTab />;
       case 'artifacts':
         return <ArtifactsTab />;
       case 'registry':
