@@ -1,15 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Overview from '@/components/Overview';
 import PipelinesTab from '@/components/PipelinesTab';
 import ProjectsTab from '@/components/ProjectsTab';
 import RunnersTab from '@/components/RunnersTab';
 import SettingsTab from '@/components/SettingsTab';
+import NotificationToast from '@/components/NotificationToast';
+import { useDashboardStore } from '@/store/dashboard-store';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('overview');
+  const { theme } = useDashboardStore();
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -29,13 +36,14 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen bg-zinc-950">
+    <div className={`flex h-screen ${theme === 'light' ? 'bg-gray-50' : 'bg-zinc-950'}`}>
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto p-8">
           {renderContent()}
         </div>
       </main>
+      <NotificationToast />
     </div>
   );
 }

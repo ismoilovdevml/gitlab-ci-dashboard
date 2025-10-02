@@ -11,11 +11,15 @@ export default function SettingsTab() {
     gitlabUrl,
     gitlabToken,
     theme,
+    notifyPipelineFailures,
+    notifyPipelineSuccess,
     setAutoRefresh,
     setRefreshInterval,
     setGitlabUrl,
     setGitlabToken,
     setTheme,
+    setNotifyPipelineFailures,
+    setNotifyPipelineSuccess,
   } = useDashboardStore();
 
   const [showToken, setShowToken] = useState(false);
@@ -203,11 +207,6 @@ export default function SettingsTab() {
                   Light
                 </button>
               </div>
-              {theme === 'light' && (
-                <p className="text-xs text-zinc-600 mt-2">
-                  ⚠️ Light theme coming soon
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -227,19 +226,34 @@ export default function SettingsTab() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-400">Pipeline failures</span>
-              <button className="relative w-12 h-6 rounded-full bg-zinc-700">
-                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full" />
+              <button
+                onClick={() => setNotifyPipelineFailures(!notifyPipelineFailures)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  notifyPipelineFailures ? 'bg-orange-500' : 'bg-zinc-700'
+                }`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    notifyPipelineFailures ? 'transform translate-x-6' : ''
+                  }`}
+                />
               </button>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-400">Pipeline success</span>
-              <button className="relative w-12 h-6 rounded-full bg-zinc-700">
-                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full" />
+              <button
+                onClick={() => setNotifyPipelineSuccess(!notifyPipelineSuccess)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  notifyPipelineSuccess ? 'bg-orange-500' : 'bg-zinc-700'
+                }`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    notifyPipelineSuccess ? 'transform translate-x-6' : ''
+                  }`}
+                />
               </button>
             </div>
-            <p className="text-xs text-zinc-600 mt-4">
-              Notification features coming soon
-            </p>
           </div>
         </div>
       </div>

@@ -16,6 +16,8 @@ interface DashboardStore {
   gitlabUrl: string;
   gitlabToken: string;
   theme: 'dark' | 'light';
+  notifyPipelineFailures: boolean;
+  notifyPipelineSuccess: boolean;
 
   setProjects: (projects: Project[]) => void;
   setActivePipelines: (pipelines: Pipeline[]) => void;
@@ -30,6 +32,19 @@ interface DashboardStore {
   setGitlabUrl: (url: string) => void;
   setGitlabToken: (token: string) => void;
   setTheme: (theme: 'dark' | 'light') => void;
+  setNotifyPipelineFailures: (notify: boolean) => void;
+  setNotifyPipelineSuccess: (notify: boolean) => void;
+  addNotification: (notification: Notification) => void;
+  removeNotification: (id: string) => void;
+  notifications: Notification[];
+}
+
+export interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  title: string;
+  message: string;
+  timestamp: number;
 }
 
 export const useDashboardStore = create<DashboardStore>()(
@@ -52,6 +67,9 @@ export const useDashboardStore = create<DashboardStore>()(
         ? (process.env.NEXT_PUBLIC_GITLAB_TOKEN || '')
         : '',
       theme: 'dark',
+      notifyPipelineFailures: true,
+      notifyPipelineSuccess: false,
+      notifications: [],
 
       setProjects: (projects) => set({ projects }),
       setActivePipelines: (activePipelines) => set({ activePipelines }),
@@ -66,6 +84,14 @@ export const useDashboardStore = create<DashboardStore>()(
       setGitlabUrl: (gitlabUrl) => set({ gitlabUrl }),
       setGitlabToken: (gitlabToken) => set({ gitlabToken }),
       setTheme: (theme) => set({ theme }),
+      setNotifyPipelineFailures: (notifyPipelineFailures) => set({ notifyPipelineFailures }),
+      setNotifyPipelineSuccess: (notifyPipelineSuccess) => set({ notifyPipelineSuccess }),
+      addNotification: (notification) => set((state) => ({
+        notifications: [...state.notifications, notification],
+      })),
+      removeNotification: (id) => set((state) => ({
+        notifications: state.notifications.filter((n) => n.id !== id),
+      })),
     }),
     {
       name: 'gitlab-dashboard-storage',
@@ -75,6 +101,8 @@ export const useDashboardStore = create<DashboardStore>()(
         gitlabUrl: state.gitlabUrl,
         gitlabToken: state.gitlabToken,
         theme: state.theme,
+        notifyPipelineFailures: state.notifyPipelineFailures,
+        notifyPipelineSuccess: state.notifyPipelineSuccess,
       }),
     }
   )
