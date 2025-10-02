@@ -6,10 +6,10 @@ import { Pipeline, Job } from '@/lib/gitlab-api';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime } from '@/lib/utils';
-import JobCard from './JobCard';
 import LogViewer from './LogViewer';
 import PipelineVisualization from './PipelineVisualization';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useTheme } from '@/hooks/useTheme';
 
 interface PipelineDetailsModalProps {
   pipeline: Pipeline;
@@ -20,6 +20,7 @@ interface PipelineDetailsModalProps {
 export default function PipelineDetailsModal({ pipeline, projectId, onClose }: PipelineDetailsModalProps) {
   const { gitlabUrl, gitlabToken } = useDashboardStore();
   const { notifySuccess, notifyError } = useNotifications();
+  const { theme, surface, border, textPrimary, textSecondary } = useTheme();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [logs, setLogs] = useState('');
@@ -111,27 +112,25 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     }
   };
 
-  // Group jobs by stage
-  const jobsByStage = jobs.reduce((acc, job) => {
-    if (!acc[job.stage]) acc[job.stage] = [];
-    acc[job.stage].push(job);
-    return acc;
-  }, {} as Record<string, Job[]>);
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto ${
+      theme === 'light' ? 'bg-black/30' : 'bg-black/80'
+    }`}>
+      <div className={`rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto ${surface} ${border}`}>
         {/* Header */}
-        <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-6 flex items-center justify-between">
+        <div className={`sticky top-0 p-6 flex items-center justify-between ${surface} ${
+          theme === 'light' ? 'border-b border-gray-200' : 'border-b border-zinc-800'
+        }`}>
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-2xl font-bold text-white">Pipeline #{pipeline.id}</h2>
+              <h2 className={`text-2xl font-bold ${textPrimary}`}>Pipeline #{pipeline.id}</h2>
               <div className={`px-3 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-1 ${getStatusColor(pipeline.status)}`}>
                 <span>{getStatusIcon(pipeline.status)}</span>
                 <span>{pipeline.status}</span>
               </div>
             </div>
-            <div className="flex items-center gap-4 text-sm text-zinc-400">
+            <div className={`flex items-center gap-4 text-sm ${textSecondary}`}>
               <div className="flex items-center gap-1">
                 <GitCommit className="w-4 h-4" />
                 <span className="font-mono">{pipeline.sha.substring(0, 8)}</span>
@@ -171,13 +170,17 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
               href={pipeline.web_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-zinc-400 hover:text-white transition-colors"
+              className={`p-2 transition-colors ${
+                theme === 'light' ? 'text-gray-500 hover:text-gray-900' : 'text-zinc-400 hover:text-white'
+              }`}
             >
               <ExternalLink className="w-5 h-5" />
             </a>
             <button
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white transition-colors"
+              className={`p-2 transition-colors ${
+                theme === 'light' ? 'text-gray-500 hover:text-gray-900' : 'text-zinc-400 hover:text-white'
+              }`}
             >
               <X className="w-5 h-5" />
             </button>
@@ -185,24 +188,34 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         </div>
 
         {/* Pipeline Info */}
-        <div className="p-6 border-b border-zinc-800 bg-zinc-800/50">
+        <div className={`p-6 ${
+          theme === 'light'
+            ? 'border-b border-gray-200 bg-gray-50'
+            : 'border-b border-zinc-800 bg-zinc-800/50'
+        }`}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-zinc-500 mb-1">Branch</p>
-              <p className="text-white font-mono bg-zinc-900 px-3 py-2 rounded">{pipeline.ref}</p>
+              <p className={`text-xs mb-1 ${textSecondary}`}>Branch</p>
+              <p className={`font-mono px-3 py-2 rounded ${textPrimary} ${
+                theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-900'
+              }`}>{pipeline.ref}</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500 mb-1">Commit</p>
-              <p className="text-white font-mono bg-zinc-900 px-3 py-2 rounded">{pipeline.sha.substring(0, 16)}</p>
+              <p className={`text-xs mb-1 ${textSecondary}`}>Commit</p>
+              <p className={`font-mono px-3 py-2 rounded ${textPrimary} ${
+                theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-900'
+              }`}>{pipeline.sha.substring(0, 16)}</p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500 mb-1">Triggered by</p>
-              <div className="flex items-center gap-2 bg-zinc-900 px-3 py-2 rounded">
+              <p className={`text-xs mb-1 ${textSecondary}`}>Triggered by</p>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded ${
+                theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-900'
+              }`}>
                 {pipeline.user?.avatar_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={pipeline.user.avatar_url} className="w-6 h-6 rounded-full" alt="" />
                 )}
-                <span className="text-white">{pipeline.user?.name || 'Unknown'}</span>
+                <span className={textPrimary}>{pipeline.user?.name || 'Unknown'}</span>
               </div>
             </div>
           </div>
@@ -210,14 +223,14 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
 
         {/* Jobs Visualization */}
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">
+          <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>
             Pipeline Jobs ({jobs.length})
           </h3>
 
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-              <p className="text-zinc-500 mt-4">Loading jobs...</p>
+              <p className={`mt-4 ${textSecondary}`}>Loading jobs...</p>
             </div>
           ) : jobs.length > 0 ? (
             <PipelineVisualization
@@ -229,8 +242,10 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
             />
           ) : (
             <div className="text-center py-12">
-              <PlayCircle className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-500">No jobs found for this pipeline</p>
+              <PlayCircle className={`w-16 h-16 mx-auto mb-4 ${
+                theme === 'light' ? 'text-gray-400' : 'text-zinc-700'
+              }`} />
+              <p className={textSecondary}>No jobs found for this pipeline</p>
             </div>
           )}
         </div>

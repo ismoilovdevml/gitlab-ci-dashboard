@@ -10,10 +10,12 @@ import { getGitLabAPI } from '@/lib/gitlab-api';
 import { Pipeline, Job } from '@/lib/gitlab-api';
 import { formatDuration } from '@/lib/utils';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function PipelinesTab() {
   const { projects, setProjects } = useDashboardStore();
   const { notifyPipelineRetry, notifyPipelineCancel, notifyError } = useNotifications();
+  const { theme, card, textPrimary, textSecondary, input, inputFocus } = useTheme();
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
@@ -169,36 +171,42 @@ export default function PipelinesTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Pipelines</h1>
-        <p className="text-zinc-400">Browse and manage CI/CD pipelines</p>
+        <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Pipelines</h1>
+        <p className={textSecondary}>Browse and manage CI/CD pipelines</p>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
         {/* Projects Sidebar */}
         <div className="col-span-3 space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
             <input
               type="text"
               placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
+              className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
             />
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+          <div className={`rounded-lg overflow-hidden ${card}`}>
             <div className="max-h-[600px] overflow-y-auto">
               {filteredProjects.map((project) => (
                 <button
                   key={project.id}
                   onClick={() => setSelectedProject(project.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-zinc-800 hover:bg-zinc-800 transition-colors ${
-                    selectedProject === project.id ? 'bg-orange-500/10 border-l-4 border-l-orange-500' : ''
+                  className={`w-full text-left px-4 py-3 transition-colors ${
+                    theme === 'light'
+                      ? `border-b border-gray-200 hover:bg-gray-50 ${
+                          selectedProject === project.id ? 'bg-orange-50 border-l-4 border-l-orange-500' : ''
+                        }`
+                      : `border-b border-zinc-800 hover:bg-zinc-800 ${
+                          selectedProject === project.id ? 'bg-orange-500/10 border-l-4 border-l-orange-500' : ''
+                        }`
                   }`}
                 >
-                  <p className="text-white text-sm font-medium truncate">{project.name}</p>
-                  <p className="text-zinc-500 text-xs truncate">{project.namespace.name}</p>
+                  <p className={`text-sm font-medium truncate ${textPrimary}`}>{project.name}</p>
+                  <p className={`text-xs truncate ${textSecondary}`}>{project.namespace.name}</p>
                 </button>
               ))}
             </div>
@@ -210,50 +218,50 @@ export default function PipelinesTab() {
           {/* Statistics Cards */}
           {selectedProject && (
             <div className="grid grid-cols-4 gap-4">
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+              <div className={`rounded-lg p-4 ${card}`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
                     <TrendingUp className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Total Runs</p>
-                    <p className="text-2xl font-bold text-white">{stats.total}</p>
+                    <p className={`text-xs ${textSecondary}`}>Total Runs</p>
+                    <p className={`text-2xl font-bold ${textPrimary}`}>{stats.total}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+              <div className={`rounded-lg p-4 ${card}`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
                     <CheckCircle className="w-5 h-5 text-green-500" />
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Success Rate</p>
-                    <p className="text-2xl font-bold text-white">{stats.successRate}%</p>
+                    <p className={`text-xs ${textSecondary}`}>Success Rate</p>
+                    <p className={`text-2xl font-bold ${textPrimary}`}>{stats.successRate}%</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+              <div className={`rounded-lg p-4 ${card}`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
                     <Clock className="w-5 h-5 text-purple-500" />
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Avg Duration</p>
-                    <p className="text-2xl font-bold text-white">{formatDuration(stats.avgDuration)}</p>
+                    <p className={`text-xs ${textSecondary}`}>Avg Duration</p>
+                    <p className={`text-2xl font-bold ${textPrimary}`}>{formatDuration(stats.avgDuration)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+              <div className={`rounded-lg p-4 ${card}`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center">
                     <XCircle className="w-5 h-5 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Failed</p>
-                    <p className="text-2xl font-bold text-white">{stats.failed}</p>
+                    <p className={`text-xs ${textSecondary}`}>Failed</p>
+                    <p className={`text-2xl font-bold ${textPrimary}`}>{stats.failed}</p>
                   </div>
                 </div>
               </div>
@@ -265,11 +273,11 @@ export default function PipelinesTab() {
             <div className="flex items-center gap-4">
               {/* Status Filter */}
               <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Filter className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:outline-none focus:border-orange-500"
+                  className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
                 >
                   <option value="all">All Status</option>
                   <option value="success">Success</option>
@@ -282,11 +290,11 @@ export default function PipelinesTab() {
 
               {/* Date Range Filter */}
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Calendar className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
                 <select
                   value={dateRange}
                   onChange={(e) => setDateRange(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:outline-none focus:border-orange-500"
+                  className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
                 >
                   <option value="1">Last 24 hours</option>
                   <option value="7">Last 7 days</option>
@@ -322,8 +330,10 @@ export default function PipelinesTab() {
                   ))
                 ) : (
                   <div className="col-span-2 text-center py-12">
-                    <AlertCircle className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
-                    <p className="text-zinc-400">No pipelines found for selected filters</p>
+                    <AlertCircle className={`w-16 h-16 mx-auto mb-4 ${
+                      theme === 'light' ? 'text-gray-400' : 'text-zinc-600'
+                    }`} />
+                    <p className={textSecondary}>No pipelines found for selected filters</p>
                   </div>
                 )}
               </div>
@@ -334,7 +344,11 @@ export default function PipelinesTab() {
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      theme === 'light'
+                        ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
+                        : 'bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800'
+                    }`}
                   >
                     Previous
                   </button>
@@ -359,6 +373,8 @@ export default function PipelinesTab() {
                           className={`w-10 h-10 rounded-lg transition-colors ${
                             currentPage === pageNum
                               ? 'bg-orange-500 text-white'
+                              : theme === 'light'
+                              ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
                               : 'bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800'
                           }`}
                         >
@@ -371,12 +387,16 @@ export default function PipelinesTab() {
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      theme === 'light'
+                        ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
+                        : 'bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800'
+                    }`}
                   >
                     Next
                   </button>
 
-                  <span className="ml-4 text-zinc-400">
+                  <span className={`ml-4 ${textSecondary}`}>
                     Page {currentPage} of {totalPages}
                   </span>
                 </div>
@@ -394,7 +414,7 @@ export default function PipelinesTab() {
                 >
                   ← Back to pipelines
                 </button>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className={`text-lg font-semibold ${textPrimary}`}>
                   Pipeline #{selectedPipeline.id} - Jobs
                 </h3>
               </div>

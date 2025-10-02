@@ -36,7 +36,9 @@ export default function Home() {
   };
 
   return (
-    <div className={`flex h-screen ${theme === 'light' ? 'bg-gray-50' : 'bg-zinc-950'}`}>
+    <div className={`flex h-screen transition-colors duration-300 ${
+      theme === 'light' ? 'bg-gray-50' : 'bg-zinc-950'
+    }`}>
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto p-8">

@@ -67,6 +67,26 @@ export function useNotifications() {
     });
   };
 
+  const notifyInfo = (title: string, message: string) => {
+    addNotification({
+      id: Date.now().toString(),
+      type: 'info',
+      title,
+      message,
+      timestamp: Date.now(),
+    });
+  };
+
+  const notifyWarning = (title: string, message: string) => {
+    addNotification({
+      id: Date.now().toString(),
+      type: 'warning',
+      title,
+      message,
+      timestamp: Date.now(),
+    });
+  };
+
   return {
     notifyPipelineRetry,
     notifyPipelineCancel,
@@ -74,5 +94,7 @@ export function useNotifications() {
     notifyPipelineFailed,
     notifyError,
     notifySuccess,
+    notifyInfo,
+    notifyWarning,
   };
 }

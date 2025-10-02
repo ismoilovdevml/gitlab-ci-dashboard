@@ -2,6 +2,7 @@
 
 import { Job } from '@/lib/gitlab-api';
 import { CheckCircle, XCircle, Clock, PlayCircle, AlertCircle, RotateCw, Play, Ban, FileText } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
 interface PipelineVisualizationProps {
   jobs: Job[];
@@ -18,6 +19,7 @@ export default function PipelineVisualization({
   onCancelJob,
   onViewLogs
 }: PipelineVisualizationProps) {
+  const { theme, textPrimary, textSecondary } = useTheme();
   // Group jobs by stage
   const stages = jobs.reduce((acc, job) => {
     const stage = job.stage || 'default';
@@ -83,12 +85,20 @@ export default function PipelineVisualization({
             {/* Stage Box */}
             <div className="flex flex-col items-center min-w-[180px]">
               {/* Stage Header */}
-              <div className="w-full bg-zinc-800 border border-zinc-700 rounded-t-lg px-4 py-2">
-                <h3 className="text-white font-semibold text-sm truncate">{stageName}</h3>
+              <div className={`w-full rounded-t-lg px-4 py-2 ${
+                theme === 'light'
+                  ? 'bg-gray-200 border border-gray-300'
+                  : 'bg-zinc-800 border border-zinc-700'
+              }`}>
+                <h3 className={`font-semibold text-sm truncate ${textPrimary}`}>{stageName}</h3>
               </div>
 
               {/* Stage Jobs */}
-              <div className="w-full bg-zinc-900 border border-zinc-800 border-t-0 rounded-b-lg p-2 space-y-2">
+              <div className={`w-full border border-t-0 rounded-b-lg p-2 space-y-2 ${
+                theme === 'light'
+                  ? 'bg-white border-gray-300'
+                  : 'bg-zinc-900 border-zinc-800'
+              }`}>
                 {stages[stageName].map((job) => (
                   <div
                     key={job.id}
@@ -97,12 +107,12 @@ export default function PipelineVisualization({
                   >
                     <div className="flex items-center gap-2 mb-2">
                       {getStatusIcon(job.status)}
-                      <span className="text-white text-sm font-medium truncate flex-1">
+                      <span className={`text-sm font-medium truncate flex-1 ${textPrimary}`}>
                         {job.name}
                       </span>
                     </div>
 
-                    <div className="text-xs text-zinc-400 mb-2">
+                    <div className={`text-xs mb-2 ${textSecondary}`}>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {formatDuration(job.duration)}
@@ -117,10 +127,12 @@ export default function PipelineVisualization({
                             e.stopPropagation();
                             onRetryJob(job);
                           }}
-                          className="p-1.5 bg-zinc-800 hover:bg-orange-500 rounded transition-colors"
+                          className={`p-1.5 hover:bg-orange-500 rounded transition-colors ${
+                            theme === 'light' ? 'bg-gray-200 hover:text-white' : 'bg-zinc-800'
+                          }`}
                           title="Retry job"
                         >
-                          <RotateCw className="w-3.5 h-3.5 text-white" />
+                          <RotateCw className="w-3.5 h-3.5" />
                         </button>
                       )}
 
@@ -130,10 +142,12 @@ export default function PipelineVisualization({
                             e.stopPropagation();
                             onRetryJob(job);
                           }}
-                          className="p-1.5 bg-zinc-800 hover:bg-orange-500 rounded transition-colors"
+                          className={`p-1.5 hover:bg-orange-500 rounded transition-colors ${
+                            theme === 'light' ? 'bg-gray-200 hover:text-white' : 'bg-zinc-800'
+                          }`}
                           title="Retry job"
                         >
-                          <RotateCw className="w-3.5 h-3.5 text-white" />
+                          <RotateCw className="w-3.5 h-3.5" />
                         </button>
                       )}
 
@@ -143,10 +157,12 @@ export default function PipelineVisualization({
                             e.stopPropagation();
                             onCancelJob(job);
                           }}
-                          className="p-1.5 bg-zinc-800 hover:bg-red-500 rounded transition-colors"
+                          className={`p-1.5 hover:bg-red-500 rounded transition-colors ${
+                            theme === 'light' ? 'bg-gray-200 hover:text-white' : 'bg-zinc-800'
+                          }`}
                           title="Cancel job"
                         >
-                          <Ban className="w-3.5 h-3.5 text-white" />
+                          <Ban className="w-3.5 h-3.5" />
                         </button>
                       )}
 
@@ -156,10 +172,12 @@ export default function PipelineVisualization({
                             e.stopPropagation();
                             onCancelJob(job);
                           }}
-                          className="p-1.5 bg-zinc-800 hover:bg-red-500 rounded transition-colors"
+                          className={`p-1.5 hover:bg-red-500 rounded transition-colors ${
+                            theme === 'light' ? 'bg-gray-200 hover:text-white' : 'bg-zinc-800'
+                          }`}
                           title="Cancel job"
                         >
-                          <Ban className="w-3.5 h-3.5 text-white" />
+                          <Ban className="w-3.5 h-3.5" />
                         </button>
                       )}
 
@@ -169,10 +187,12 @@ export default function PipelineVisualization({
                             e.stopPropagation();
                             onRetryJob(job);
                           }}
-                          className="p-1.5 bg-zinc-800 hover:bg-green-500 rounded transition-colors"
+                          className={`p-1.5 hover:bg-green-500 rounded transition-colors ${
+                            theme === 'light' ? 'bg-gray-200 hover:text-white' : 'bg-zinc-800'
+                          }`}
                           title="Run job"
                         >
-                          <Play className="w-3.5 h-3.5 text-white" />
+                          <Play className="w-3.5 h-3.5" />
                         </button>
                       )}
 
@@ -182,10 +202,12 @@ export default function PipelineVisualization({
                             e.stopPropagation();
                             onViewLogs(job);
                           }}
-                          className="p-1.5 bg-zinc-800 hover:bg-blue-500 rounded transition-colors"
+                          className={`p-1.5 hover:bg-blue-500 rounded transition-colors ${
+                            theme === 'light' ? 'bg-gray-200 hover:text-white' : 'bg-zinc-800'
+                          }`}
                           title="View logs"
                         >
-                          <FileText className="w-3.5 h-3.5 text-white" />
+                          <FileText className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
@@ -197,8 +219,12 @@ export default function PipelineVisualization({
             {/* Connector Arrow */}
             {index < stageNames.length - 1 && (
               <div className="flex items-center px-2 pb-8">
-                <div className="w-8 h-0.5 bg-zinc-700"></div>
-                <div className="w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-l-4 border-l-zinc-700"></div>
+                <div className={`w-8 h-0.5 ${
+                  theme === 'light' ? 'bg-gray-400' : 'bg-zinc-700'
+                }`}></div>
+                <div className={`w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-l-4 ${
+                  theme === 'light' ? 'border-l-gray-400' : 'border-l-zinc-700'
+                }`}></div>
               </div>
             )}
           </div>
