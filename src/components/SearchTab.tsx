@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, Save, X, Calendar, User, GitBranch, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react'
+import { Search, Filter, Save, X, Calendar, User, GitBranch, CheckCircle, XCircle, Clock, Loader2, ExternalLink } from 'lucide-react'
 import { useDashboardStore } from '@/store/dashboard-store'
 import { getGitLabAPI } from '@/lib/gitlab-api'
 import type { Pipeline, Job } from '@/lib/gitlab-api'
@@ -24,27 +24,30 @@ interface SearchResult {
   name: string
   status?: string
   project?: string
+  projectId?: number
   branch?: string
   author?: string
   created_at?: string
   duration?: number
   relevance: number
+  web_url?: string
 }
 
 export default function SearchTab() {
-  const { gitlabUrl, gitlabToken, projects } = useDashboardStore()
+  const { gitlabUrl, gitlabToken, projects, setSelectedProject: setStoreProject, setSelectedPipeline } = useDashboardStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null)
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateRange, setDateRange] = useState('all')
   const [customDateFrom, setCustomDateFrom] = useState('')
   const [customDateTo, setCustomDateTo] = useState('')
-  const [selectedProject, setSelectedProject] = useState('all')
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState('all')
   const [selectedUser, setSelectedUser] = useState('')
 
   // Saved filters
@@ -84,9 +87,9 @@ export default function SearchTab() {
         createdAfter = new Date(customDateFrom).toISOString()
       }
 
-      const projectsToSearch = selectedProject === 'all'
+      const projectsToSearch = selectedProjectFilter === 'all'
         ? projects.slice(0, 20) // Limit to 20 projects for performance
-        : projects.filter(p => p.id.toString() === selectedProject)
+        : projects.filter(p => p.id.toString() === selectedProjectFilter)
 
       // Search in projects
       if (searchQuery.trim()) {
@@ -102,7 +105,8 @@ export default function SearchTab() {
               type: 'project',
               id: project.id,
               name: project.name,
-              relevance
+              relevance,
+              web_url: project.web_url
             })
           }
         })
@@ -155,11 +159,13 @@ export default function SearchTab() {
                 name: `Pipeline #${pipeline.id}`,
                 status: pipeline.status,
                 project: project.name,
+                projectId: project.id,
                 branch: pipeline.ref,
                 author: pipeline.user?.username,
                 created_at: pipeline.created_at,
                 duration: pipeline.duration,
-                relevance: 2
+                relevance: 2,
+                web_url: pipeline.web_url
               })
             }
           })
@@ -218,11 +224,13 @@ export default function SearchTab() {
                     name: job.name,
                     status: job.status,
                     project: project.name,
+                    projectId: project.id,
                     branch: pipeline.ref,
                     author: job.user?.username,
                     created_at: job.created_at,
                     duration: job.duration,
-                    relevance: 1
+                    relevance: 1,
+                    web_url: job.web_url
                   })
                 }
               })
@@ -265,7 +273,7 @@ export default function SearchTab() {
       dateRange,
       customDateFrom,
       customDateTo,
-      selectedProject,
+      selectedProject: selectedProjectFilter,
       selectedUser
     }
 
@@ -282,7 +290,7 @@ export default function SearchTab() {
     setDateRange(filter.dateRange)
     setCustomDateFrom(filter.customDateFrom)
     setCustomDateTo(filter.customDateTo)
-    setSelectedProject(filter.selectedProject)
+    setSelectedProjectFilter(filter.selectedProject)
     setSelectedUser(filter.selectedUser)
   }
 
@@ -310,6 +318,37 @@ export default function SearchTab() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}m ${secs}s`
+  }
+
+  const handleResultClick = (result: SearchResult) => {
+    setSelectedResult(result)
+  }
+
+  const handleOpenInGitLab = (url: string) => {
+    window.open(url, '_blank')
+  }
+
+  const handleViewDetails = async (result: SearchResult) => {
+    if (result.type === 'project') {
+      const project = projects.find(p => p.id === result.id)
+      if (project) {
+        setStoreProject(project)
+        // Could navigate to projects tab here if needed
+      }
+    } else if (result.type === 'pipeline' && result.projectId) {
+      try {
+        const api = getGitLabAPI(gitlabUrl, gitlabToken)
+        const pipeline = await api.getPipeline(result.projectId, result.id)
+        setSelectedPipeline(pipeline)
+        // Could navigate to pipelines tab here if needed
+      } catch (error) {
+        console.error('Error fetching pipeline details:', error)
+      }
+    }
+    // For jobs, we can open in GitLab directly
+    if (result.web_url) {
+      handleOpenInGitLab(result.web_url)
+    }
   }
 
   return (
@@ -420,8 +459,8 @@ export default function SearchTab() {
                 Project
               </label>
               <select
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
+                value={selectedProjectFilter}
+                onChange={(e) => setSelectedProjectFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="all">All Projects</option>
@@ -506,6 +545,107 @@ export default function SearchTab() {
         </div>
       )}
 
+      {/* Result Detail Modal */}
+      {selectedResult && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded uppercase font-medium">
+                    {selectedResult.type}
+                  </span>
+                  {selectedResult.status && (
+                    <div className="flex items-center gap-1">
+                      {getStatusIcon(selectedResult.status)}
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        {selectedResult.status}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {selectedResult.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedResult(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {selectedResult.project && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Project</p>
+                  <p className="text-lg text-gray-900 dark:text-white">{selectedResult.project}</p>
+                </div>
+              )}
+              {selectedResult.branch && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Branch</p>
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="w-4 h-4" />
+                    <p className="text-lg text-gray-900 dark:text-white">{selectedResult.branch}</p>
+                  </div>
+                </div>
+              )}
+              {selectedResult.author && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Author</p>
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    <p className="text-lg text-gray-900 dark:text-white">{selectedResult.author}</p>
+                  </div>
+                </div>
+              )}
+              {selectedResult.created_at && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <p className="text-lg text-gray-900 dark:text-white">
+                      {new Date(selectedResult.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {selectedResult.duration !== undefined && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</p>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <p className="text-lg text-gray-900 dark:text-white">
+                      {formatDuration(selectedResult.duration)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              {selectedResult.web_url && (
+                <button
+                  onClick={() => handleOpenInGitLab(selectedResult.web_url!)}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open in GitLab
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedResult(null)}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Save Filter Dialog */}
       {showSaveDialog && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -555,7 +695,8 @@ export default function SearchTab() {
             {searchResults.map((result, index) => (
               <div
                 key={`${result.type}-${result.id}-${index}`}
-                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
+                onClick={() => handleResultClick(result)}
+                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -608,6 +749,16 @@ export default function SearchTab() {
                       )}
                     </div>
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleViewDetails(result)
+                    }}
+                    className="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View
+                  </button>
                 </div>
               </div>
             ))}

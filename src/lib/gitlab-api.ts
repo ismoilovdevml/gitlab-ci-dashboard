@@ -1,4 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
+import { cachedFetch, CacheTTL } from './cache';
+
+// Export cache utilities for external use
+export { invalidateCache, getCache } from './cache';
 
 export interface Pipeline {
   id: number;
@@ -236,16 +240,22 @@ class GitLabAPI {
 
   // Projects
   async getProjects(page = 1, perPage = 20): Promise<Project[]> {
-    const response = await this.api.get('/projects', {
-      params: {
-        membership: true,
-        order_by: 'last_activity_at',
-        per_page: perPage,
-        page,
-        statistics: true,
+    return cachedFetch(
+      `/projects?page=${page}&perPage=${perPage}`,
+      async () => {
+        const response = await this.api.get('/projects', {
+          params: {
+            membership: true,
+            order_by: 'last_activity_at',
+            per_page: perPage,
+            page,
+            statistics: true,
+          },
+        });
+        return response.data;
       },
-    });
-    return response.data;
+      CacheTTL.LONG // 5 minutes cache for projects
+    );
   }
 
   async starProject(projectId: number): Promise<Project> {
@@ -265,14 +275,20 @@ class GitLabAPI {
 
   // Pipelines
   async getPipelines(projectId: number, page = 1, perPage = 20): Promise<Pipeline[]> {
-    const response = await this.api.get(`/projects/${projectId}/pipelines`, {
-      params: {
-        per_page: perPage,
-        page,
-        order_by: 'updated_at',
+    return cachedFetch(
+      `/projects/${projectId}/pipelines?page=${page}&perPage=${perPage}`,
+      async () => {
+        const response = await this.api.get(`/projects/${projectId}/pipelines`, {
+          params: {
+            per_page: perPage,
+            page,
+            order_by: 'updated_at',
+          },
+        });
+        return response.data;
       },
-    });
-    return response.data;
+      CacheTTL.MEDIUM // 2 minutes cache for pipelines
+    );
   }
 
   async getAllActivePipelines(): Promise<Pipeline[]> {
@@ -335,13 +351,19 @@ class GitLabAPI {
 
   // Runners
   async getRunners(page = 1, perPage = 20): Promise<Runner[]> {
-    const response = await this.api.get('/runners/all', {
-      params: {
-        per_page: perPage,
-        page,
+    return cachedFetch(
+      `/runners/all?page=${page}&perPage=${perPage}`,
+      async () => {
+        const response = await this.api.get('/runners/all', {
+          params: {
+            per_page: perPage,
+            page,
+          },
+        });
+        return response.data;
       },
-    });
-    return response.data;
+      CacheTTL.MEDIUM // 2 minutes cache for runners
+    );
   }
 
   async getRunner(runnerId: number): Promise<Runner> {
