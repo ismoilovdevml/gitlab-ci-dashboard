@@ -8,6 +8,8 @@ import { useDashboardStore } from '@/store/dashboard-store';
 import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime } from '@/lib/utils';
 import JobCard from './JobCard';
 import LogViewer from './LogViewer';
+import PipelineVisualization from './PipelineVisualization';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface PipelineDetailsModalProps {
   pipeline: Pipeline;
@@ -17,6 +19,7 @@ interface PipelineDetailsModalProps {
 
 export default function PipelineDetailsModal({ pipeline, projectId, onClose }: PipelineDetailsModalProps) {
   const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const { notifySuccess, notifyError } = useNotifications();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [logs, setLogs] = useState('');
@@ -81,6 +84,30 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
       window.location.reload();
     } catch (error) {
       console.error('Failed to cancel pipeline:', error);
+    }
+  };
+
+  const handleRetryJob = async (job: Job) => {
+    try {
+      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      await api.retryJob(projectId, job.id);
+      notifySuccess('Job Retrying', `Job "${job.name}" is being retried`);
+      loadJobs();
+    } catch (error) {
+      console.error('Failed to retry job:', error);
+      notifyError('Retry Failed', `Failed to retry job "${job.name}"`);
+    }
+  };
+
+  const handleCancelJob = async (job: Job) => {
+    try {
+      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      await api.cancelJob(projectId, job.id);
+      notifySuccess('Job Canceled', `Job "${job.name}" has been canceled`);
+      loadJobs();
+    } catch (error) {
+      console.error('Failed to cancel job:', error);
+      notifyError('Cancel Failed', `Failed to cancel job "${job.name}"`);
     }
   };
 
@@ -181,7 +208,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
           </div>
         </div>
 
-        {/* Jobs by Stage */}
+        {/* Jobs Visualization */}
         <div className="p-6">
           <h3 className="text-lg font-semibold text-white mb-4">
             Pipeline Jobs ({jobs.length})
@@ -192,30 +219,15 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
               <p className="text-zinc-500 mt-4">Loading jobs...</p>
             </div>
+          ) : jobs.length > 0 ? (
+            <PipelineVisualization
+              jobs={jobs}
+              onJobClick={loadJobLogs}
+              onRetryJob={handleRetryJob}
+              onCancelJob={handleCancelJob}
+              onViewLogs={loadJobLogs}
+            />
           ) : (
-            <div className="space-y-6">
-              {Object.entries(jobsByStage).map(([stage, stageJobs]) => (
-                <div key={stage}>
-                  <h4 className="text-md font-semibold text-zinc-300 mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    Stage: {stage}
-                    <span className="text-xs text-zinc-500">({stageJobs.length} jobs)</span>
-                  </h4>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {stageJobs.map((job) => (
-                      <JobCard
-                        key={job.id}
-                        job={job}
-                        onViewLogs={() => loadJobLogs(job)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {jobs.length === 0 && !loading && (
             <div className="text-center py-12">
               <PlayCircle className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
               <p className="text-zinc-500">No jobs found for this pipeline</p>
