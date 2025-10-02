@@ -5,10 +5,22 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch: # Manual trigger
+
+# Cancel in-progress runs for same workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  DOCKER_IMAGE: gitlab-cicd-dashboard
 
 jobs:
   build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - name: Checkout code
@@ -17,47 +29,79 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          node_modules
+          .next/cache
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+        restore-keys: |
+          ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-
+          ${{ runner.os }}-node-
 
-    - name: Run linter
+    - name: Install dependencies
+      run: npm ci --prefer-offline --no-audit
+
+    - name: Lint code
       run: npm run lint
 
     - name: Build application
       run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
     - name: Build Docker image
-      run: docker build -t gitlab-cicd-dashboard:test .
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        load: true
+        tags: ${{ env.DOCKER_IMAGE }}:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
-    - name: Test Docker image
+    - name: Test Docker container
       run: |
-        docker run -d -p 3000:3000 \
+        # Start container
+        docker run -d \
+          -p 3000:3000 \
           --name test-dashboard \
-          gitlab-cicd-dashboard:test
+          --health-cmd="curl -f http://localhost:3000 || exit 1" \
+          --health-interval=5s \
+          --health-timeout=3s \
+          --health-retries=3 \
+          ${{ env.DOCKER_IMAGE }}:test
 
-        # Wait for application to start
-        sleep 10
+        # Wait for healthy status
+        timeout 30s sh -c 'until docker inspect --format="{{.State.Health.Status}}" test-dashboard | grep -q healthy; do sleep 2; done'
 
-        # Check if container is running
-        docker ps | grep test-dashboard
-
-        # Check if app responds
+        # Test endpoint
         curl -f http://localhost:3000 || exit 1
+
+        # Show logs on failure
+        docker logs test-dashboard || true
 
         # Cleanup
         docker stop test-dashboard
         docker rm test-dashboard
 
   docker-publish:
+    name: Publish to GHCR
     runs-on: ubuntu-latest
     needs: build-and-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
     - name: Checkout code
@@ -65,6 +109,8 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/amd64,linux/arm64
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
@@ -79,18 +125,56 @@ jobs:
       with:
         images: ghcr.io/${{ github.repository }}
         tags: |
-          type=raw,value=latest
-          type=sha,prefix=main-
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha,prefix=main-,format=short
           type=ref,event=branch
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
+        labels: |
+          org.opencontainers.image.title=GitLab CI/CD Dashboard
+          org.opencontainers.image.description=Modern real-time dashboard for GitLab CI/CD pipelines
+          org.opencontainers.image.vendor=${{ github.repository_owner }}
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
+    - name: Build and push multi-platform Docker image
+      uses: docker/build-push-action@v6
       with:
         context: .
+        platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        provenance: false
+        sbom: false
+
+    - name: Image digest
+      run: echo "Image pushed with digest ${{ steps.meta.outputs.digest }}"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: docker-publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 10
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ghcr.io/${{ github.repository }}:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
