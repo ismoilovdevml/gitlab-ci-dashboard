@@ -6,6 +6,8 @@ import Overview from '@/components/Overview';
 import PipelinesTab from '@/components/PipelinesTab';
 import ProjectsTab from '@/components/ProjectsTab';
 import RunnersTab from '@/components/RunnersTab';
+import ArtifactsTab from '@/components/ArtifactsTab';
+import ContainerRegistryTab from '@/components/ContainerRegistryTab';
 import SettingsTab from '@/components/SettingsTab';
 import NotificationToast from '@/components/NotificationToast';
 import { useDashboardStore } from '@/store/dashboard-store';
@@ -28,6 +30,10 @@ export default function Home() {
         return <ProjectsTab />;
       case 'runners':
         return <RunnersTab />;
+      case 'artifacts':
+        return <ArtifactsTab />;
+      case 'registry':
+        return <ContainerRegistryTab />;
       case 'settings':
         return <SettingsTab />;
       default:

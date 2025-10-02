@@ -53,6 +53,10 @@ export interface Job {
     name: string;
     name_with_namespace: string;
   };
+  artifacts_file?: {
+    filename: string;
+    size: number;
+  };
 }
 
 export interface Project {
@@ -67,6 +71,7 @@ export interface Project {
   star_count: number;
   forks_count: number;
   last_activity_at: string;
+  visibility: 'public' | 'private' | 'internal';
   namespace: {
     id: number;
     name: string;
@@ -104,6 +109,48 @@ export interface PipelineStats {
   canceled: number;
 }
 
+export interface Artifact {
+  id: number;
+  file_type: string;
+  size: number;
+  filename: string;
+  file_format: string;
+  created_at: string;
+  expired_at: string | null;
+  expire_at: string | null;
+}
+
+export interface JobArtifact extends Job {
+  artifacts?: Artifact[];
+  artifacts_file?: {
+    filename: string;
+    size: number;
+  };
+}
+
+export interface ContainerRepository {
+  id: number;
+  name: string;
+  path: string;
+  project_id: number;
+  location: string;
+  created_at: string;
+  cleanup_policy_started_at: string | null;
+  tags_count: number;
+  tags?: ContainerTag[];
+}
+
+export interface ContainerTag {
+  name: string;
+  path: string;
+  location: string;
+  revision: string;
+  short_revision: string;
+  digest: string;
+  created_at: string;
+  total_size: number;
+}
+
 class GitLabAPI {
   private api: AxiosInstance;
   private baseUrl: string;
@@ -128,8 +175,19 @@ class GitLabAPI {
         order_by: 'last_activity_at',
         per_page: perPage,
         page,
+        statistics: true,
       },
     });
+    return response.data;
+  }
+
+  async starProject(projectId: number): Promise<Project> {
+    const response = await this.api.post(`/projects/${projectId}/star`);
+    return response.data;
+  }
+
+  async unstarProject(projectId: number): Promise<Project> {
+    const response = await this.api.post(`/projects/${projectId}/unstar`);
     return response.data;
   }
 
@@ -241,6 +299,74 @@ class GitLabAPI {
       failed: pipelines.filter(p => p.status === 'failed').length,
       canceled: pipelines.filter(p => p.status === 'canceled').length,
     };
+  }
+
+  // Artifacts
+  async getJobArtifacts(projectId: number, page = 1, perPage = 20): Promise<JobArtifact[]> {
+    const response = await this.api.get(`/projects/${projectId}/jobs`, {
+      params: {
+        per_page: perPage,
+        page,
+        scope: ['success', 'failed'],
+      },
+    });
+    return response.data.filter((job: Job) => job.artifacts_file);
+  }
+
+  async getAllArtifacts(): Promise<JobArtifact[]> {
+    const projects = await this.getProjects(1, 50);
+    const artifactPromises = projects.map(project =>
+      this.getJobArtifacts(project.id, 1, 10).catch(() => [])
+    );
+    const allArtifacts = await Promise.all(artifactPromises);
+    return allArtifacts.flat();
+  }
+
+  async downloadArtifact(projectId: number, jobId: number): Promise<Blob> {
+    const response = await this.api.get(`/projects/${projectId}/jobs/${jobId}/artifacts`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async deleteArtifacts(projectId: number, jobId: number): Promise<void> {
+    await this.api.delete(`/projects/${projectId}/jobs/${jobId}/artifacts`);
+  }
+
+  // Container Registry
+  async getContainerRepositories(projectId: number): Promise<ContainerRepository[]> {
+    const response = await this.api.get(`/projects/${projectId}/registry/repositories`);
+    return response.data;
+  }
+
+  async getAllContainerRepositories(): Promise<ContainerRepository[]> {
+    const projects = await this.getProjects(1, 50);
+    const repoPromises = projects.map(project =>
+      this.getContainerRepositories(project.id).catch(() => [])
+    );
+    const allRepos = await Promise.all(repoPromises);
+    return allRepos.flat();
+  }
+
+  async getContainerTags(projectId: number, repositoryId: number): Promise<ContainerTag[]> {
+    const response = await this.api.get(
+      `/projects/${projectId}/registry/repositories/${repositoryId}/tags`
+    );
+    return response.data;
+  }
+
+  async deleteContainerTag(
+    projectId: number,
+    repositoryId: number,
+    tagName: string
+  ): Promise<void> {
+    await this.api.delete(
+      `/projects/${projectId}/registry/repositories/${repositoryId}/tags/${tagName}`
+    );
+  }
+
+  async deleteContainerRepository(projectId: number, repositoryId: number): Promise<void> {
+    await this.api.delete(`/projects/${projectId}/registry/repositories/${repositoryId}`);
   }
 }
 

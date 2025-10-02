@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ExternalLink, Star, GitFork, Clock } from 'lucide-react';
+import { ExternalLink, Star, GitFork, Clock, Lock, Globe, Eye } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { formatRelativeTime } from '@/lib/utils';
@@ -11,6 +11,7 @@ import ProjectDetailsModal from './ProjectDetailsModal';
 export default function ProjectsTab() {
   const { projects, setProjects, gitlabUrl, gitlabToken } = useDashboardStore();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [starringProjects, setStarringProjects] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (gitlabToken) {
@@ -26,6 +27,44 @@ export default function ProjectsTab() {
       setProjects(projectsList);
     } catch (error) {
       console.error('Failed to load projects:', error);
+    }
+  };
+
+  const handleToggleStar = async (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+
+    if (starringProjects.has(project.id)) return;
+
+    setStarringProjects(prev => new Set(prev).add(project.id));
+
+    try {
+      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const updatedProject = project.star_count > 0 && project.star_count
+        ? await api.unstarProject(project.id)
+        : await api.starProject(project.id);
+
+      setProjects(projects.map(p => p.id === project.id ? updatedProject : p));
+    } catch (error) {
+      console.error('Failed to toggle star:', error);
+    } finally {
+      setStarringProjects(prev => {
+        const next = new Set(prev);
+        next.delete(project.id);
+        return next;
+      });
+    }
+  };
+
+  const getVisibilityIcon = (visibility: string) => {
+    switch (visibility) {
+      case 'private':
+        return <Lock className="w-4 h-4 text-red-500" />;
+      case 'internal':
+        return <Eye className="w-4 h-4 text-yellow-500" />;
+      case 'public':
+        return <Globe className="w-4 h-4 text-green-500" />;
+      default:
+        return null;
     }
   };
 
@@ -60,9 +99,12 @@ export default function ProjectsTab() {
                   </div>
                 )}
                 <div>
-                  <h3 className="text-white font-semibold group-hover:text-orange-500 transition-colors">
-                    {project.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-white font-semibold group-hover:text-orange-500 transition-colors">
+                      {project.name}
+                    </h3>
+                    {getVisibilityIcon(project.visibility)}
+                  </div>
                   <p className="text-xs text-zinc-500">{project.namespace.name}</p>
                 </div>
               </div>
@@ -70,6 +112,7 @@ export default function ProjectsTab() {
                 href={project.web_url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
                 className="text-zinc-500 hover:text-white transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -83,10 +126,16 @@ export default function ProjectsTab() {
             )}
 
             <div className="flex items-center gap-4 text-xs text-zinc-500 mb-4">
-              <div className="flex items-center gap-1">
-                <Star className="w-3 h-3" />
+              <button
+                onClick={(e) => handleToggleStar(e, project)}
+                disabled={starringProjects.has(project.id)}
+                className="flex items-center gap-1 hover:text-yellow-500 transition-colors disabled:opacity-50"
+              >
+                <Star
+                  className={`w-3 h-3 ${project.star_count > 0 ? 'fill-yellow-500 text-yellow-500' : ''}`}
+                />
                 <span>{project.star_count}</span>
-              </div>
+              </button>
               <div className="flex items-center gap-1">
                 <GitFork className="w-3 h-3" />
                 <span>{project.forks_count}</span>

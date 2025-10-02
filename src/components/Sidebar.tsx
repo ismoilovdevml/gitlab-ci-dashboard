@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Boxes, GitBranch, Settings, PlayCircle } from 'lucide-react';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -17,6 +17,8 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'pipelines', icon: GitBranch, label: 'Pipelines' },
     { id: 'projects', icon: Boxes, label: 'Projects' },
     { id: 'runners', icon: PlayCircle, label: 'Runners' },
+    { id: 'artifacts', icon: FileArchive, label: 'Artifacts' },
+    { id: 'registry', icon: Package, label: 'Registry' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
 
