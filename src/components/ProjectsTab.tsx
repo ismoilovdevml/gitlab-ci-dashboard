@@ -89,15 +89,23 @@ export default function ProjectsTab() {
                   <img
                     src={project.avatar_url}
                     alt={project.name}
-                    className="w-12 h-12 rounded-lg"
+                    className="w-12 h-12 rounded-lg object-cover border border-zinc-700"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.nextElementSibling) {
+                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                      }
+                    }}
                   />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">
-                      {project.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                ) : null}
+                <div
+                  className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg"
+                  style={{ display: project.avatar_url ? 'none' : 'flex' }}
+                >
+                  <span className="text-white font-bold text-lg">
+                    {project.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-white font-semibold group-hover:text-orange-500 transition-colors">

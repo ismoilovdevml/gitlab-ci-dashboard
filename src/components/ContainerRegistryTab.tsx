@@ -5,15 +5,27 @@ import { Trash2, Package, Clock, HardDrive, Tag, ChevronDown, ChevronRight } fro
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI, ContainerRepository, ContainerTag } from '@/lib/gitlab-api';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function ContainerRegistryTab() {
-  const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const { gitlabUrl, gitlabToken, addNotification } = useDashboardStore();
   const [repositories, setRepositories] = useState<ContainerRepository[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRepos, setExpandedRepos] = useState<Set<number>>(new Set());
   const [loadingTags, setLoadingTags] = useState<Set<number>>(new Set());
   const [deletingRepoIds, setDeletingRepoIds] = useState<Set<number>>(new Set());
   const [deletingTags, setDeletingTags] = useState<Set<string>>(new Set());
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     if (gitlabToken) {
@@ -69,22 +81,42 @@ export default function ContainerRegistryTab() {
     setExpandedRepos(prev => new Set(prev).add(repo.id));
   };
 
-  const handleDeleteRepository = async (repo: ContainerRepository) => {
+  const handleDeleteRepository = (repo: ContainerRepository) => {
     if (deletingRepoIds.has(repo.id)) return;
 
-    if (!confirm(`Are you sure you want to delete repository "${repo.name}"?`)) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Repository',
+      message: `Are you sure you want to delete repository "${repo.name}"? This action cannot be undone.`,
+      onConfirm: () => confirmDeleteRepository(repo),
+    });
+  };
 
+  const confirmDeleteRepository = async (repo: ContainerRepository) => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
     setDeletingRepoIds(prev => new Set(prev).add(repo.id));
 
     try {
       const api = getGitLabAPI(gitlabUrl, gitlabToken);
       await api.deleteContainerRepository(repo.project_id, repo.id);
       setRepositories(repositories.filter(r => r.id !== repo.id));
+
+      addNotification({
+        id: Date.now().toString(),
+        type: 'success',
+        title: 'Repository Deleted',
+        message: `Successfully deleted repository "${repo.name}"`,
+        timestamp: Date.now(),
+      });
     } catch (error) {
       console.error('Failed to delete repository:', error);
-      alert('Failed to delete repository');
+      addNotification({
+        id: Date.now().toString(),
+        type: 'error',
+        title: 'Delete Failed',
+        message: `Failed to delete repository "${repo.name}"`,
+        timestamp: Date.now(),
+      });
     } finally {
       setDeletingRepoIds(prev => {
         const next = new Set(prev);
@@ -94,14 +126,21 @@ export default function ContainerRegistryTab() {
     }
   };
 
-  const handleDeleteTag = async (repo: ContainerRepository, tag: ContainerTag) => {
+  const handleDeleteTag = (repo: ContainerRepository, tag: ContainerTag) => {
     const tagKey = `${repo.id}-${tag.name}`;
     if (deletingTags.has(tagKey)) return;
 
-    if (!confirm(`Are you sure you want to delete tag "${tag.name}"?`)) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Tag',
+      message: `Are you sure you want to delete tag "${tag.name}"? This action cannot be undone.`,
+      onConfirm: () => confirmDeleteTag(repo, tag),
+    });
+  };
 
+  const confirmDeleteTag = async (repo: ContainerRepository, tag: ContainerTag) => {
+    const tagKey = `${repo.id}-${tag.name}`;
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
     setDeletingTags(prev => new Set(prev).add(tagKey));
 
     try {
@@ -119,9 +158,23 @@ export default function ContainerRegistryTab() {
             : r
         )
       );
+
+      addNotification({
+        id: Date.now().toString(),
+        type: 'success',
+        title: 'Tag Deleted',
+        message: `Successfully deleted tag "${tag.name}"`,
+        timestamp: Date.now(),
+      });
     } catch (error) {
       console.error('Failed to delete tag:', error);
-      alert('Failed to delete tag');
+      addNotification({
+        id: Date.now().toString(),
+        type: 'error',
+        title: 'Delete Failed',
+        message: `Failed to delete tag "${tag.name}"`,
+        timestamp: Date.now(),
+      });
     } finally {
       setDeletingTags(prev => {
         const next = new Set(prev);
@@ -130,6 +183,13 @@ export default function ContainerRegistryTab() {
       });
     }
   };
+
+  const totalSize = repositories.reduce((acc, repo) => {
+    const repoSize = repo.tags?.reduce((sum, tag) => sum + (tag.total_size || 0), 0) || 0;
+    return acc + repoSize;
+  }, 0);
+
+  const totalTags = repositories.reduce((acc, repo) => acc + (repo.tags_count || 0), 0);
 
   if (loading) {
     return (
@@ -146,6 +206,46 @@ export default function ContainerRegistryTab() {
         <p className="text-zinc-400">Docker container images from all projects</p>
       </div>
 
+      {repositories.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <Package className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-zinc-400">Repositories</p>
+                <p className="text-2xl font-bold text-white">{repositories.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <Tag className="w-5 h-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-sm text-zinc-400">Total Tags</p>
+                <p className="text-2xl font-bold text-white">{totalTags}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <HardDrive className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-zinc-400">Total Size</p>
+                <p className="text-2xl font-bold text-white">{formatBytes(totalSize)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {repositories.length === 0 ? (
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-12 text-center">
           <Package className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
@@ -153,34 +253,34 @@ export default function ContainerRegistryTab() {
           <p className="text-zinc-500">No container images available across your projects</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {repositories.map((repo) => (
             <div
               key={repo.id}
-              className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden"
+              className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-700 transition-all"
             >
-              <div className="p-6 hover:border-zinc-700 transition-all">
+              <div className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-2 mb-1">
                       <button
                         onClick={() => toggleRepository(repo)}
                         className="text-zinc-400 hover:text-white transition-colors"
                       >
                         {expandedRepos.has(repo.id) ? (
-                          <ChevronDown className="w-5 h-5" />
+                          <ChevronDown className="w-4 h-4" />
                         ) : (
-                          <ChevronRight className="w-5 h-5" />
+                          <ChevronRight className="w-4 h-4" />
                         )}
                       </button>
-                      <Package className="w-5 h-5 text-blue-500" />
-                      <h3 className="text-white font-semibold">{repo.name}</h3>
-                      <span className="px-2 py-1 rounded text-xs bg-zinc-800 text-zinc-400 border border-zinc-700">
-                        {repo.tags_count} {repo.tags_count === 1 ? 'tag' : 'tags'}
+                      <Package className="w-4 h-4 text-blue-500" />
+                      <h3 className="text-white font-medium text-sm">{repo.name}</h3>
+                      <span className="px-1.5 py-0.5 rounded text-xs bg-zinc-800 text-zinc-400 border border-zinc-700">
+                        {repo.tags_count}
                       </span>
                     </div>
-                    <p className="text-sm text-zinc-400 mb-2 ml-8 font-mono">{repo.path}</p>
-                    <div className="flex items-center gap-4 text-xs text-zinc-500 ml-8">
+                    <p className="text-xs text-zinc-500 ml-6 font-mono">{repo.path}</p>
+                    <div className="flex items-center gap-3 text-xs text-zinc-500 ml-6 mt-1">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         <span>{formatRelativeTime(repo.created_at)}</span>
@@ -191,10 +291,10 @@ export default function ContainerRegistryTab() {
                   <button
                     onClick={() => handleDeleteRepository(repo)}
                     disabled={deletingRepoIds.has(repo.id)}
-                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                    className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
                     title="Delete repository"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -202,20 +302,20 @@ export default function ContainerRegistryTab() {
               {expandedRepos.has(repo.id) && (
                 <div className="border-t border-zinc-800 bg-zinc-950/50">
                   {loadingTags.has(repo.id) ? (
-                    <div className="p-6 text-center text-zinc-500">Loading tags...</div>
+                    <div className="p-4 text-center text-xs text-zinc-500">Loading tags...</div>
                   ) : repo.tags && repo.tags.length > 0 ? (
                     <div className="divide-y divide-zinc-800">
                       {repo.tags.map((tag) => (
                         <div
                           key={tag.name}
-                          className="p-4 flex items-center justify-between hover:bg-zinc-900/50 transition-colors"
+                          className="p-3 flex items-center justify-between hover:bg-zinc-900/50 transition-colors"
                         >
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <Tag className="w-4 h-4 text-green-500" />
-                              <span className="text-white font-mono">{tag.name}</span>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Tag className="w-3.5 h-3.5 text-green-500" />
+                              <span className="text-white text-sm font-mono">{tag.name}</span>
                             </div>
-                            <div className="flex items-center gap-4 text-xs text-zinc-500 ml-7">
+                            <div className="flex items-center gap-3 text-xs text-zinc-500 ml-5">
                               <div className="flex items-center gap-1">
                                 <HardDrive className="w-3 h-3" />
                                 <span>{formatBytes(tag.total_size)}</span>
@@ -233,16 +333,16 @@ export default function ContainerRegistryTab() {
                           <button
                             onClick={() => handleDeleteTag(repo, tag)}
                             disabled={deletingTags.has(`${repo.id}-${tag.name}`)}
-                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
                             title="Delete tag"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="p-6 text-center text-zinc-500">No tags found</div>
+                    <div className="p-4 text-center text-xs text-zinc-500">No tags found</div>
                   )}
                 </div>
               )}
@@ -250,6 +350,15 @@ export default function ContainerRegistryTab() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        type="danger"
+      />
     </div>
   );
 }
