@@ -51,6 +51,18 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     }
   };
 
+  const refreshJobLogs = async () => {
+    if (selectedJob) {
+      try {
+        const api = getGitLabAPI(gitlabUrl, gitlabToken);
+        const jobLogs = await api.getJobTrace(projectId, selectedJob.id);
+        setLogs(jobLogs);
+      } catch (error) {
+        console.error('Failed to refresh logs:', error);
+      }
+    }
+  };
+
   const handleRetryPipeline = async () => {
     try {
       const api = getGitLabAPI(gitlabUrl, gitlabToken);
@@ -214,10 +226,14 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         <LogViewer
           logs={logs}
           jobName={selectedJob.name}
+          jobStatus={selectedJob.status}
+          projectId={projectId}
+          jobId={selectedJob.id}
           onClose={() => {
             setSelectedJob(null);
             setLogs('');
           }}
+          onRefreshLogs={refreshJobLogs}
         />
       )}
     </div>

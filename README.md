@@ -1,48 +1,140 @@
-# GitLab CI/CD Enterprise Dashboard
+# GitLab CI/CD Dashboard
 
-Modern, real-time monitoring and management dashboard for GitLab CI/CD pipelines.
+Enterprise-level GitLab CI/CD monitoring dashboard built with Next.js 14, TypeScript, and Tailwind CSS.
 
 ## Features
 
-- 📊 **Real-time Dashboard** - Live updates every 10 seconds
+- 📊 **Real-time Monitoring** - Auto-refresh every 10 seconds
 - 🚀 **Pipeline Management** - View, retry, and cancel pipelines
-- 📋 **Job Monitoring** - Track job status and view logs
-- 🏃 **Runner Status** - Monitor GitLab runners
-- 🎨 **Modern UI/UX** - Dark theme with beautiful interface
-- 🔄 **Auto-refresh** - Configurable refresh intervals
+- 📝 **Live Logs** - Real-time log streaming for running jobs with syntax highlighting
+- 🎯 **Multi-Project Support** - Monitor all your GitLab projects in one place
+- 🏃 **Runner Status** - Track GitLab runner availability and health
+- 🌙 **Dark/Light Theme** - Modern UI with theme switching
+- 🔍 **Advanced Filtering** - Search and filter pipelines by status
+- 📈 **Statistics Dashboard** - Quick overview of pipeline metrics
 
-## Quick Start with Docker
+## Quick Start
 
-### 1. Build and run
+### Docker (Recommended)
+
 ```bash
-docker-compose up -d --build
+# Clone repository
+git clone <repository-url>
+cd gitlabci-dashboard
+
+# Start with Docker Compose
+docker-compose up -d
+
+# Open browser
+open http://localhost:3000
 ```
 
-### 2. View logs
+### Local Development
+
 ```bash
-docker-compose logs -f
+# Install dependencies
+npm install
+
+# Create .env.local file
+cat > .env.local << EOF
+GITLAB_URL=https://gitlab.com
+GITLAB_TOKEN=your-gitlab-token-here
+NEXT_PUBLIC_GITLAB_URL=https://gitlab.com
+NEXT_PUBLIC_GITLAB_TOKEN=your-gitlab-token-here
+EOF
+
+# Run development server
+npm run dev
+
+# Open browser
+open http://localhost:3000
 ```
 
-### 3. Open browser
-```
-http://localhost:3000
-```
+## Configuration
 
-### 4. Stop
+### GitLab Token
+
+1. Go to GitLab → Settings → Access Tokens
+2. Create token with scopes: `api`, `read_api`, `read_repository`
+3. Add token to Settings page in dashboard or `.env.local` file
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `GITLAB_URL` | GitLab instance URL | Yes |
+| `GITLAB_TOKEN` | GitLab personal access token | Yes |
+| `NEXT_PUBLIC_GITLAB_URL` | Public GitLab URL | Yes |
+| `NEXT_PUBLIC_GITLAB_TOKEN` | Public GitLab token | Yes |
+
+## Usage
+
+### Dashboard Overview
+- View active pipelines, success/failure rates
+- See recent activity (last 10 pipelines)
+- Click stats cards to filter pipelines
+
+### Pipelines
+- Search and filter all pipelines
+- Retry or cancel pipelines
+- View detailed job logs
+
+### Projects
+- Monitor all GitLab projects
+- View project pipeline statistics
+- Access project details
+
+### Runners
+- Track runner status and availability
+- Monitor runner health
+- View runner tags and descriptions
+
+### Settings
+- Configure GitLab URL and token
+- Switch between dark/light themes
+- Enable/disable auto-refresh
+
+## Tech Stack
+
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **API**: GitLab API v4
+- **Container**: Docker + Docker Compose
+
+## CI/CD
+
+GitHub Actions workflow included for:
+- Linting and type checking
+- Building application
+- Docker image creation and testing
+- Automatic deployment
+
+Test locally:
 ```bash
-docker-compose down
+# Install act
+brew install act
+
+# Run workflow locally
+act -j build-and-test --container-architecture linux/amd64
 ```
 
-## GitLab Token
+## Project Structure
 
-Token already configured in `.env.local`:
-- URL: `https://gitlab.com`
-- Token: Already set
+```
+├── src/
+│   ├── app/              # Next.js app router
+│   ├── components/       # React components
+│   ├── lib/             # GitLab API client
+│   └── store/           # Zustand store
+├── .github/
+│   └── workflows/       # GitHub Actions
+├── docker-compose.yml   # Docker configuration
+├── Dockerfile          # Container image
+└── tailwind.config.ts  # Tailwind CSS config
+```
 
-## Dashboard Tabs
+## License
 
-- **Overview** - Statistics, active pipelines
-- **Pipelines** - Browse projects, pipelines, jobs, logs
-- **Projects** - All GitLab projects
-- **Runners** - Runner monitoring
-- **Settings** - Auto-refresh config
+MIT
