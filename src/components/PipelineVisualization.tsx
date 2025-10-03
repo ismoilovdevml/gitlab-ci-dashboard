@@ -70,9 +70,10 @@ export default function PipelineVisualization({
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '-';
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const totalSeconds = Math.round(seconds);
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+    const minutes = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
     return `${minutes}m ${secs}s`;
   };
 

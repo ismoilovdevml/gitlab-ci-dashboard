@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Alert Channel Configuration (Telegram, Slack, Discord, Email, Webhook)
+model AlertChannel {
+  id        String   @id @default(cuid())
+  type      String   @unique // telegram, slack, discord, email, webhook
+  enabled   Boolean  @default(false)
+  config    Json     // Flexible JSON config for each channel type
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("alert_channels")
+}
+
+// Alert Rules (When to send alerts)
+model AlertRule {
+  id          String   @id @default(cuid())
+  name        String
+  projectId   String   // "all" or specific project ID
+  projectName String
+  channels    String[] // Array of channel types ["telegram", "slack"]
+  events      Json     // {success: bool, failed: bool, running: bool, canceled: bool}
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("alert_rules")
+  @@index([enabled])
+  @@index([projectId])
+}
+
+// Alert History (Log of sent alerts)
+model AlertHistory {
+  id          String   @id @default(cuid())
+  projectName String
+  pipelineId  Int
+  status      String   // success, failed, running, canceled
+  channel     String   // telegram, slack, discord, etc
+  message     String
+  sent        Boolean  @default(false)
+  error       String?  // Error message if send failed
+  createdAt   DateTime @default(now())
+
+  @@map("alert_history")
+  @@index([projectName])
+  @@index([pipelineId])
+  @@index([createdAt])
+}
+
+// GitLab Configuration
+model GitLabConfig {
+  id              String   @id @default(cuid())
+  url             String   @default("https://gitlab.com")
+  token           String   // Will be encrypted
+  autoRefresh     Boolean  @default(true)
+  refreshInterval Int      @default(10000) // milliseconds
+  theme           String   @default("dark")
+  notifyPipelineFailures Boolean @default(true)
+  notifyPipelineSuccess  Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("gitlab_config")
+}
+
+// Pipeline Status Cache (for tracking changes)
+model PipelineStatus {
+  id          String   @id @default(cuid())
+  projectId   Int
+  pipelineId  Int
+  status      String
+  checkedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, pipelineId])
+  @@map("pipeline_status")
+  @@index([projectId])
+  @@index([updatedAt])
+}

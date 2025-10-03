@@ -8,9 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDuration(seconds: number | null): string {
   if (!seconds) return '0s';
 
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+  // Round to nearest second first to avoid floating point issues
+  const totalSeconds = Math.round(seconds);
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
 
   if (hours > 0) {
     return `${hours}h ${minutes}m ${secs}s`;
