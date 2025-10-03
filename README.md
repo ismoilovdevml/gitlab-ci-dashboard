@@ -32,8 +32,8 @@ Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines w
 
 ```bash
 # Clone repository
-git clone https://github.com/ismoilovdevml/gitlab-cicd-dashboard.git
-cd gitlab-cicd-dashboard
+git clone https://github.com/ismoilovdevml/gitlab-ci-dashboard.git
+cd gitlab-ci-dashboard
 
 # Start all services (PostgreSQL + Redis + App)
 docker-compose up -d
@@ -152,8 +152,8 @@ curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
 
 ```bash
 # Clone repository
-git clone https://github.com/ismoilovdevml/gitlab-cicd-dashboard.git
-cd gitlab-cicd-dashboard
+git clone https://github.com/ismoilovdevml/gitlab-ci-dashboard.git
+cd gitlab-ci-dashboard
 
 # Install dependencies
 npm install

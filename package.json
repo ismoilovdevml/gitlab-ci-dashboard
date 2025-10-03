@@ -1,5 +1,5 @@
 {
-  "name": "gitlab-cicd-dashboard",
+  "name": "gitlab-ci-dashboard",
   "version": "1.0.0",
   "private": true,
   "scripts": {

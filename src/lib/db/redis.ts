@@ -19,7 +19,17 @@ export const redis =
       }
       return false;
     },
+    lazyConnect: true, // Don't connect immediately during build
   });
+
+// Handle connection errors gracefully during build
+redis.on('error', (err) => {
+  if (process.env.NODE_ENV === 'production' || process.env.NEXT_PHASE === 'phase-production-build') {
+    console.warn('Redis connection error (expected during build):', err.message);
+  } else {
+    console.error('Redis error:', err);
+  }
+});
 
 if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis;
 

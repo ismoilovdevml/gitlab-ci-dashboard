@@ -14,7 +14,7 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  DOCKER_IMAGE: gitlab-cicd-dashboard
+  DOCKER_IMAGE: gitlab-ci-dashboard
 
 jobs:
   build-and-test:

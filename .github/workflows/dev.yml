@@ -47,7 +47,7 @@ jobs:
     - name: Test Docker build
       run: |
         echo "🐳 Testing Docker build (not publishing)..."
-        docker build -t gitlab-cicd-dashboard:test .
+        docker build -t gitlab-ci-dashboard:test .
         echo "✅ Docker build successful!"
 
     - name: Summary
