@@ -61,7 +61,7 @@ model AlertHistory {
 model GitLabConfig {
   id              String   @id @default(cuid())
   url             String   @default("https://gitlab.com")
-  token           String   // Will be encrypted
+  token           String   // Encrypted with AES-256-GCM (see src/lib/encryption.ts)
   autoRefresh     Boolean  @default(true)
   refreshInterval Int      @default(10000) // milliseconds
   theme           String   @default("dark")
