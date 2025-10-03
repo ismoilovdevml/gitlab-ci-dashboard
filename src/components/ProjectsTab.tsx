@@ -6,10 +6,12 @@ import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { formatRelativeTime } from '@/lib/utils';
 import { Project } from '@/lib/gitlab-api';
+import { useTheme } from '@/hooks/useTheme';
 import ProjectDetailsModal from './ProjectDetailsModal';
 
 export default function ProjectsTab() {
   const { projects, setProjects, gitlabUrl, gitlabToken } = useDashboardStore();
+  const { theme, textPrimary, textSecondary, card } = useTheme();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [starringProjects, setStarringProjects] = useState<Set<number>>(new Set());
 
@@ -71,8 +73,8 @@ export default function ProjectsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Projects</h1>
-        <p className="text-zinc-400">All your GitLab projects</p>
+        <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Projects</h1>
+        <p className={textSecondary}>All your GitLab projects</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -80,7 +82,9 @@ export default function ProjectsTab() {
           <div
             key={project.id}
             onClick={() => setSelectedProject(project)}
-            className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-all group cursor-pointer"
+            className={`rounded-xl p-6 transition-all group cursor-pointer ${card} ${
+              theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'hover:border-zinc-700'
+            }`}
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -108,12 +112,12 @@ export default function ProjectsTab() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-white font-semibold group-hover:text-orange-500 transition-colors">
+                    <h3 className={`font-semibold group-hover:text-orange-500 transition-colors ${textPrimary}`}>
                       {project.name}
                     </h3>
                     {getVisibilityIcon(project.visibility)}
                   </div>
-                  <p className="text-xs text-zinc-500">{project.namespace.name}</p>
+                  <p className={`text-xs ${textSecondary}`}>{project.namespace.name}</p>
                 </div>
               </div>
               <a
@@ -121,19 +125,21 @@ export default function ProjectsTab() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-zinc-500 hover:text-white transition-colors"
+                className={`transition-colors ${
+                  theme === 'light' ? 'text-[#86868b] hover:text-[#1d1d1f]' : 'text-zinc-500 hover:text-white'
+                }`}
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>
 
             {project.description && (
-              <p className="text-zinc-400 text-sm mb-4 line-clamp-2">
+              <p className={`text-sm mb-4 line-clamp-2 ${textSecondary}`}>
                 {project.description}
               </p>
             )}
 
-            <div className="flex items-center gap-4 text-xs text-zinc-500 mb-4">
+            <div className={`flex items-center gap-4 text-xs mb-4 ${textSecondary}`}>
               <button
                 onClick={(e) => handleToggleStar(e, project)}
                 disabled={starringProjects.has(project.id)}

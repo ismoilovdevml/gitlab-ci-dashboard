@@ -23,9 +23,11 @@ import {
   DeploymentFrequency,
 } from '@/lib/gitlab-api';
 import { formatDuration, formatRelativeTime } from '@/lib/utils';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function InsightsTab() {
   const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const { theme, textPrimary, textSecondary, card } = useTheme();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<InsightsSummary | null>(null);
   const [failures, setFailures] = useState<FailureAnalysis[]>([]);

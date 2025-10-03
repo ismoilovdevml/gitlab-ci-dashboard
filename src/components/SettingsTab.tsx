@@ -203,15 +203,15 @@ export default function SettingsTab() {
           <label className="cursor-pointer">
             <input type="file" accept=".json" onChange={handleImportSettings} className="hidden" />
             <div className={`px-3 py-1.5 text-sm rounded-lg border ${
-              theme === 'light' ? 'border-gray-300 bg-white hover:bg-gray-50' : 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700'
-            } ${textPrimary} flex items-center gap-1.5 transition-colors`}>
+              theme === 'light' ? 'border-[#d2d2d7] bg-white hover:bg-[#f5f5f7] shadow-sm' : 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700'
+            } ${textPrimary} flex items-center gap-1.5 transition-all`}>
               <Upload className="w-3.5 h-3.5" />
               Import
             </div>
           </label>
           <button onClick={handleExportSettings} className={`px-3 py-1.5 text-sm rounded-lg border ${
-            theme === 'light' ? 'border-gray-300 bg-white hover:bg-gray-50' : 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700'
-          } ${textPrimary} flex items-center gap-1.5 transition-colors`}>
+            theme === 'light' ? 'border-[#d2d2d7] bg-white hover:bg-[#f5f5f7] shadow-sm' : 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700'
+          } ${textPrimary} flex items-center gap-1.5 transition-all`}>
             <Download className="w-3.5 h-3.5" />
             Export
           </button>
@@ -220,7 +220,7 @@ export default function SettingsTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* GitLab Configuration */}
-        <div className={`rounded-lg p-4 ${card} border ${theme === 'light' ? 'border-gray-200' : 'border-zinc-800'}`}>
+        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
           <div className="flex items-center gap-2 mb-3">
             <Settings className="w-4 h-4 text-orange-500" />
             <h3 className={`font-semibold text-sm ${textPrimary}`}>GitLab</h3>
@@ -231,8 +231,8 @@ export default function SettingsTab() {
               value={localUrl}
               onChange={(e) => setLocalUrl(e.target.value)}
               placeholder="https://gitlab.com"
-              className={`w-full px-3 py-2 text-sm rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                theme === 'light' ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-500' : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+              className={`w-full px-3 py-2 text-sm rounded-lg border transition-all focus:outline-none focus:ring-2 ${
+                theme === 'light' ? 'bg-white border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b] focus:ring-orange-500/20' : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500 focus:ring-orange-500'
               }`}
             />
             <div className="relative">
@@ -241,26 +241,26 @@ export default function SettingsTab() {
                 value={localToken}
                 onChange={(e) => setLocalToken(e.target.value)}
                 placeholder="glpat-xxxxxxxxxxxxx"
-                className={`w-full px-3 py-2 pr-9 text-sm rounded-lg border font-mono transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                  theme === 'light' ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-500' : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+                className={`w-full px-3 py-2 pr-9 text-sm rounded-lg border font-mono transition-all focus:outline-none focus:ring-2 ${
+                  theme === 'light' ? 'bg-white border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b] focus:ring-orange-500/20' : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500 focus:ring-orange-500'
                 }`}
               />
-              <button onClick={() => setShowToken(!showToken)} className={`absolute right-2 top-1/2 -translate-y-1/2 ${
-                theme === 'light' ? 'text-gray-500 hover:text-gray-900' : 'text-zinc-500 hover:text-white'
+              <button onClick={() => setShowToken(!showToken)} className={`absolute right-2 top-1/2 -translate-y-1/2 transition-colors ${
+                theme === 'light' ? 'text-[#86868b] hover:text-[#1d1d1f]' : 'text-zinc-500 hover:text-white'
               }`}>
                 {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
-            <button onClick={handleSaveGitLabConfig} disabled={!localUrl || !localToken || testing} className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium ${
+            <button onClick={handleSaveGitLabConfig} disabled={!localUrl || !localToken || testing} className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all font-medium ${
               (!localUrl || !localToken || testing) && 'opacity-50 cursor-not-allowed'
-            }`}>
+            } shadow-sm`}>
               {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" />Testing...</> : saved ? <><AlertCircle className="w-3.5 h-3.5" />Saved!</> : <><Save className="w-3.5 h-3.5" />Save</>}
             </button>
           </div>
         </div>
 
         {/* Auto Refresh */}
-        <div className={`rounded-lg p-4 ${card} border ${theme === 'light' ? 'border-gray-200' : 'border-zinc-800'}`}>
+        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
           <div className="flex items-center gap-2 mb-3">
             <RefreshCw className="w-4 h-4 text-blue-500" />
             <h3 className={`font-semibold text-sm ${textPrimary}`}>Auto Refresh</h3>
@@ -275,8 +275,8 @@ export default function SettingsTab() {
               </button>
             </div>
             {autoRefresh && (
-              <select value={refreshInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} className={`w-full px-3 py-2 text-sm rounded-lg border transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                theme === 'light' ? 'bg-white border-gray-300 text-gray-900' : 'bg-zinc-900 border-zinc-700 text-white'
+              <select value={refreshInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} className={`w-full px-3 py-2 text-sm rounded-lg border transition-all focus:outline-none focus:ring-2 ${
+                theme === 'light' ? 'bg-white border-[#d2d2d7] text-[#1d1d1f] focus:ring-orange-500/20' : 'bg-zinc-900 border-zinc-700 text-white focus:ring-orange-500'
               }`}>
                 {refreshIntervals.map((interval) => (
                   <option key={interval.value} value={interval.value}>{interval.label}</option>
@@ -287,7 +287,7 @@ export default function SettingsTab() {
         </div>
 
         {/* Notifications */}
-        <div className={`rounded-lg p-4 ${card} border ${theme === 'light' ? 'border-gray-200' : 'border-zinc-800'}`}>
+        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
           <div className="flex items-center gap-2 mb-3">
             <Bell className="w-4 h-4 text-green-500" />
             <h3 className={`font-semibold text-sm ${textPrimary}`}>Notifications</h3>
@@ -313,23 +313,23 @@ export default function SettingsTab() {
         </div>
 
         {/* Theme */}
-        <div className={`rounded-lg p-4 ${card} border ${theme === 'light' ? 'border-gray-200' : 'border-zinc-800'}`}>
+        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
           <div className="flex items-center gap-2 mb-3">
             <Moon className="w-4 h-4 text-purple-500" />
             <h3 className={`font-semibold text-sm ${textPrimary}`}>Theme</h3>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => handleThemeChange('dark')} className={`px-3 py-2 text-sm border-2 rounded-lg font-medium transition-all ${
-              currentTheme === 'dark' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : theme === 'light' ? 'border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+              currentTheme === 'dark' ? 'border-orange-500 bg-orange-500/10 text-orange-500 shadow-sm' : theme === 'light' ? 'border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
             }`}>🌙 Dark</button>
             <button onClick={() => handleThemeChange('light')} className={`px-3 py-2 text-sm border-2 rounded-lg font-medium transition-all ${
-              currentTheme === 'light' ? 'border-orange-500 bg-orange-500/10 text-orange-500' : theme === 'light' ? 'border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+              currentTheme === 'light' ? 'border-orange-500 bg-orange-500/10 text-orange-500 shadow-sm' : theme === 'light' ? 'border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
             }`}>☀️ Light</button>
           </div>
         </div>
 
         {/* Performance */}
-        <div className={`rounded-lg p-4 ${card} border ${theme === 'light' ? 'border-gray-200' : 'border-zinc-800'}`}>
+        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
           <div className="flex items-center gap-2 mb-3">
             <Zap className="w-4 h-4 text-yellow-500" />
             <h3 className={`font-semibold text-sm ${textPrimary}`}>Performance</h3>
@@ -343,8 +343,8 @@ export default function SettingsTab() {
               <span className={`text-xs ${textSecondary}`}>Cache</span>
               <span className={`text-xs font-medium ${textPrimary}`}>{cacheStats.entries} entries</span>
             </div>
-            <button onClick={handleClearCache} className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${
-              theme === 'light' ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100' : 'border-red-900 bg-red-950 text-red-400 hover:bg-red-900'
+            <button onClick={handleClearCache} className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-all ${
+              theme === 'light' ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 shadow-sm' : 'border-red-900 bg-red-950 text-red-400 hover:bg-red-900'
             }`}>
               <Trash2 className="w-3.5 h-3.5" />
               Clear Cache
