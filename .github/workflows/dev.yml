@@ -1,0 +1,58 @@
+name: Dev Branch CI
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+# Cancel in-progress runs for same workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  test-and-build:
+    name: Test & Build (No Publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --prefer-offline --no-audit
+
+    - name: Lint code
+      run: npm run lint
+
+    - name: Type check
+      run: npx tsc --noEmit
+
+    - name: Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: Test Docker build
+      run: |
+        echo "🐳 Testing Docker build (not publishing)..."
+        docker build -t gitlab-cicd-dashboard:test .
+        echo "✅ Docker build successful!"
+
+    - name: Summary
+      run: |
+        echo "✅ All checks passed for dev branch!"
+        echo "📦 Built successfully"
+        echo "🐳 Docker image tested"
+        echo "⚠️  Not publishing to Docker Hub (dev branch)"

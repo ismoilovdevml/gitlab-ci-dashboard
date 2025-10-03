@@ -108,14 +108,15 @@ export default function AlertingTab() {
       channels.forEach((ch: { type: string; enabled: boolean; config: Record<string, unknown> }) => {
         const channelType = ch.type as AlertChannel;
         if (config[channelType]) {
-          config[channelType] = { ...ch.config, enabled: ch.enabled } as ChannelConfig[AlertChannel];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (config as any)[channelType] = { ...ch.config, enabled: ch.enabled };
         }
       });
       setChannelConfig(config);
 
       // Load rules
       const rules = await rulesApi.getAll();
-      setAlertRules(rules.map(r => ({ ...r, id: r.id || '' })));
+      setAlertRules(rules.map(r => ({ ...r, id: r.id || '', createdAt: r.createdAt || new Date().toISOString() })));
 
       // Load history
       const history = await historyApi.getAll(100);
