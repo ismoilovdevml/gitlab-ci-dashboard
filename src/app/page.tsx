@@ -6,6 +6,7 @@ import Overview from '@/components/Overview';
 import NotificationToast from '@/components/NotificationToast';
 import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
+// import { usePipelineAlerts } from '@/hooks/usePipelineAlerts'; // Disabled - using webhooks now
 
 // Lazy load heavy components
 const PipelinesTab = lazy(() => import('@/components/PipelinesTab'));
@@ -21,13 +22,16 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('overview');
   const { theme } = useDashboardStore();
 
+  // Enable pipeline alerts monitoring (DISABLED - using webhooks now for instant alerts)
+  // usePipelineAlerts();
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const handleNavigate = (tab: string) => {
-    setActiveTab(tab);
-  };
+  // const handleNavigate = (tab: string) => {
+  //   setActiveTab(tab);
+  // };
 
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center h-64">

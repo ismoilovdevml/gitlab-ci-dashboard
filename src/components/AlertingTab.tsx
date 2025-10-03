@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Send, TestTube, Settings, History, Plus, Trash2, Check, X, MessageSquare, Mail, Hash } from 'lucide-react';
+import { Bell, Send, TestTube, Settings, History, Plus, Trash2, Check, X, MessageSquare, Mail, Hash, Webhook } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useTheme } from '@/hooks/useTheme';
+import { channelsApi, rulesApi, historyApi } from '@/lib/api/alerts';
+import WebhookSetup from './WebhookSetup';
 
 type AlertChannel = 'telegram' | 'slack' | 'discord' | 'email' | 'webhook';
 
@@ -66,10 +68,10 @@ interface AlertHistory {
 }
 
 export default function AlertingTab() {
-  const { theme, card, textPrimary, textSecondary, input } = useTheme();
+  const { card, textPrimary, textSecondary, input } = useTheme();
   const { addNotification } = useDashboardStore();
 
-  const [activeTab, setActiveTab] = useState<'channels' | 'rules' | 'history'>('channels');
+  const [activeTab, setActiveTab] = useState<'webhook' | 'channels' | 'rules' | 'history'>('webhook');
   const [activeChannel, setActiveChannel] = useState<AlertChannel>('telegram');
 
   const [channelConfig, setChannelConfig] = useState<ChannelConfig>({
@@ -84,33 +86,81 @@ export default function AlertingTab() {
   const [alertHistory, setAlertHistory] = useState<AlertHistory[]>([]);
   const [testing, setTesting] = useState(false);
 
-  // Load config from localStorage
+  // Load config from API
   useEffect(() => {
-    const savedConfig = localStorage.getItem('alert_channel_config');
-    if (savedConfig) {
-      setChannelConfig(JSON.parse(savedConfig));
-    }
-
-    const savedRules = localStorage.getItem('alert_rules');
-    if (savedRules) {
-      setAlertRules(JSON.parse(savedRules));
-    }
-
-    const savedHistory = localStorage.getItem('alert_history');
-    if (savedHistory) {
-      setAlertHistory(JSON.parse(savedHistory));
-    }
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const saveChannelConfig = () => {
-    localStorage.setItem('alert_channel_config', JSON.stringify(channelConfig));
-    addNotification({
-      id: Date.now().toString(),
-      type: 'success',
-      title: 'Saved',
-      message: 'Channel configuration saved successfully',
-      timestamp: Date.now()
-    });
+  const loadData = async () => {
+    try {
+
+      // Load channels
+      const channels = await channelsApi.getAll();
+      const config: ChannelConfig = {
+        telegram: { enabled: false, botToken: '', chatId: '' },
+        slack: { enabled: false, webhookUrl: '', channel: '#general' },
+        discord: { enabled: false, webhookUrl: '' },
+        email: { enabled: false, smtpHost: '', smtpPort: '587', username: '', password: '', from: '', to: '' },
+        webhook: { enabled: false, url: '', headers: {} },
+      };
+
+      channels.forEach((ch: { type: string; enabled: boolean; config: Record<string, unknown> }) => {
+        const channelType = ch.type as AlertChannel;
+        if (config[channelType]) {
+          config[channelType] = { ...ch.config, enabled: ch.enabled } as ChannelConfig[AlertChannel];
+        }
+      });
+      setChannelConfig(config);
+
+      // Load rules
+      const rules = await rulesApi.getAll();
+      setAlertRules(rules.map(r => ({ ...r, id: r.id || '' })));
+
+      // Load history
+      const history = await historyApi.getAll(100);
+      setAlertHistory(history.map((h) => ({
+        ...h,
+        timestamp: h.timestamp || new Date().toISOString(),
+      })));
+    } catch (error) {
+      console.error('Failed to load data:', error);
+      addNotification({
+        id: Date.now().toString(),
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to load configuration',
+        timestamp: Date.now()
+      });
+    }
+  };
+
+  const saveChannelConfig = async () => {
+    try {
+      // Save active channel to API
+      await channelsApi.save(
+        activeChannel,
+        channelConfig[activeChannel].enabled,
+        channelConfig[activeChannel]
+      );
+
+      addNotification({
+        id: Date.now().toString(),
+        type: 'success',
+        title: 'Saved',
+        message: 'Channel configuration saved successfully',
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Failed to save channel:', error);
+      addNotification({
+        id: Date.now().toString(),
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to save channel configuration',
+        timestamp: Date.now()
+      });
+    }
   };
 
   const testChannel = async (channel: AlertChannel) => {
@@ -139,7 +189,7 @@ export default function AlertingTab() {
           await testWebhook();
           break;
       }
-    } catch (error) {
+    } catch {
       addNotification({
         id: Date.now().toString(),
         type: 'error',
@@ -258,68 +308,102 @@ export default function AlertingTab() {
     }
   };
 
-  const addAlertRule = () => {
-    const newRule: AlertRule = {
-      id: Date.now().toString(),
-      name: 'New Alert Rule',
-      projectId: 'all',
-      projectName: 'All Projects',
-      channels: ['telegram'],
-      events: {
-        success: false,
-        failed: true,
-        running: false,
-        canceled: false,
-      },
-      enabled: true,
-      createdAt: new Date().toISOString(),
-    };
-    const updatedRules = [...alertRules, newRule];
-    setAlertRules(updatedRules);
-    localStorage.setItem('alert_rules', JSON.stringify(updatedRules));
+  const addAlertRule = async () => {
+    try {
+      const newRule = await rulesApi.create({
+        name: 'New Alert Rule',
+        projectId: 'all',
+        projectName: 'All Projects',
+        channels: ['telegram'],
+        events: {
+          success: false,
+          failed: true,
+          running: false,
+          canceled: false,
+        },
+        enabled: true,
+      });
+      setAlertRules([...alertRules, newRule]);
+    } catch (error) {
+      console.error('Failed to create rule:', error);
+      addNotification({
+        id: Date.now().toString(),
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to create alert rule',
+        timestamp: Date.now()
+      });
+    }
   };
 
-  const deleteAlertRule = (id: string) => {
-    const updatedRules = alertRules.filter(rule => rule.id !== id);
-    setAlertRules(updatedRules);
-    localStorage.setItem('alert_rules', JSON.stringify(updatedRules));
-    addNotification({
-      id: Date.now().toString(),
-      type: 'success',
-      title: 'Deleted',
-      message: 'Alert rule deleted successfully',
-      timestamp: Date.now()
-    });
+  const deleteAlertRule = async (id: string) => {
+    try {
+      await rulesApi.delete(id);
+      setAlertRules(alertRules.filter(rule => rule.id !== id));
+      addNotification({
+        id: Date.now().toString(),
+        type: 'success',
+        title: 'Deleted',
+        message: 'Alert rule deleted successfully',
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Failed to delete rule:', error);
+      addNotification({
+        id: Date.now().toString(),
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to delete alert rule',
+        timestamp: Date.now()
+      });
+    }
   };
 
-  const toggleRule = (id: string) => {
-    const updatedRules = alertRules.map(rule =>
-      rule.id === id ? { ...rule, enabled: !rule.enabled } : rule
-    );
-    setAlertRules(updatedRules);
-    localStorage.setItem('alert_rules', JSON.stringify(updatedRules));
+  const toggleRule = async (id: string) => {
+    const rule = alertRules.find(r => r.id === id);
+    if (!rule) return;
+
+    try {
+      await rulesApi.update(id, { enabled: !rule.enabled });
+      setAlertRules(alertRules.map(r =>
+        r.id === id ? { ...r, enabled: !r.enabled } : r
+      ));
+    } catch (error) {
+      console.error('Failed to toggle rule:', error);
+    }
   };
 
-  const toggleRuleEvent = (id: string, event: keyof AlertRule['events']) => {
-    const updatedRules = alertRules.map(rule =>
-      rule.id === id ? { ...rule, events: { ...rule.events, [event]: !rule.events[event] } } : rule
-    );
-    setAlertRules(updatedRules);
-    localStorage.setItem('alert_rules', JSON.stringify(updatedRules));
+  const toggleRuleEvent = async (id: string, event: keyof AlertRule['events']) => {
+    const rule = alertRules.find(r => r.id === id);
+    if (!rule) return;
+
+    try {
+      const newEvents = { ...rule.events, [event]: !rule.events[event] };
+      await rulesApi.update(id, { events: newEvents });
+      setAlertRules(alertRules.map(r =>
+        r.id === id ? { ...r, events: newEvents } : r
+      ));
+    } catch (error) {
+      console.error('Failed to toggle event:', error);
+    }
   };
 
-  const toggleRuleChannel = (id: string, channel: AlertChannel) => {
-    const updatedRules = alertRules.map(rule => {
-      if (rule.id === id) {
-        const channels = rule.channels.includes(channel)
-          ? rule.channels.filter(c => c !== channel)
-          : [...rule.channels, channel];
-        return { ...rule, channels };
-      }
-      return rule;
-    });
-    setAlertRules(updatedRules);
-    localStorage.setItem('alert_rules', JSON.stringify(updatedRules));
+  const toggleRuleChannel = async (id: string, channel: AlertChannel) => {
+    const rule = alertRules.find(r => r.id === id);
+    if (!rule) return;
+
+    try {
+      const newChannels = rule.channels.includes(channel)
+        ? rule.channels.filter(c => c !== channel)
+        : [...rule.channels, channel];
+
+      await rulesApi.update(id, { channels: newChannels });
+      setAlertRules(alertRules.map(r =>
+        r.id === id ? { ...r, channels: newChannels } : r
+      ));
+    } catch (error) {
+      console.error('Failed to toggle channel:', error);
+    }
   };
 
   const getChannelIcon = (channel: AlertChannel) => {
@@ -362,6 +446,17 @@ export default function AlertingTab() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-700">
         <button
+          onClick={() => setActiveTab('webhook')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'webhook'
+              ? 'border-b-2 border-orange-500 text-orange-500'
+              : `${textSecondary} hover:text-gray-300`
+          }`}
+        >
+          <Webhook className="w-4 h-4 inline mr-2" />
+          Webhook Setup ⚡
+        </button>
+        <button
           onClick={() => setActiveTab('channels')}
           className={`px-4 py-2 font-medium transition-colors ${
             activeTab === 'channels'
@@ -395,6 +490,9 @@ export default function AlertingTab() {
           History ({alertHistory.length})
         </button>
       </div>
+
+      {/* Webhook Setup Tab */}
+      {activeTab === 'webhook' && <WebhookSetup />}
 
       {/* Channels Tab */}
       {activeTab === 'channels' && (
@@ -433,10 +531,28 @@ export default function AlertingTab() {
                   {activeChannel} Configuration
                 </h3>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const updated = { ...channelConfig };
                     updated[activeChannel].enabled = !updated[activeChannel].enabled;
                     setChannelConfig(updated);
+
+                    // Auto-save to API when toggling
+                    try {
+                      await channelsApi.save(
+                        activeChannel,
+                        updated[activeChannel].enabled,
+                        updated[activeChannel]
+                      );
+                      addNotification({
+                        id: Date.now().toString(),
+                        type: 'success',
+                        title: 'Saved',
+                        message: `${activeChannel} ${updated[activeChannel].enabled ? 'enabled' : 'disabled'}`,
+                        timestamp: Date.now()
+                      });
+                    } catch (error) {
+                      console.error('Failed to toggle channel:', error);
+                    }
                   }}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     channelConfig[activeChannel].enabled ? 'bg-orange-500' : 'bg-gray-600'
@@ -458,10 +574,13 @@ export default function AlertingTab() {
                     <input
                       type="password"
                       value={channelConfig.telegram.botToken}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        telegram: { ...channelConfig.telegram, botToken: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          telegram: { ...channelConfig.telegram, botToken: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
@@ -472,10 +591,13 @@ export default function AlertingTab() {
                     <input
                       type="text"
                       value={channelConfig.telegram.chatId}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        telegram: { ...channelConfig.telegram, chatId: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          telegram: { ...channelConfig.telegram, chatId: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="-1001234567890"
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
@@ -491,10 +613,13 @@ export default function AlertingTab() {
                     <input
                       type="password"
                       value={channelConfig.slack.webhookUrl}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        slack: { ...channelConfig.slack, webhookUrl: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          slack: { ...channelConfig.slack, webhookUrl: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="https://hooks.slack.com/services/..."
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
@@ -504,10 +629,13 @@ export default function AlertingTab() {
                     <input
                       type="text"
                       value={channelConfig.slack.channel}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        slack: { ...channelConfig.slack, channel: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          slack: { ...channelConfig.slack, channel: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="#general"
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
@@ -523,10 +651,13 @@ export default function AlertingTab() {
                     <input
                       type="password"
                       value={channelConfig.discord.webhookUrl}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        discord: { ...channelConfig.discord, webhookUrl: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          discord: { ...channelConfig.discord, webhookUrl: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="https://discord.com/api/webhooks/..."
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
@@ -543,10 +674,13 @@ export default function AlertingTab() {
                       <input
                         type="text"
                         value={channelConfig.email.smtpHost}
-                        onChange={(e) => setChannelConfig({
-                          ...channelConfig,
-                          email: { ...channelConfig.email, smtpHost: e.target.value }
-                        })}
+                        onChange={(e) => {
+                          const updated = {
+                            ...channelConfig,
+                            email: { ...channelConfig.email, smtpHost: e.target.value }
+                          };
+                          setChannelConfig(updated);
+                        }}
                         placeholder="smtp.gmail.com"
                         className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
@@ -556,11 +690,48 @@ export default function AlertingTab() {
                       <input
                         type="text"
                         value={channelConfig.email.smtpPort}
-                        onChange={(e) => setChannelConfig({
-                          ...channelConfig,
-                          email: { ...channelConfig.email, smtpPort: e.target.value }
-                        })}
+                        onChange={(e) => {
+                          const updated = {
+                            ...channelConfig,
+                            email: { ...channelConfig.email, smtpPort: e.target.value }
+                          };
+                          setChannelConfig(updated);
+                        }}
                         placeholder="587"
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block font-medium ${textPrimary} mb-2`}>Username</label>
+                      <input
+                        type="text"
+                        value={channelConfig.email.username}
+                        onChange={(e) => {
+                          const updated = {
+                            ...channelConfig,
+                            email: { ...channelConfig.email, username: e.target.value }
+                          };
+                          setChannelConfig(updated);
+                        }}
+                        placeholder="user@gmail.com"
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block font-medium ${textPrimary} mb-2`}>Password</label>
+                      <input
+                        type="password"
+                        value={channelConfig.email.password}
+                        onChange={(e) => {
+                          const updated = {
+                            ...channelConfig,
+                            email: { ...channelConfig.email, password: e.target.value }
+                          };
+                          setChannelConfig(updated);
+                        }}
+                        placeholder="••••••••"
                         className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
                     </div>
@@ -570,10 +741,13 @@ export default function AlertingTab() {
                     <input
                       type="email"
                       value={channelConfig.email.from}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        email: { ...channelConfig.email, from: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          email: { ...channelConfig.email, from: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="alerts@example.com"
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
@@ -583,10 +757,13 @@ export default function AlertingTab() {
                     <input
                       type="email"
                       value={channelConfig.email.to}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        email: { ...channelConfig.email, to: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          email: { ...channelConfig.email, to: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="team@example.com"
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
@@ -605,10 +782,13 @@ export default function AlertingTab() {
                     <input
                       type="text"
                       value={channelConfig.webhook.url}
-                      onChange={(e) => setChannelConfig({
-                        ...channelConfig,
-                        webhook: { ...channelConfig.webhook, url: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        const updated = {
+                          ...channelConfig,
+                          webhook: { ...channelConfig.webhook, url: e.target.value }
+                        };
+                        setChannelConfig(updated);
+                      }}
                       placeholder="https://your-api.com/webhook"
                       className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
