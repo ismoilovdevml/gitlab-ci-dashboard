@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, DollarSign, Zap, Users, Activity } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI, Project, Runner } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync, Project, Runner } from '@/lib/gitlab-api';
 import { formatDuration } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -25,7 +25,7 @@ interface ProjectActivity {
 }
 
 export default function DashboardAnalytics() {
-  const { gitlabUrl, gitlabToken, projects, setRunners: setGlobalRunners } = useDashboardStore();
+  const { projects, setRunners: setGlobalRunners } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [loading, setLoading] = useState(true);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
@@ -34,16 +34,16 @@ export default function DashboardAnalytics() {
   const [totalCost, setTotalCost] = useState(0);
 
   useEffect(() => {
-    if (gitlabToken && projects.length > 0) {
+    if (projects.length > 0) {
       loadAnalytics();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gitlabToken, projects]);
+  }, [projects]);
 
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
 
       // Load last 30 days data
       const days = 30;

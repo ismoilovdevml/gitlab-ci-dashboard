@@ -5,7 +5,7 @@ import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive,
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 
 interface SidebarProps {
   activeTab: string;
@@ -14,20 +14,15 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const { theme, sidebar, sidebarItem, textPrimary, textMuted } = useTheme();
-  const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const {  } = useDashboardStore();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     const checkConnection = async () => {
-      if (!gitlabToken) {
-        setIsConnected(false);
-        return;
-      }
-
       setIsChecking(true);
       try {
-        const api = getGitLabAPI(gitlabUrl, gitlabToken);
+        const api = await getGitLabAPIAsync();
         const connected = await api.checkConnection(); // Direct API check, no cache
         setIsConnected(connected);
       } catch (error) {
@@ -43,7 +38,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     // Check connection every 30 seconds
     const interval = setInterval(checkConnection, 30000);
     return () => clearInterval(interval);
-  }, [gitlabUrl, gitlabToken]);
+  }, []);
 
   const menuItems = [
     { id: 'overview', icon: Activity, label: 'Overview' },

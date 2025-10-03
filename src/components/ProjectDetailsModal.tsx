@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X, ExternalLink, GitBranch, Star, GitFork, Clock, Activity, CheckCircle, XCircle } from 'lucide-react';
 import { Project, Pipeline } from '@/lib/gitlab-api';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useTheme } from '@/hooks/useTheme';
 import { formatRelativeTime } from '@/lib/utils';
@@ -16,7 +16,7 @@ interface ProjectDetailsModalProps {
 }
 
 export default function ProjectDetailsModal({ project, onClose }: ProjectDetailsModalProps) {
-  const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const {  } = useDashboardStore();
   const { theme, textPrimary, textSecondary } = useTheme();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
@@ -36,7 +36,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
   const loadProjectData = async () => {
     try {
       setLoading(true);
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const pipelinesList = await api.getPipelines(project.id, 1, 50);
       setPipelines(pipelinesList);
 

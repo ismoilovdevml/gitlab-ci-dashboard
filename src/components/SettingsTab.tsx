@@ -12,8 +12,6 @@ export default function SettingsTab() {
   const {
     theme: currentTheme,
     setTheme,
-    setGitlabUrl: setStoreGitlabUrl,
-    setGitlabToken: setStoreGitlabToken,
     setAutoRefresh: setStoreAutoRefresh,
     setRefreshInterval: setStoreRefreshInterval,
     setNotifyPipelineFailures: setStoreNotifyPipelineFailures,
@@ -58,20 +56,18 @@ export default function SettingsTab() {
         setNotifyPipelineFailures(config.notifyPipelineFailures ?? true);
         setNotifyPipelineSuccess(config.notifyPipelineSuccess ?? false);
 
-        // Update Zustand store
-        setStoreGitlabUrl(url);
-        setStoreGitlabToken(token);
+        // Update Zustand store (only UI preferences, not credentials)
         setStoreAutoRefresh(config.autoRefresh ?? true);
         setStoreRefreshInterval(config.refreshInterval ?? 10000);
         setStoreNotifyPipelineFailures(config.notifyPipelineFailures ?? true);
         setStoreNotifyPipelineSuccess(config.notifyPipelineSuccess ?? false);
       } catch (error) {
-        console.error('Failed to load config:', error);
+        console.error('❌ Failed to load config from database:', error);
       }
     };
 
     loadConfig();
-  }, [setStoreGitlabUrl, setStoreGitlabToken, setStoreAutoRefresh, setStoreRefreshInterval, setStoreNotifyPipelineFailures, setStoreNotifyPipelineSuccess]);
+  }, [setStoreAutoRefresh, setStoreRefreshInterval, setStoreNotifyPipelineFailures, setStoreNotifyPipelineSuccess]);
 
   // Sync input fields when gitlabUrl/gitlabToken change
   useEffect(() => {
@@ -211,9 +207,7 @@ export default function SettingsTab() {
         setGitlabUrl(localUrl);
         setGitlabToken(localToken);
 
-        // Update Zustand store
-        setStoreGitlabUrl(localUrl);
-        setStoreGitlabToken(localToken);
+        // Update Zustand store (only UI preferences, not credentials)
         setStoreAutoRefresh(autoRefresh);
         setStoreRefreshInterval(refreshInterval);
         setStoreNotifyPipelineFailures(notifyPipelineFailures);

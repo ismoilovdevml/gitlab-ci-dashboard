@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Download, Trash2, Package, Clock, HardDrive, FileArchive } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI, JobArtifact } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync, JobArtifact } from '@/lib/gitlab-api';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function ArtifactsTab() {
-  const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const {  } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [artifacts, setArtifacts] = useState<JobArtifact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,16 +16,14 @@ export default function ArtifactsTab() {
   const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    if (gitlabToken) {
-      loadArtifacts();
-    }
+    loadArtifacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gitlabToken, gitlabUrl]);
+  }, []);
 
   const loadArtifacts = async () => {
     setLoading(true);
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const artifactsList = await api.getAllArtifacts();
       setArtifacts(artifactsList);
     } catch (error) {
@@ -41,7 +39,7 @@ export default function ArtifactsTab() {
     setDownloadingIds(prev => new Set(prev).add(artifact.id));
 
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const blob = await api.downloadArtifact(artifact.project.id, artifact.id);
 
       const url = window.URL.createObjectURL(blob);
@@ -74,7 +72,7 @@ export default function ArtifactsTab() {
     setDeletingIds(prev => new Set(prev).add(artifact.id));
 
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       await api.deleteArtifacts(artifact.project.id, artifact.id);
       setArtifacts(artifacts.filter(a => a.id !== artifact.id));
     } catch (error) {

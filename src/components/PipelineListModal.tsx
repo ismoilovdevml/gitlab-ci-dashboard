@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
 import { Pipeline } from '@/lib/gitlab-api';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useTheme } from '@/hooks/useTheme';
 import PipelineCard from './PipelineCard';
@@ -16,7 +16,7 @@ interface PipelineListModalProps {
 }
 
 export default function PipelineListModal({ title, status, onClose }: PipelineListModalProps) {
-  const { gitlabUrl, gitlabToken, projects } = useDashboardStore();
+  const { projects } = useDashboardStore();
   const { theme, textPrimary, textSecondary } = useTheme();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [filteredPipelines, setFilteredPipelines] = useState<Pipeline[]>([]);
@@ -47,7 +47,7 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
   const loadPipelines = async () => {
     try {
       setLoading(true);
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
 
       const pipelinePromises = projects.map(project =>
         api.getPipelines(project.id, 1, 20).catch(() => [])

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X, ExternalLink, Clock, GitCommit, PlayCircle, RotateCw, XCircle } from 'lucide-react';
 import { Pipeline, Job } from '@/lib/gitlab-api';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime } from '@/lib/utils';
 import LogViewer from './LogViewer';
@@ -18,7 +18,7 @@ interface PipelineDetailsModalProps {
 }
 
 export default function PipelineDetailsModal({ pipeline, projectId, onClose }: PipelineDetailsModalProps) {
-  const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const {  } = useDashboardStore();
   const { notifySuccess, notifyError } = useNotifications();
   const { theme, surface, border, textPrimary, textSecondary } = useTheme();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -34,7 +34,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const jobsList = await api.getPipelineJobs(projectId, pipeline.id);
       setJobs(jobsList);
     } catch (error) {
@@ -47,7 +47,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
   const loadJobLogs = async (job: Job) => {
     try {
       setSelectedJob(job);
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const jobLogs = await api.getJobTrace(projectId, job.id);
       setLogs(jobLogs);
     } catch (error) {
@@ -59,7 +59,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
   const refreshJobLogs = async () => {
     if (selectedJob) {
       try {
-        const api = getGitLabAPI(gitlabUrl, gitlabToken);
+        const api = await getGitLabAPIAsync();
         const jobLogs = await api.getJobTrace(projectId, selectedJob.id);
         setLogs(jobLogs);
       } catch (error) {
@@ -70,7 +70,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
 
   const handleRetryPipeline = async () => {
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       await api.retryPipeline(projectId, pipeline.id);
       window.location.reload();
     } catch (error) {
@@ -80,7 +80,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
 
   const handleCancelPipeline = async () => {
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       await api.cancelPipeline(projectId, pipeline.id);
       window.location.reload();
     } catch (error) {
@@ -90,7 +90,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
 
   const handleRetryJob = async (job: Job) => {
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       await api.retryJob(projectId, job.id);
       notifySuccess('Job Retrying', `Job "${job.name}" is being retried`);
       loadJobs();
@@ -102,7 +102,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
 
   const handleCancelJob = async (job: Job) => {
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       await api.cancelJob(projectId, job.id);
       notifySuccess('Job Canceled', `Job "${job.name}" has been canceled`);
       loadJobs();

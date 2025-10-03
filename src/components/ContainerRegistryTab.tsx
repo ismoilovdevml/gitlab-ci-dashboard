@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { Trash2, Package, Clock, HardDrive, Tag, ChevronDown, ChevronRight } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI, ContainerRepository, ContainerTag } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync, ContainerRepository, ContainerTag } from '@/lib/gitlab-api';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import ConfirmDialog from './ConfirmDialog';
 
 export default function ContainerRegistryTab() {
-  const { gitlabUrl, gitlabToken, addNotification } = useDashboardStore();
+  const { addNotification } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [repositories, setRepositories] = useState<ContainerRepository[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,16 +30,14 @@ export default function ContainerRegistryTab() {
   });
 
   useEffect(() => {
-    if (gitlabToken) {
-      loadRepositories();
-    }
+    loadRepositories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gitlabToken, gitlabUrl]);
+  }, []);
 
   const loadRepositories = async () => {
     setLoading(true);
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const reposList = await api.getAllContainerRepositories();
       setRepositories(reposList);
     } catch (error) {
@@ -64,7 +62,7 @@ export default function ContainerRegistryTab() {
     if (!repo.tags || repo.tags.length === 0) {
       setLoadingTags(prev => new Set(prev).add(repo.id));
       try {
-        const api = getGitLabAPI(gitlabUrl, gitlabToken);
+        const api = await getGitLabAPIAsync();
         const tags = await api.getContainerTags(repo.project_id, repo.id);
         setRepositories(
           repositories.map(r => (r.id === repo.id ? { ...r, tags } : r))
@@ -99,7 +97,7 @@ export default function ContainerRegistryTab() {
     setDeletingRepoIds(prev => new Set(prev).add(repo.id));
 
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       await api.deleteContainerRepository(repo.project_id, repo.id);
       setRepositories(repositories.filter(r => r.id !== repo.id));
 
@@ -146,7 +144,7 @@ export default function ContainerRegistryTab() {
     setDeletingTags(prev => new Set(prev).add(tagKey));
 
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       await api.deleteContainerTag(repo.project_id, repo.id, tag.name);
 
       setRepositories(

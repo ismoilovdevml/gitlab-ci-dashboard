@@ -8,7 +8,7 @@ import PipelineDetailsModal from './PipelineDetailsModal';
 import PipelineListModal from './PipelineListModal';
 import DashboardAnalytics from './DashboardAnalytics';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { Pipeline } from '@/lib/gitlab-api';
 import { getStatusIcon, formatRelativeTime, formatDuration } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -17,8 +17,6 @@ export default function Overview() {
   const {
     activePipelines,
     stats,
-    gitlabUrl,
-    gitlabToken,
     projects,
     setActivePipelines,
     setStats,
@@ -39,8 +37,8 @@ export default function Overview() {
       setIsLoading(true);
       setError(null);
 
-      // Get API instance with custom URL and token from store
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      // Get API instance from database configuration
+      const api = await getGitLabAPIAsync();
 
       const [pipelines, pipelineStats] = await Promise.all([
         api.getAllActivePipelines(),
@@ -82,17 +80,14 @@ export default function Overview() {
   useEffect(() => {
     const controller = new AbortController();
 
-    // Only load if we have token
-    if (gitlabToken) {
-      loadData(controller.signal);
+    loadData(controller.signal);
 
-      if (autoRefresh) {
-        const interval = setInterval(() => loadData(controller.signal), refreshInterval);
-        return () => {
-          clearInterval(interval);
-          controller.abort();
-        };
-      }
+    if (autoRefresh) {
+      const interval = setInterval(() => loadData(controller.signal), refreshInterval);
+      return () => {
+        clearInterval(interval);
+        controller.abort();
+      };
     }
 
     return () => {
@@ -101,19 +96,6 @@ export default function Overview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, refreshInterval]);
 
-  // Separate effect for token/url changes to reload data once
-  useEffect(() => {
-    const controller = new AbortController();
-
-    if (gitlabToken) {
-      loadData(controller.signal);
-    }
-
-    return () => {
-      controller.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gitlabToken, gitlabUrl]);
 
   return (
     <div className="space-y-6">

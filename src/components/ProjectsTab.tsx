@@ -3,28 +3,26 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Star, GitFork, Clock, Lock, Globe, Eye } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { formatRelativeTime } from '@/lib/utils';
 import { Project } from '@/lib/gitlab-api';
 import { useTheme } from '@/hooks/useTheme';
 import ProjectDetailsModal from './ProjectDetailsModal';
 
 export default function ProjectsTab() {
-  const { projects, setProjects, gitlabUrl, gitlabToken } = useDashboardStore();
+  const { projects, setProjects } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [starringProjects, setStarringProjects] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    if (gitlabToken) {
-      loadProjects();
-    }
+    loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gitlabToken, gitlabUrl]);
+  }, []);
 
   const loadProjects = async () => {
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const projectsList = await api.getProjects(1, 50);
       setProjects(projectsList);
     } catch (error) {
@@ -40,7 +38,7 @@ export default function ProjectsTab() {
     setStarringProjects(prev => new Set(prev).add(project.id));
 
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
       const updatedProject = project.star_count > 0 && project.star_count
         ? await api.unstarProject(project.id)
         : await api.starProject(project.id);

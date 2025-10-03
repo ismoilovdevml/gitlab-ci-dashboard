@@ -16,7 +16,7 @@ import {
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { useDashboardStore } from '@/store/dashboard-store';
 import {
-  getGitLabAPI,
+  getGitLabAPIAsync,
   InsightsSummary,
   FailureAnalysis,
   FlakyTest,
@@ -27,7 +27,6 @@ import { formatDuration, formatRelativeTime } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function InsightsTab() {
-  const { gitlabUrl, gitlabToken } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<InsightsSummary | null>(null);
@@ -38,16 +37,14 @@ export default function InsightsTab() {
   const [activeTab, setActiveTab] = useState<'overview' | 'failures' | 'flaky' | 'performance' | 'deployments'>('overview');
 
   useEffect(() => {
-    if (gitlabToken) {
-      loadInsights();
-    }
+    loadInsights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gitlabToken, gitlabUrl]);
+  }, []);
 
   const loadInsights = async () => {
     setLoading(true);
     try {
-      const api = getGitLabAPI(gitlabUrl, gitlabToken);
+      const api = await getGitLabAPIAsync();
 
       const [summaryData, failuresData, flakyData, bottlenecksData, deploymentsData] =
         await Promise.all([

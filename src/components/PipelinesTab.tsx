@@ -8,7 +8,7 @@ import PipelineCard from './PipelineCard';
 import JobCard from './JobCard';
 import LogViewer from './LogViewer';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { Pipeline, Job } from '@/lib/gitlab-api';
 import { formatDuration } from '@/lib/utils';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -39,7 +39,7 @@ export default function PipelinesTab() {
 
   const loadProjects = async () => {
     try {
-      const api = getGitLabAPI();
+      const api = await getGitLabAPIAsync();
       const projectsList = await api.getProjects(1, 50);
       setProjects(projectsList);
       if (projectsList.length > 0 && !selectedProject) {
@@ -78,7 +78,7 @@ export default function PipelinesTab() {
 
     try {
       setIsLoading(true);
-      const api = getGitLabAPI();
+      const api = await getGitLabAPIAsync();
 
       // Calculate date filter
       const createdAfter = new Date();
@@ -120,7 +120,7 @@ export default function PipelinesTab() {
   const loadPipelineJobs = async (pipeline: Pipeline) => {
     try {
       setSelectedPipeline(pipeline);
-      const api = getGitLabAPI();
+      const api = await getGitLabAPIAsync();
       const jobsList = await api.getPipelineJobs(pipeline.project_id, pipeline.id);
       setJobs(jobsList);
     } catch (error) {
@@ -131,7 +131,7 @@ export default function PipelinesTab() {
   const loadJobLogs = async (job: Job) => {
     try {
       setSelectedJob(job);
-      const api = getGitLabAPI();
+      const api = await getGitLabAPIAsync();
       const jobLogs = await api.getJobTrace(job.pipeline.project_id, job.id);
       setLogs(jobLogs);
     } catch (error) {
@@ -142,7 +142,7 @@ export default function PipelinesTab() {
 
   const handleRetryPipeline = async (pipeline: Pipeline) => {
     try {
-      const api = getGitLabAPI();
+      const api = await getGitLabAPIAsync();
       await api.retryPipeline(pipeline.project_id, pipeline.id);
       notifyPipelineRetry(`#${pipeline.id}`);
       loadPipelines();
@@ -154,7 +154,7 @@ export default function PipelinesTab() {
 
   const handleCancelPipeline = async (pipeline: Pipeline) => {
     try {
-      const api = getGitLabAPI();
+      const api = await getGitLabAPIAsync();
       await api.cancelPipeline(pipeline.project_id, pipeline.id);
       notifyPipelineCancel(`#${pipeline.id}`);
       loadPipelines();

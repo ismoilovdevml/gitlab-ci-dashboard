@@ -13,8 +13,6 @@ interface DashboardStore {
   error: string | null;
   autoRefresh: boolean;
   refreshInterval: number;
-  gitlabUrl: string;
-  gitlabToken: string;
   theme: 'dark' | 'light';
   notifyPipelineFailures: boolean;
   notifyPipelineSuccess: boolean;
@@ -29,8 +27,6 @@ interface DashboardStore {
   setError: (error: string | null) => void;
   setAutoRefresh: (autoRefresh: boolean) => void;
   setRefreshInterval: (interval: number) => void;
-  setGitlabUrl: (url: string) => void;
-  setGitlabToken: (token: string) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setNotifyPipelineFailures: (notify: boolean) => void;
   setNotifyPipelineSuccess: (notify: boolean) => void;
@@ -60,8 +56,6 @@ export const useDashboardStore = create<DashboardStore>()(
       error: null,
       autoRefresh: true,
       refreshInterval: 10000, // 10 seconds
-      gitlabUrl: 'https://gitlab.com', // Default value, loaded from database
-      gitlabToken: '', // Not persisted in localStorage anymore
       theme: 'dark',
       notifyPipelineFailures: true,
       notifyPipelineSuccess: false,
@@ -77,8 +71,6 @@ export const useDashboardStore = create<DashboardStore>()(
       setError: (error) => set({ error }),
       setAutoRefresh: (autoRefresh) => set({ autoRefresh }),
       setRefreshInterval: (refreshInterval) => set({ refreshInterval }),
-      setGitlabUrl: (gitlabUrl) => set({ gitlabUrl }),
-      setGitlabToken: (gitlabToken) => set({ gitlabToken }),
       setTheme: (theme) => set({ theme }),
       setNotifyPipelineFailures: (notifyPipelineFailures) => set({ notifyPipelineFailures }),
       setNotifyPipelineSuccess: (notifyPipelineSuccess) => set({ notifyPipelineSuccess }),
