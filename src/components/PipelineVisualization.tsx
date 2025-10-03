@@ -20,17 +20,26 @@ export default function PipelineVisualization({
   onViewLogs
 }: PipelineVisualizationProps) {
   const { theme, textPrimary, textSecondary } = useTheme();
-  // Group jobs by stage
-  const stages = jobs.reduce((acc, job) => {
+
+  // Sort jobs by created_at to maintain pipeline execution order
+  const sortedJobs = [...jobs].sort((a, b) => {
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+
+  // Group jobs by stage while maintaining order
+  const stageOrder: string[] = [];
+  const stages = sortedJobs.reduce((acc, job) => {
     const stage = job.stage || 'default';
     if (!acc[stage]) {
       acc[stage] = [];
+      stageOrder.push(stage); // Track stage order as we encounter them
     }
     acc[stage].push(job);
     return acc;
   }, {} as Record<string, Job[]>);
 
-  const stageNames = Object.keys(stages);
+  // Use stageOrder instead of Object.keys to maintain correct order
+  const stageNames = stageOrder;
 
   const getStatusIcon = (status: string) => {
     switch (status) {

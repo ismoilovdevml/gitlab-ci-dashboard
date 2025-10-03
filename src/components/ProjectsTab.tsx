@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ExternalLink, Star, GitFork, Clock, Lock, Globe, Eye } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { ExternalLink, Star, GitFork, Clock, Lock, Globe, Eye, Search, Filter, FolderGit2, TrendingUp, Users, Activity } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { formatRelativeTime } from '@/lib/utils';
@@ -11,9 +11,11 @@ import ProjectDetailsModal from './ProjectDetailsModal';
 
 export default function ProjectsTab() {
   const { projects, setProjects } = useDashboardStore();
-  const { theme, textPrimary, textSecondary, card } = useTheme();
+  const { theme, textPrimary, textSecondary, card, input, inputFocus } = useTheme();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [starringProjects, setStarringProjects] = useState<Set<number>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
 
   useEffect(() => {
     loadProjects();
@@ -68,6 +70,36 @@ export default function ProjectsTab() {
     }
   };
 
+  // Filter projects
+  const filteredProjects = useMemo(() => {
+    return projects.filter(project => {
+      const matchesSearch =
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.namespace.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesVisibility = visibilityFilter === 'all' || project.visibility === visibilityFilter;
+
+      return matchesSearch && matchesVisibility;
+    });
+  }, [projects, searchTerm, visibilityFilter]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const totalStars = projects.reduce((sum, p) => sum + (p.star_count || 0), 0);
+    const totalForks = projects.reduce((sum, p) => sum + (p.forks_count || 0), 0);
+    const privateProjects = projects.filter(p => p.visibility === 'private').length;
+    const publicProjects = projects.filter(p => p.visibility === 'public').length;
+
+    return {
+      total: projects.length,
+      stars: totalStars,
+      forks: totalForks,
+      private: privateProjects,
+      public: publicProjects,
+    };
+  }, [projects]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -75,8 +107,147 @@ export default function ProjectsTab() {
         <p className={textSecondary}>All your GitLab projects</p>
       </div>
 
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <button
+          onClick={() => {
+            setVisibilityFilter('all');
+            setSearchTerm('');
+          }}
+          className={`rounded-xl p-4 text-left border transition-all ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-sm hover:shadow-md'
+              : 'bg-gradient-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-blue-500/20' : 'bg-blue-500/10'
+            }`}>
+              <FolderGit2 className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <p className={`text-xs ${theme === 'light' ? 'text-blue-700' : 'text-blue-400'}`}>Total</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{stats.total}</p>
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setVisibilityFilter('public')}
+          className={`rounded-xl p-4 text-left border transition-all ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-sm hover:shadow-md'
+              : 'bg-gradient-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-green-500/20' : 'bg-green-500/10'
+            }`}>
+              <Globe className="w-5 h-5 text-green-500" />
+            </div>
+            <div>
+              <p className={`text-xs ${theme === 'light' ? 'text-green-700' : 'text-green-400'}`}>Public</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-green-600' : textPrimary}`}>{stats.public}</p>
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setVisibilityFilter('private')}
+          className={`rounded-xl p-4 text-left border transition-all ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm hover:shadow-md'
+              : 'bg-gradient-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-red-500/20' : 'bg-red-500/10'
+            }`}>
+              <Lock className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <p className={`text-xs ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Private</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-red-600' : textPrimary}`}>{stats.private}</p>
+            </div>
+          </div>
+        </button>
+
+        <div className={`rounded-xl p-4 border ${
+          theme === 'light'
+            ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
+            : 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/20 border-yellow-500/30'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-yellow-500/20' : 'bg-yellow-500/10'
+            }`}>
+              <Star className="w-5 h-5 text-yellow-500" />
+            </div>
+            <div>
+              <p className={`text-xs ${theme === 'light' ? 'text-yellow-700' : 'text-yellow-400'}`}>Stars</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-yellow-600' : textPrimary}`}>{stats.stars}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className={`rounded-xl p-4 border ${
+          theme === 'light'
+            ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
+            : 'bg-gradient-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-purple-500/20' : 'bg-purple-500/10'
+            }`}>
+              <GitFork className="w-5 h-5 text-purple-500" />
+            </div>
+            <div>
+              <p className={`text-xs ${theme === 'light' ? 'text-purple-700' : 'text-purple-400'}`}>Forks</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : textPrimary}`}>{stats.forks}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[200px] relative">
+          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+          <input
+            type="text"
+            placeholder="Search projects..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+          />
+        </div>
+
+        <div className="relative">
+          <Filter className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+          <select
+            value={visibilityFilter}
+            onChange={(e) => setVisibilityFilter(e.target.value)}
+            className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+          >
+            <option value="all">All Visibility</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+            <option value="internal">Internal</option>
+          </select>
+        </div>
+
+        <div className={`px-3 py-2 rounded-lg ${card} border ${theme === 'light' ? 'border-[#d2d2d7]' : 'border-zinc-800'}`}>
+          <span className={`text-sm ${textSecondary}`}>
+            Showing <span className={`font-semibold ${textPrimary}`}>{filteredProjects.length}</span> of <span className={`font-semibold ${textPrimary}`}>{projects.length}</span>
+          </span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {projects.map((project) => (
+        {filteredProjects.map((project) => (
           <div
             key={project.id}
             onClick={() => setSelectedProject(project)}
