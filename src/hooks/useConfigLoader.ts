@@ -5,11 +5,10 @@ import axios from 'axios';
 /**
  * Global config loader hook
  * Loads configuration from database on mount and updates Zustand store
+ * Note: GitLab URL and Token are now stored in database, not in Zustand
  */
 export function useConfigLoader() {
   const {
-    setGitlabUrl,
-    setGitlabToken,
     setAutoRefresh,
     setRefreshInterval,
     setNotifyPipelineFailures,
@@ -23,9 +22,7 @@ export function useConfigLoader() {
         const response = await axios.get('/api/config');
         const config = response.data;
 
-        // Update Zustand store with database config
-        if (config.url) setGitlabUrl(config.url);
-        if (config.token) setGitlabToken(config.token);
+        // Update Zustand store with database config (excluding url/token which are in DB)
         if (typeof config.autoRefresh === 'boolean') setAutoRefresh(config.autoRefresh);
         if (typeof config.refreshInterval === 'number') setRefreshInterval(config.refreshInterval);
         if (typeof config.notifyPipelineFailures === 'boolean') setNotifyPipelineFailures(config.notifyPipelineFailures);
@@ -43,5 +40,5 @@ export function useConfigLoader() {
     };
 
     loadConfig();
-  }, [setGitlabUrl, setGitlabToken, setAutoRefresh, setRefreshInterval, setNotifyPipelineFailures, setNotifyPipelineSuccess, setTheme]);
+  }, [setAutoRefresh, setRefreshInterval, setNotifyPipelineFailures, setNotifyPipelineSuccess, setTheme]);
 }

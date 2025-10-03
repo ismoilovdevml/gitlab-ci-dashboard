@@ -263,7 +263,6 @@ export default function Overview() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {filteredJobs.map((job) => {
-              const project = projects.find(p => p.id === job.project_id);
               return (
                 <div
                   key={job.id}
@@ -282,7 +281,7 @@ export default function Overview() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-medium text-sm truncate ${textPrimary}`}>{job.name}</h3>
-                      <p className={`text-xs truncate ${textSecondary}`}>{project?.name || 'Unknown'}</p>
+                      <p className={`text-xs truncate ${textSecondary}`}>{job.project?.name || 'Unknown'}</p>
                     </div>
                   </div>
                   <div className={`flex items-center justify-between text-xs ${textSecondary}`}>
