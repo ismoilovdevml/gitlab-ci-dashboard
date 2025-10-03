@@ -533,15 +533,28 @@ export default function PipelinesTab() {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {jobs.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    job={job}
-                    onViewLogs={() => loadJobLogs(job)}
-                  />
-                ))}
-              </div>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                </div>
+              ) : jobs.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {jobs.map((job) => (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      onViewLogs={() => loadJobLogs(job)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <AlertCircle className={`w-16 h-16 mx-auto mb-4 ${
+                    theme === 'light' ? 'text-gray-400' : 'text-zinc-600'
+                  }`} />
+                  <p className={textSecondary}>No jobs found for this pipeline</p>
+                </div>
+              )}
             </div>
           )}
         </div>
