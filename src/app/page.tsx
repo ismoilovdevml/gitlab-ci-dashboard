@@ -8,7 +8,6 @@ import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
 
 // Lazy load heavy components
-const SearchTab = lazy(() => import('@/components/SearchTab'));
 const PipelinesTab = lazy(() => import('@/components/PipelinesTab'));
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab'));
 const RunnersTab = lazy(() => import('@/components/RunnersTab'));
@@ -39,12 +38,6 @@ export default function Home() {
     switch (activeTab) {
       case 'overview':
         return <Overview />;
-      case 'search':
-        return (
-          <Suspense fallback={<LoadingSpinner />}>
-            <SearchTab onNavigate={handleNavigate} />
-          </Suspense>
-        );
       case 'pipelines':
         return (
           <Suspense fallback={<LoadingSpinner />}>
