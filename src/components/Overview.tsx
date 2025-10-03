@@ -34,7 +34,7 @@ export default function Overview() {
   const [showPipelineList, setShowPipelineList] = useState<{ title: string; status?: string } | null>(null);
   const [recentPipelines, setRecentPipelines] = useState<Pipeline[]>([]);
 
-  const loadData = async () => {
+  const loadData = async (abortSignal?: AbortSignal) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -47,39 +47,73 @@ export default function Overview() {
         api.getPipelineStats(),
       ]);
 
+      // Check if aborted
+      if (abortSignal?.aborted) return;
+
       setActivePipelines(pipelines);
       setStats(pipelineStats);
 
-      // Load recent pipelines (last 10 from all projects)
-      const recentPromises = projects.slice(0, 10).map(project =>
-        api.getPipelines(project.id, 1, 5).catch(() => [])
+      // Load recent pipelines (last 5 from top 5 projects only)
+      const recentPromises = projects.slice(0, 5).map(project =>
+        api.getPipelines(project.id, 1, 3).catch(() => [])
       );
       const allRecent = await Promise.all(recentPromises);
+
+      // Check if aborted before setting state
+      if (abortSignal?.aborted) return;
+
       const recent = allRecent
         .flat()
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
         .slice(0, 10);
       setRecentPipelines(recent);
     } catch (error) {
-      console.error('Failed to load data:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load data');
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Data loading was cancelled');
+      } else {
+        console.error('Failed to load data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load data');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+
     // Only load if we have token
     if (gitlabToken) {
-      loadData();
+      loadData(controller.signal);
 
       if (autoRefresh) {
-        const interval = setInterval(loadData, refreshInterval);
-        return () => clearInterval(interval);
+        const interval = setInterval(() => loadData(controller.signal), refreshInterval);
+        return () => {
+          clearInterval(interval);
+          controller.abort();
+        };
       }
     }
+
+    return () => {
+      controller.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, refreshInterval, gitlabToken, gitlabUrl]);
+  }, [autoRefresh, refreshInterval]);
+
+  // Separate effect for token/url changes to reload data once
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (gitlabToken) {
+      loadData(controller.signal);
+    }
+
+    return () => {
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gitlabToken, gitlabUrl]);
 
   return (
     <div className="space-y-6">

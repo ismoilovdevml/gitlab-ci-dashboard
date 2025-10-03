@@ -12,6 +12,7 @@ interface CacheEntry<T> {
 class APICache {
   private cache: Map<string, CacheEntry<unknown>>
   private cleanupInterval: NodeJS.Timeout | null = null
+  private readonly maxCacheSize: number = 100 // Maximum cache entries
 
   constructor() {
     this.cache = new Map()
@@ -62,6 +63,14 @@ class APICache {
    * Set cache data with TTL (in milliseconds)
    */
   set<T>(url: string, data: T, ttl: number = 60000, params?: Record<string, unknown>): void {
+    // LRU eviction: if cache is full, remove oldest entry
+    if (this.cache.size >= this.maxCacheSize) {
+      const firstKey = this.cache.keys().next().value
+      if (firstKey) {
+        this.cache.delete(firstKey)
+      }
+    }
+
     const key = this.generateKey(url, params)
     this.cache.set(key, {
       data,

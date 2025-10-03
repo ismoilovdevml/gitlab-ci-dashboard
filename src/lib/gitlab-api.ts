@@ -292,15 +292,17 @@ class GitLabAPI {
   }
 
   async getAllActivePipelines(): Promise<Pipeline[]> {
-    const projects = await this.getProjects(1, 100);
+    // Limit to 20 most active projects to reduce memory usage
+    const projects = await this.getProjects(1, 20);
     const pipelinePromises = projects.map(project =>
-      this.getPipelines(project.id, 1, 10).catch(() => [])
+      this.getPipelines(project.id, 1, 5).catch(() => [])
     );
     const allPipelines = await Promise.all(pipelinePromises);
     return allPipelines
       .flat()
       .filter(p => ['running', 'pending', 'created'].includes(p.status))
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 50); // Limit to 50 active pipelines max
   }
 
   async getPipeline(projectId: number, pipelineId: number): Promise<Pipeline> {
@@ -373,9 +375,10 @@ class GitLabAPI {
 
   // Statistics
   async getPipelineStats(): Promise<PipelineStats> {
-    const projects = await this.getProjects(1, 100);
+    // Limit to 20 projects and 20 pipelines per project to reduce API calls
+    const projects = await this.getProjects(1, 20);
     const pipelinePromises = projects.map(project =>
-      this.getPipelines(project.id, 1, 50).catch(() => [])
+      this.getPipelines(project.id, 1, 20).catch(() => [])
     );
     const allPipelines = await Promise.all(pipelinePromises);
     const pipelines = allPipelines.flat();
@@ -460,12 +463,13 @@ class GitLabAPI {
 
   // CI/CD Insights
   async getInsightsSummary(days = 30): Promise<InsightsSummary> {
-    const projects = await this.getProjects(1, 100);
+    // Limit to 20 projects and 50 pipelines per project
+    const projects = await this.getProjects(1, 20);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
     const pipelinePromises = projects.map(project =>
-      this.getPipelines(project.id, 1, 100).catch(() => [])
+      this.getPipelines(project.id, 1, 50).catch(() => [])
     );
     const allPipelines = await Promise.all(pipelinePromises);
     const pipelines = allPipelines
@@ -520,7 +524,8 @@ class GitLabAPI {
   }
 
   async getFailureAnalysis(days = 7): Promise<FailureAnalysis[]> {
-    const projects = await this.getProjects(1, 100);
+    // Limit to top 10 projects to reduce API calls and memory usage
+    const projects = await this.getProjects(1, 10);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
@@ -528,8 +533,8 @@ class GitLabAPI {
 
     for (const project of projects) {
       try {
-        const pipelines = await this.getPipelines(project.id, 1, 50);
-        const failedPipelines = pipelines.filter(p => p.status === 'failed');
+        const pipelines = await this.getPipelines(project.id, 1, 20);
+        const failedPipelines = pipelines.filter(p => p.status === 'failed').slice(0, 5);
 
         for (const pipeline of failedPipelines) {
           if (new Date(pipeline.created_at) < since) continue;
@@ -538,34 +543,9 @@ class GitLabAPI {
           const failedJobs = jobs.filter(j => j.status === 'failed');
 
           for (const job of failedJobs) {
-            let failureReason = 'Unknown failure';
-            let errorMessage = '';
-            let failureType: FailureAnalysis['failure_type'] = 'unknown';
-
-            try {
-              const trace = await this.getJobTrace(project.id, job.id);
-
-              // Parse logs for common failure patterns
-              if (trace.includes('exit code 1') || trace.includes('Command failed')) {
-                failureType = 'script_failure';
-                const errorMatch = trace.match(/ERROR:(.+?)(\n|$)/i);
-                errorMessage = errorMatch ? errorMatch[1].trim() : 'Script execution failed';
-              } else if (trace.includes('timeout') || trace.includes('timed out')) {
-                failureType = 'timeout';
-                errorMessage = 'Job execution timeout';
-              } else if (trace.includes('cancelled') || trace.includes('canceled')) {
-                failureType = 'cancelled';
-                errorMessage = 'Job was cancelled';
-              } else if (trace.includes('runner') && trace.includes('system')) {
-                failureType = 'runner_system_failure';
-                errorMessage = 'Runner system failure';
-              }
-
-              failureReason = errorMessage || failureType;
-            } catch {
-              // If we can't get trace, use basic info
-              failureReason = job.status;
-            }
+            const failureReason = `Job ${job.name} failed`;
+            const errorMessage = '';
+            const failureType: FailureAnalysis['failure_type'] = 'script_failure';
 
             failures.push({
               job_id: job.id,
@@ -585,11 +565,12 @@ class GitLabAPI {
       }
     }
 
-    return failures.slice(0, 50); // Return top 50
+    return failures.slice(0, 20); // Return top 20
   }
 
   async getFlakyTests(days = 30): Promise<FlakyTest[]> {
-    const projects = await this.getProjects(1, 100);
+    // Limit to 10 projects to reduce API calls
+    const projects = await this.getProjects(1, 10);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
@@ -607,7 +588,7 @@ class GitLabAPI {
       try {
         const jobs = await this.api.get(`/projects/${project.id}/jobs`, {
           params: {
-            per_page: 100,
+            per_page: 50, // Reduced from 100
             scope: ['success', 'failed'],
           },
         });
@@ -685,7 +666,8 @@ class GitLabAPI {
   }
 
   async getPerformanceBottlenecks(days = 30): Promise<PerformanceBottleneck[]> {
-    const projects = await this.getProjects(1, 100);
+    // Limit to 10 projects to reduce API calls
+    const projects = await this.getProjects(1, 10);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
@@ -696,9 +678,9 @@ class GitLabAPI {
 
     for (const project of projects) {
       try {
-        const pipelines = await this.getPipelines(project.id, 1, 50);
+        const pipelines = await this.getPipelines(project.id, 1, 20);
 
-        for (const pipeline of pipelines) {
+        for (const pipeline of pipelines.slice(0, 10)) { // Limit to 10 pipelines per project
           if (new Date(pipeline.created_at) < since) continue;
 
           const jobs = await this.getPipelineJobs(project.id, pipeline.id);
@@ -766,7 +748,8 @@ class GitLabAPI {
   }
 
   async getDeploymentFrequency(days = 30): Promise<DeploymentFrequency[]> {
-    const projects = await this.getProjects(1, 100);
+    // Limit to 10 projects to reduce API calls
+    const projects = await this.getProjects(1, 10);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
@@ -774,7 +757,7 @@ class GitLabAPI {
 
     for (const project of projects) {
       try {
-        const pipelines = await this.getPipelines(project.id, 1, 100);
+        const pipelines = await this.getPipelines(project.id, 1, 50);
 
         // Filter deployment pipelines (those with 'deploy' stage/job)
         const deploymentPipelines = [];

@@ -1,19 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Overview from '@/components/Overview';
-import SearchTab from '@/components/SearchTab';
-import PipelinesTab from '@/components/PipelinesTab';
-import ProjectsTab from '@/components/ProjectsTab';
-import RunnersTab from '@/components/RunnersTab';
-import InsightsTab from '@/components/InsightsTab';
-import ArtifactsTab from '@/components/ArtifactsTab';
-import ContainerRegistryTab from '@/components/ContainerRegistryTab';
-import SettingsTab from '@/components/SettingsTab';
 import NotificationToast from '@/components/NotificationToast';
 import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
+
+// Lazy load heavy components
+const SearchTab = lazy(() => import('@/components/SearchTab'));
+const PipelinesTab = lazy(() => import('@/components/PipelinesTab'));
+const ProjectsTab = lazy(() => import('@/components/ProjectsTab'));
+const RunnersTab = lazy(() => import('@/components/RunnersTab'));
+const InsightsTab = lazy(() => import('@/components/InsightsTab'));
+const ArtifactsTab = lazy(() => import('@/components/ArtifactsTab'));
+const ContainerRegistryTab = lazy(() => import('@/components/ContainerRegistryTab'));
+const SettingsTab = lazy(() => import('@/components/SettingsTab'));
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -27,26 +29,64 @@ export default function Home() {
     setActiveTab(tab);
   };
 
+  const LoadingSpinner = () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
         return <Overview />;
       case 'search':
-        return <SearchTab onNavigate={handleNavigate} />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <SearchTab onNavigate={handleNavigate} />
+          </Suspense>
+        );
       case 'pipelines':
-        return <PipelinesTab />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <PipelinesTab />
+          </Suspense>
+        );
       case 'projects':
-        return <ProjectsTab />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <ProjectsTab />
+          </Suspense>
+        );
       case 'runners':
-        return <RunnersTab />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <RunnersTab />
+          </Suspense>
+        );
       case 'insights':
-        return <InsightsTab />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <InsightsTab />
+          </Suspense>
+        );
       case 'artifacts':
-        return <ArtifactsTab />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <ArtifactsTab />
+          </Suspense>
+        );
       case 'registry':
-        return <ContainerRegistryTab />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContainerRegistryTab />
+          </Suspense>
+        );
       case 'settings':
-        return <SettingsTab />;
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <SettingsTab />
+          </Suspense>
+        );
       default:
         return <Overview />;
     }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 import { Search, RefreshCw, Filter, Calendar, TrendingUp, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import PipelineCard from './PipelineCard';
 import JobCard from './JobCard';
@@ -48,10 +49,15 @@ export default function PipelinesTab() {
     }
   };
 
+  // Debounced pipeline loading to reduce API calls
+  const debouncedLoadPipelines = useDebouncedCallback(() => {
+    loadPipelines();
+  }, 300);
+
   useEffect(() => {
     if (selectedProject) {
       setCurrentPage(1);
-      loadPipelines();
+      debouncedLoadPipelines();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject, statusFilter, dateRange]);
@@ -63,8 +69,12 @@ export default function PipelinesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
-  const loadPipelines = async () => {
+  const loadPipelines = useCallback(async () => {
     if (!selectedProject) return;
+
+    // Create abort controller for this request
+    const controller = new AbortController();
+
     try {
       setIsLoading(true);
       const api = getGitLabAPI();
@@ -91,11 +101,20 @@ export default function PipelinesTab() {
       setPipelines(filteredPipelines);
       setTotalPipelines(filteredPipelines.length);
     } catch (error) {
-      console.error('Failed to load pipelines:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request was cancelled');
+      } else {
+        console.error('Failed to load pipelines:', error);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+
+    // Cleanup function
+    return () => {
+      controller.abort();
+    };
+  }, [selectedProject, currentPage, pipelinesPerPage, dateRange, statusFilter]);
 
   const loadPipelineJobs = async (pipeline: Pipeline) => {
     try {
@@ -144,27 +163,36 @@ export default function PipelinesTab() {
     }
   };
 
-  const filteredProjects = projects.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.path_with_namespace.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProjects = useMemo(() =>
+    projects.filter(p =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.path_with_namespace.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [projects, searchTerm]
   );
 
-  // Calculate statistics
-  const stats = {
-    total: pipelines.length,
-    success: pipelines.filter(p => p.status === 'success').length,
-    failed: pipelines.filter(p => p.status === 'failed').length,
-    running: pipelines.filter(p => p.status === 'running').length,
-    pending: pipelines.filter(p => p.status === 'pending').length,
-    avgDuration: pipelines.length > 0
-      ? pipelines
-          .filter(p => p.duration)
-          .reduce((sum, p) => sum + (p.duration || 0), 0) / pipelines.filter(p => p.duration).length
-      : 0,
-    successRate: pipelines.length > 0
-      ? ((pipelines.filter(p => p.status === 'success').length / pipelines.length) * 100).toFixed(1)
-      : 0,
-  };
+  // Calculate statistics with memoization
+  const stats = useMemo(() => {
+    const successCount = pipelines.filter(p => p.status === 'success').length;
+    const failedCount = pipelines.filter(p => p.status === 'failed').length;
+    const runningCount = pipelines.filter(p => p.status === 'running').length;
+    const pendingCount = pipelines.filter(p => p.status === 'pending').length;
+    const pipelinesWithDuration = pipelines.filter(p => p.duration);
+
+    return {
+      total: pipelines.length,
+      success: successCount,
+      failed: failedCount,
+      running: runningCount,
+      pending: pendingCount,
+      avgDuration: pipelinesWithDuration.length > 0
+        ? pipelinesWithDuration.reduce((sum, p) => sum + (p.duration || 0), 0) / pipelinesWithDuration.length
+        : 0,
+      successRate: pipelines.length > 0
+        ? ((successCount / pipelines.length) * 100).toFixed(1)
+        : 0,
+    };
+  }, [pipelines]);
 
   const totalPages = Math.ceil(totalPipelines / pipelinesPerPage);
 
