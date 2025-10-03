@@ -1,8 +1,66 @@
 import axios, { AxiosInstance } from 'axios';
-import { cachedFetch, CacheTTL } from './cache';
+
+// Cache TTL constants (in seconds)
+export const CacheTTL = {
+  SHORT: 30,        // 30 seconds
+  MEDIUM: 120,      // 2 minutes
+  LONG: 300,        // 5 minutes
+  VERY_LONG: 900    // 15 minutes
+};
+
+// Simple in-memory cache for client-side (lightweight)
+const clientCache = new Map<string, { data: unknown; expires: number }>();
+
+function getCached<T>(key: string): T | null {
+  const entry = clientCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) {
+    clientCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache(key: string, data: unknown, ttlSeconds: number): void {
+  clientCache.set(key, {
+    data,
+    expires: Date.now() + ttlSeconds * 1000,
+  });
+}
+
+// Helper function to cache async calls
+async function cachedFetch<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlSeconds: number
+): Promise<T> {
+  const cached = getCached<T>(key);
+  if (cached) return cached;
+
+  const data = await fetcher();
+  setCache(key, data, ttlSeconds);
+  return data;
+}
 
 // Export cache utilities for external use
-export { invalidateCache, getCache } from './cache';
+export const invalidateCache = async (pattern?: string) => {
+  if (!pattern) {
+    clientCache.clear();
+    return;
+  }
+  // Clear matching keys
+  for (const key of clientCache.keys()) {
+    if (key.includes(pattern)) {
+      clientCache.delete(key);
+    }
+  }
+};
+
+export const getCache = () => {
+  return {
+    getStats: () => ({ size: clientCache.size, entries: Array.from(clientCache.keys()) }),
+  };
+};
 
 export interface Pipeline {
   id: number;
@@ -256,7 +314,7 @@ class GitLabAPI {
   // Projects
   async getProjects(page = 1, perPage = 20): Promise<Project[]> {
     return cachedFetch(
-      `/projects?page=${page}&perPage=${perPage}`,
+      `gitlab:projects:${page}:${perPage}`,
       async () => {
         const response = await this.api.get('/projects', {
           params: {
@@ -269,7 +327,7 @@ class GitLabAPI {
         });
         return response.data;
       },
-      CacheTTL.LONG // 5 minutes cache for projects
+      CacheTTL.LONG
     );
   }
 
@@ -291,7 +349,7 @@ class GitLabAPI {
   // Pipelines
   async getPipelines(projectId: number, page = 1, perPage = 20): Promise<Pipeline[]> {
     return cachedFetch(
-      `/projects/${projectId}/pipelines?page=${page}&perPage=${perPage}`,
+      `gitlab:pipelines:${projectId}:${page}:${perPage}`,
       async () => {
         const response = await this.api.get(`/projects/${projectId}/pipelines`, {
           params: {
@@ -369,7 +427,7 @@ class GitLabAPI {
   // Runners
   async getRunners(page = 1, perPage = 20): Promise<Runner[]> {
     return cachedFetch(
-      `/runners?page=${page}&perPage=${perPage}`,
+      `gitlab:runners:${page}:${perPage}`,
       async () => {
         try {
           // Try to get all runners (requires admin access)
@@ -509,7 +567,7 @@ class GitLabAPI {
   // CI/CD Insights
   async getInsightsSummary(days = 30): Promise<InsightsSummary> {
     return cachedFetch(
-      `/insights/summary?days=${days}`,
+      `gitlab:insights:summary:${days}`,
       async () => {
         // Limit to 10 projects and 30 pipelines per project
         const projects = await this.getProjects(1, 10);
@@ -576,7 +634,7 @@ class GitLabAPI {
 
   async getFailureAnalysis(days = 7): Promise<FailureAnalysis[]> {
     return cachedFetch(
-      `/insights/failures?days=${days}`,
+      `gitlab:insights:failures:${days}`,
       async () => {
         // Limit to top 5 projects to reduce API calls
         const projects = await this.getProjects(1, 5);
@@ -634,7 +692,7 @@ class GitLabAPI {
 
   async getFlakyTests(days = 30): Promise<FlakyTest[]> {
     return cachedFetch(
-      `/insights/flaky-tests?days=${days}`,
+      `gitlab:insights:flaky-tests:${days}`,
       async () => {
         // Limit to 5 projects to reduce API calls
         const projects = await this.getProjects(1, 5);
@@ -737,7 +795,7 @@ class GitLabAPI {
 
   async getPerformanceBottlenecks(days = 30): Promise<PerformanceBottleneck[]> {
     return cachedFetch(
-      `/insights/bottlenecks?days=${days}`,
+      `gitlab:insights:bottlenecks:${days}`,
       async () => {
         // Limit to 5 projects to reduce API calls
         const projects = await this.getProjects(1, 5);
@@ -831,7 +889,7 @@ class GitLabAPI {
 
   async getDeploymentFrequency(days = 30): Promise<DeploymentFrequency[]> {
     return cachedFetch(
-      `/insights/deployments?days=${days}`,
+      `gitlab:insights:deployments:${days}`,
       async () => {
         // Limit to 5 projects to reduce API calls
         const projects = await this.getProjects(1, 5);
