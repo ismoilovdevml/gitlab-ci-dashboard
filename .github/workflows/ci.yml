@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
   workflow_dispatch: # Manual trigger
 
 # Cancel in-progress runs for same workflow
@@ -38,10 +38,20 @@ jobs:
     - name: Lint code
       run: npm run lint
 
+    - name: Type check
+      run: npx tsc --noEmit
+
     - name: Build application
       run: npm run build
       env:
         NODE_ENV: production
+
+    - name: Test Docker build (dev branch only)
+      if: github.ref == 'refs/heads/dev'
+      run: |
+        echo "🐳 Testing Docker build..."
+        docker build -t test-build:latest .
+        echo "✅ Docker build successful!"
 
   docker-publish:
     name: Publish to Docker Hub
