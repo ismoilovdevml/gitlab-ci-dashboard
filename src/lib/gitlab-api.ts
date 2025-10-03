@@ -476,6 +476,29 @@ class GitLabAPI {
     return response.data;
   }
 
+  async getRunnerJobs(runnerId: number, page = 1, perPage = 50): Promise<Job[]> {
+    return cachedFetch(
+      `gitlab:runner:${runnerId}:jobs:${page}:${perPage}`,
+      async () => {
+        try {
+          const response = await this.api.get(`/runners/${runnerId}/jobs`, {
+            params: {
+              per_page: perPage,
+              page,
+              order_by: 'id',
+              sort: 'desc',
+            },
+          });
+          return response.data;
+        } catch (error) {
+          console.error(`Failed to fetch jobs for runner ${runnerId}:`, error);
+          return [];
+        }
+      },
+      CacheTTL.SHORT // 30 seconds cache for runner jobs
+    );
+  }
+
   // Statistics
   async getPipelineStats(): Promise<PipelineStats> {
     // Limit to 20 projects and 20 pipelines per project to reduce API calls

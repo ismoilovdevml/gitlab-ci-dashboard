@@ -3,9 +3,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Server, Circle, Search, Filter, Activity, CheckCircle, XCircle, Pause, Play, TrendingUp, Clock, Cpu, HardDrive } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPIAsync } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync, Runner } from '@/lib/gitlab-api';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
+import RunnerDetailsModal from '@/components/RunnerDetailsModal';
 
 export default function RunnersTab() {
   const { runners, setRunners } = useDashboardStore();
@@ -15,6 +16,18 @@ export default function RunnersTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedRunner, setSelectedRunner] = useState<Runner | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleRunnerClick = (runner: Runner) => {
+    setSelectedRunner(runner);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRunner(null);
+  };
 
   useEffect(() => {
     loadRunners();
@@ -119,77 +132,146 @@ export default function RunnersTab() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <button
+          onClick={() => {
+            setStatusFilter('all');
+            setTypeFilter('all');
+          }}
+          className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
+              : 'bg-gradient-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30 hover:border-blue-500/50'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-blue-500/20' : 'bg-blue-500/10'
+            }`}>
               <Server className="w-5 h-5 text-blue-500" />
             </div>
             <div>
-              <p className={`text-xs ${textSecondary}`}>Total</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-blue-700' : 'text-blue-400'}`}>Total</p>
               <p className={`text-2xl font-bold ${textPrimary}`}>{stats.total}</p>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <button
+          onClick={() => setStatusFilter('online')}
+          className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
+              : 'bg-gradient-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30 hover:border-green-500/50'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-green-500/20' : 'bg-green-500/10'
+            }`}>
               <CheckCircle className="w-5 h-5 text-green-500" />
             </div>
             <div>
-              <p className={`text-xs ${textSecondary}`}>Online</p>
-              <p className={`text-2xl font-bold text-green-500`}>{stats.online}</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-green-700' : 'text-green-400'}`}>Online</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-green-600' : 'text-green-500'}`}>{stats.online}</p>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <button
+          onClick={() => setStatusFilter('offline')}
+          className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
+              : 'bg-gradient-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30 hover:border-red-500/50'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-red-500/20' : 'bg-red-500/10'
+            }`}>
               <XCircle className="w-5 h-5 text-red-500" />
             </div>
             <div>
-              <p className={`text-xs ${textSecondary}`}>Offline</p>
-              <p className={`text-2xl font-bold text-red-500`}>{stats.offline}</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Offline</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-red-600' : 'text-red-500'}`}>{stats.offline}</p>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <button
+          onClick={() => setStatusFilter('paused')}
+          className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 hover:from-yellow-100 hover:to-yellow-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
+              : 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/20 border-yellow-500/30 hover:from-yellow-500/20 hover:to-yellow-600/30 hover:border-yellow-500/50'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-yellow-500/20' : 'bg-yellow-500/10'
+            }`}>
               <Pause className="w-5 h-5 text-yellow-500" />
             </div>
             <div>
-              <p className={`text-xs ${textSecondary}`}>Paused</p>
-              <p className={`text-2xl font-bold text-yellow-500`}>{stats.paused}</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-yellow-700' : 'text-yellow-400'}`}>Paused</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-yellow-600' : 'text-yellow-500'}`}>{stats.paused}</p>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <button
+          onClick={() => {
+            setTypeFilter('all');
+            const sharedRunners = runners.filter(r => r.is_shared);
+            if (sharedRunners.length > 0) {
+              handleRunnerClick(sharedRunners[0]);
+            }
+          }}
+          className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
+              : 'bg-gradient-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30 hover:from-purple-500/20 hover:to-purple-600/30 hover:border-purple-500/50'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-purple-500/20' : 'bg-purple-500/10'
+            }`}>
               <TrendingUp className="w-5 h-5 text-purple-500" />
             </div>
             <div>
-              <p className={`text-xs ${textSecondary}`}>Shared</p>
-              <p className={`text-2xl font-bold ${textPrimary}`}>{stats.shared}</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-purple-700' : 'text-purple-400'}`}>Shared</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : textPrimary}`}>{stats.shared}</p>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <button
+          onClick={() => {
+            setTypeFilter('all');
+            const dedicatedRunners = runners.filter(r => !r.is_shared);
+            if (dedicatedRunners.length > 0) {
+              handleRunnerClick(dedicatedRunners[0]);
+            }
+          }}
+          className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
+            theme === 'light'
+              ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 hover:from-orange-100 hover:to-orange-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
+              : 'bg-gradient-to-br from-orange-500/10 to-orange-600/20 border-orange-500/30 hover:from-orange-500/20 hover:to-orange-600/30 hover:border-orange-500/50'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              theme === 'light' ? 'bg-orange-500/20' : 'bg-orange-500/10'
+            }`}>
               <Activity className="w-5 h-5 text-orange-500" />
             </div>
             <div>
-              <p className={`text-xs ${textSecondary}`}>Dedicated</p>
-              <p className={`text-2xl font-bold ${textPrimary}`}>{stats.dedicated}</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-orange-700' : 'text-orange-400'}`}>Dedicated</p>
+              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-orange-600' : textPrimary}`}>{stats.dedicated}</p>
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Filters */}
@@ -286,12 +368,13 @@ export default function RunnersTab() {
         /* Runners Grid */
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredRunners.map((runner) => (
-            <div
+            <button
               key={runner.id}
-              className={`rounded-xl p-5 transition-all ${card} ${
+              onClick={() => handleRunnerClick(runner)}
+              className={`rounded-xl p-5 text-left transition-all cursor-pointer ${card} ${
                 theme === 'light'
-                  ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
-                  : 'hover:border-zinc-700'
+                  ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] hover:scale-[1.02]'
+                  : 'hover:border-zinc-700 hover:bg-zinc-800/50'
               }`}
             >
               {/* Header */}
@@ -407,10 +490,17 @@ export default function RunnersTab() {
                   </div>
                 </div>
               )}
-            </div>
+            </button>
           ))}
         </div>
       )}
+
+      {/* Runner Details Modal */}
+      <RunnerDetailsModal
+        runner={selectedRunner}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 }
