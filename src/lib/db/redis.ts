@@ -4,31 +4,31 @@ const globalForRedis = globalThis as unknown as {
   redis: Redis | undefined;
 };
 
+const getRedisURL = (): string => {
+  if (process.env.REDIS_URL) {
+    return process.env.REDIS_URL;
+  }
+
+  const password = process.env.REDIS_PASSWORD || 'redis_2024';
+  const host = process.env.REDIS_HOST || 'localhost';
+  const port = process.env.REDIS_PORT || '6379';
+
+  return `redis://:${password}@${host}:${port}`;
+};
+
 export const redis =
   globalForRedis.redis ??
-  new Redis(process.env.REDIS_URL || 'redis://:redis_2024@localhost:6379', {
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => {
-      const delay = Math.min(times * 50, 2000);
-      return delay;
-    },
-    reconnectOnError: (err) => {
-      const targetError = 'READONLY';
-      if (err.message.includes(targetError)) {
-        return true; // or `return 1;`
-      }
-      return false;
-    },
-    lazyConnect: true, // Don't connect immediately during build
+  new Redis(getRedisURL(), {
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false,
+    lazyConnect: true,
+    retryStrategy: () => null, // Don't retry during build
+    reconnectOnError: () => false,
   });
 
-// Handle connection errors gracefully during build
-redis.on('error', (err) => {
-  if (process.env.NODE_ENV === 'production' || process.env.NEXT_PHASE === 'phase-production-build') {
-    console.warn('Redis connection error (expected during build):', err.message);
-  } else {
-    console.error('Redis error:', err);
-  }
+// Suppress error events during build
+redis.on('error', () => {
+  // Silently ignore errors during build
 });
 
 if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis;

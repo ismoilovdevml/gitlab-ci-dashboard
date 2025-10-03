@@ -7,9 +7,9 @@ services:
     container_name: gitlab-dashboard-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: gitlab_dashboard
-      POSTGRES_PASSWORD: gitlab_dashboard_2024
-      POSTGRES_DB: gitlab_dashboard
+      POSTGRES_USER: ${POSTGRES_USER:-gitlab_dashboard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gitlab_dashboard_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-gitlab_dashboard}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -27,7 +27,7 @@ services:
     image: redis:7-alpine
     container_name: gitlab-dashboard-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass redis_2024
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_2024}
     volumes:
       - redis_data:/data
     ports:
@@ -54,10 +54,10 @@ services:
         condition: service_healthy
     environment:
       # Database
-      DATABASE_URL: postgresql://gitlab_dashboard:gitlab_dashboard_2024@postgres:5432/gitlab_dashboard?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-gitlab_dashboard}:${POSTGRES_PASSWORD:-gitlab_dashboard_2024}@postgres:5432/${POSTGRES_DB:-gitlab_dashboard}?schema=public
 
       # Redis
-      REDIS_URL: redis://:redis_2024@redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_2024}@redis:6379
 
       # App Config
       NODE_ENV: production

@@ -911,32 +911,71 @@ let gitlabApiInstance: GitLabAPI | null = null;
 let cachedUrl: string | null = null;
 let cachedToken: string | null = null;
 
+// Helper to fetch config from API (browser only)
+async function fetchConfigFromAPI(): Promise<{ url: string; token: string } | null> {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const response = await fetch('/api/config');
+    if (!response.ok) return null;
+
+    const config = await response.json();
+    return {
+      url: config.url || 'https://gitlab.com',
+      token: config.token || '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function getGitLabAPI(customUrl?: string, customToken?: string): GitLabAPI {
   const url = customUrl ||
-               (typeof window !== 'undefined' ? localStorage.getItem('gitlab-dashboard-storage') : null) ||
                process.env.GITLAB_URL ||
                process.env.NEXT_PUBLIC_GITLAB_URL ||
                'https://gitlab.com';
 
-  let token = customToken || process.env.GITLAB_TOKEN || process.env.NEXT_PUBLIC_GITLAB_TOKEN || '';
-
-  // Try to get token from localStorage if in browser
-  if (typeof window !== 'undefined' && !token) {
-    try {
-      const stored = localStorage.getItem('gitlab-dashboard-storage');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        token = parsed.state?.gitlabToken || '';
-      }
-    } catch {
-      // Ignore parsing errors
-    }
-  }
+  const token = customToken ||
+                process.env.GITLAB_TOKEN ||
+                process.env.NEXT_PUBLIC_GITLAB_TOKEN ||
+                '';
 
   // Recreate instance if URL or token changed
   if (!gitlabApiInstance || cachedUrl !== url || cachedToken !== token) {
     if (!token) {
       throw new Error('GitLab token not configured');
+    }
+
+    gitlabApiInstance = new GitLabAPI(url, token);
+    cachedUrl = url;
+    cachedToken = token;
+  }
+
+  return gitlabApiInstance;
+}
+
+// Async version that fetches from database API
+export async function getGitLabAPIAsync(customUrl?: string, customToken?: string): Promise<GitLabAPI> {
+  let url = customUrl;
+  let token = customToken;
+
+  // If not provided, try to fetch from API
+  if (!url || !token) {
+    const config = await fetchConfigFromAPI();
+    if (config) {
+      url = url || config.url;
+      token = token || config.token;
+    }
+  }
+
+  // Fallback to env vars
+  url = url || process.env.GITLAB_URL || process.env.NEXT_PUBLIC_GITLAB_URL || 'https://gitlab.com';
+  token = token || process.env.GITLAB_TOKEN || process.env.NEXT_PUBLIC_GITLAB_TOKEN || '';
+
+  // Recreate instance if URL or token changed
+  if (!gitlabApiInstance || cachedUrl !== url || cachedToken !== token) {
+    if (!token) {
+      throw new Error('GitLab token not configured. Please configure it in Settings.');
     }
 
     gitlabApiInstance = new GitLabAPI(url, token);
