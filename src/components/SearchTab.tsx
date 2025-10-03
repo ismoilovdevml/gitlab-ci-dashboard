@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Search, Filter, Save, X, Calendar, User, GitBranch, CheckCircle, XCircle, Clock, Loader2, ExternalLink } from 'lucide-react'
 import { useDashboardStore } from '@/store/dashboard-store'
 import { getGitLabAPI } from '@/lib/gitlab-api'
 import type { Pipeline, Job } from '@/lib/gitlab-api'
+import { debounce, gitlabThrottler } from '@/lib/api-throttle'
 
 interface SavedFilter {
   id: string
@@ -66,6 +67,23 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
     }
   }, [])
 
+  // Debounced search - wait 500ms after user stops typing
+  const debouncedSearch = useMemo(
+    () => debounce(() => {
+      handleSearch()
+    }, 500),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searchQuery, statusFilter, dateRange, selectedProjectFilter, selectedUser]
+  )
+
+  // Auto-search when filters change (debounced)
+  useEffect(() => {
+    if (searchQuery.trim() || statusFilter !== 'all' || dateRange !== 'all') {
+      debouncedSearch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, statusFilter, dateRange, selectedProjectFilter, selectedUser])
+
   const handleSearch = async () => {
     if (!searchQuery.trim() && statusFilter === 'all' && dateRange === 'all') {
       return
@@ -116,10 +134,14 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
         })
       }
 
-      // Search in pipelines
+      // Search in pipelines with throttling
       for (const project of projectsToSearch) {
         try {
-          const pipelines = await api.getPipelines(project.id)
+          // Throttle API request to respect rate limits
+          const pipelines = await gitlabThrottler.throttle(
+            () => api.getPipelines(project.id),
+            7 // Priority 7 for pipelines
+          ) as Pipeline[]
 
           pipelines.forEach((pipeline: Pipeline) => {
             let matches = true
@@ -178,14 +200,20 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
         }
       }
 
-      // Search in jobs (limited to first 5 projects for performance)
-      for (const project of projectsToSearch.slice(0, 5)) {
+      // Search in jobs (limited to first 3 projects for performance and API limits)
+      for (const project of projectsToSearch.slice(0, 3)) {
         try {
-          const pipelines = await api.getPipelines(project.id)
+          const pipelines = await gitlabThrottler.throttle(
+            () => api.getPipelines(project.id),
+            5 // Lower priority for jobs search
+          ) as Pipeline[]
 
-          for (const pipeline of pipelines.slice(0, 3)) { // Limit to 3 recent pipelines per project
+          for (const pipeline of pipelines.slice(0, 2)) { // Limit to 2 recent pipelines per project
             try {
-              const jobs = await api.getPipelineJobs(project.id, pipeline.id)
+              const jobs = await gitlabThrottler.throttle(
+                () => api.getPipelineJobs(project.id, pipeline.id),
+                5 // Lower priority
+              ) as Job[]
 
               jobs.forEach((job: Job) => {
                 let matches = true

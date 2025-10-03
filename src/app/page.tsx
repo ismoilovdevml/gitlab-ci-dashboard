@@ -12,6 +12,7 @@ import ArtifactsTab from '@/components/ArtifactsTab';
 import ContainerRegistryTab from '@/components/ContainerRegistryTab';
 import SettingsTab from '@/components/SettingsTab';
 import NotificationToast from '@/components/NotificationToast';
+import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
 
 export default function Home() {
@@ -62,6 +63,7 @@ export default function Home() {
         </div>
       </main>
       <NotificationToast />
+      <ApiRateLimitIndicator />
     </div>
   );
 }
