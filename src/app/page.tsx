@@ -14,6 +14,7 @@ const RunnersTab = lazy(() => import('@/components/RunnersTab'));
 const InsightsTab = lazy(() => import('@/components/InsightsTab'));
 const ArtifactsTab = lazy(() => import('@/components/ArtifactsTab'));
 const ContainerRegistryTab = lazy(() => import('@/components/ContainerRegistryTab'));
+const AlertingTab = lazy(() => import('@/components/AlertingTab'));
 const SettingsTab = lazy(() => import('@/components/SettingsTab'));
 
 export default function Home() {
@@ -72,6 +73,12 @@ export default function Home() {
         return (
           <Suspense fallback={<LoadingSpinner />}>
             <ContainerRegistryTab />
+          </Suspense>
+        );
+      case 'alerting':
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <AlertingTab />
           </Suspense>
         );
       case 'settings':
