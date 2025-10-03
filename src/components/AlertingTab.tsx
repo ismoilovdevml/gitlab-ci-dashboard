@@ -118,9 +118,9 @@ export default function AlertingTab() {
       const rules = await rulesApi.getAll();
       setAlertRules(rules.map(r => ({ ...r, id: r.id || '', createdAt: r.createdAt || new Date().toISOString() })));
 
-      // Load history
-      const history = await historyApi.getAll(100);
-      setAlertHistory(history.map((h) => ({
+      // Load history (first 50 with pagination support)
+      const historyResponse = await historyApi.getAll(50);
+      setAlertHistory(historyResponse.data.map((h) => ({
         ...h,
         timestamp: h.timestamp || new Date().toISOString(),
       })));

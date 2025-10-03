@@ -35,3 +35,8 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# PWA generated files
+/public/sw.js
+/public/swe-worker-*.js
+/public/workbox-*.js

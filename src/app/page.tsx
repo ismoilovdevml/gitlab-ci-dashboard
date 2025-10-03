@@ -6,6 +6,7 @@ import Overview from '@/components/Overview';
 import NotificationToast from '@/components/NotificationToast';
 import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
+import { useConfigLoader } from '@/hooks/useConfigLoader';
 // import { usePipelineAlerts } from '@/hooks/usePipelineAlerts'; // Disabled - using webhooks now
 
 // Lazy load heavy components
@@ -21,6 +22,9 @@ const SettingsTab = lazy(() => import('@/components/SettingsTab'));
 export default function Home() {
   const [activeTab, setActiveTab] = useState('overview');
   const { theme } = useDashboardStore();
+
+  // Load config from database on mount (ALL PAGES)
+  useConfigLoader();
 
   // Enable pipeline alerts monitoring (DISABLED - using webhooks now for instant alerts)
   // usePipelineAlerts();

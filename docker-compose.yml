@@ -63,6 +63,9 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_APP_URL: http://localhost:3000
 
+      # Security
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-12f0a74ec4f77e92c181e67533d874ccdff08cd52d6c4c3e8e849c5a9009fb67}
+
       # GitLab (can be overridden at runtime)
       NEXT_PUBLIC_GITLAB_URL: https://gitlab.com
       NEXT_PUBLIC_GITLAB_TOKEN: ""

@@ -12,6 +12,12 @@ export default function SettingsTab() {
   const {
     theme: currentTheme,
     setTheme,
+    setGitlabUrl: setStoreGitlabUrl,
+    setGitlabToken: setStoreGitlabToken,
+    setAutoRefresh: setStoreAutoRefresh,
+    setRefreshInterval: setStoreRefreshInterval,
+    setNotifyPipelineFailures: setStoreNotifyPipelineFailures,
+    setNotifyPipelineSuccess: setStoreNotifyPipelineSuccess,
   } = useDashboardStore();
 
   // Load config from database API instead of Zustand
@@ -39,19 +45,39 @@ export default function SettingsTab() {
         const response = await axios.get('/api/config');
         const config = response.data;
 
-        setGitlabUrl(config.url || 'https://gitlab.com');
-        setGitlabToken(config.token || '');
+        // Update local state
+        const url = config.url || 'https://gitlab.com';
+        const token = config.token || '';
+
+        setGitlabUrl(url);
+        setGitlabToken(token);
+        setLocalUrl(url);  // Also update input field state
+        setLocalToken(token);  // Also update input field state
         setAutoRefresh(config.autoRefresh ?? true);
         setRefreshInterval(config.refreshInterval ?? 10000);
         setNotifyPipelineFailures(config.notifyPipelineFailures ?? true);
         setNotifyPipelineSuccess(config.notifyPipelineSuccess ?? false);
+
+        // Update Zustand store
+        setStoreGitlabUrl(url);
+        setStoreGitlabToken(token);
+        setStoreAutoRefresh(config.autoRefresh ?? true);
+        setStoreRefreshInterval(config.refreshInterval ?? 10000);
+        setStoreNotifyPipelineFailures(config.notifyPipelineFailures ?? true);
+        setStoreNotifyPipelineSuccess(config.notifyPipelineSuccess ?? false);
       } catch (error) {
         console.error('Failed to load config:', error);
       }
     };
 
     loadConfig();
-  }, []);
+  }, [setStoreGitlabUrl, setStoreGitlabToken, setStoreAutoRefresh, setStoreRefreshInterval, setStoreNotifyPipelineFailures, setStoreNotifyPipelineSuccess]);
+
+  // Sync input fields when gitlabUrl/gitlabToken change
+  useEffect(() => {
+    setLocalUrl(gitlabUrl);
+    setLocalToken(gitlabToken);
+  }, [gitlabUrl, gitlabToken]);
 
   const refreshIntervals = [
     { value: 5000, label: '5 seconds' },
@@ -162,12 +188,15 @@ export default function SettingsTab() {
   };
 
   const handleSaveGitLabConfig = async () => {
+    console.log('🔄 Starting save process...');
     const isConnected = await testGitLabConnection();
+    console.log('✅ Connection test result:', isConnected);
 
     if (isConnected) {
       try {
+        console.log('📤 Sending config to API...');
         // Save to database via API
-        await axios.post('/api/config', {
+        const response = await axios.post('/api/config', {
           url: localUrl,
           token: localToken,
           autoRefresh,
@@ -176,19 +205,39 @@ export default function SettingsTab() {
           notifyPipelineFailures,
           notifyPipelineSuccess,
         });
+        console.log('✅ Save response:', response.data);
 
+        // Update local state
         setGitlabUrl(localUrl);
         setGitlabToken(localToken);
+
+        // Update Zustand store
+        setStoreGitlabUrl(localUrl);
+        setStoreGitlabToken(localToken);
+        setStoreAutoRefresh(autoRefresh);
+        setStoreRefreshInterval(refreshInterval);
+        setStoreNotifyPipelineFailures(notifyPipelineFailures);
+        setStoreNotifyPipelineSuccess(notifyPipelineSuccess);
+
         setSaved(true);
+        notifySuccess('Configuration Saved', 'Settings saved successfully to database');
 
         setTimeout(() => {
           setSaved(false);
           window.location.reload();
         }, 1500);
       } catch (error) {
-        console.error('Failed to save config:', error);
-        notifyError('Save Failed', 'Could not save configuration to database');
+        console.error('❌ Failed to save config:', error);
+        if (axios.isAxiosError(error)) {
+          console.error('Response data:', error.response?.data);
+          console.error('Response status:', error.response?.status);
+          notifyError('Save Failed', error.response?.data?.error || 'Could not save configuration to database');
+        } else {
+          notifyError('Save Failed', 'Could not save configuration to database');
+        }
       }
+    } else {
+      console.log('❌ Connection test failed, not saving');
     }
   };
 

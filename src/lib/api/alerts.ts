@@ -134,8 +134,18 @@ export const rulesApi = {
 
 // History API
 export const historyApi = {
-  async getAll(limit = 100): Promise<AlertHistory[]> {
-    const res = await fetch(`/api/history?limit=${limit}`);
+  async getAll(limit = 50, cursor?: string): Promise<{
+    data: AlertHistory[];
+    pagination: {
+      hasMore: boolean;
+      nextCursor: string | null;
+      limit: number;
+    };
+  }> {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    if (cursor) params.append('cursor', cursor);
+
+    const res = await fetch(`/api/history?${params}`);
     if (!res.ok) throw new Error('Failed to fetch history');
     return res.json();
   },

@@ -15,10 +15,14 @@ const getRedisURL = (): string => {
   const host = process.env.REDIS_HOST;
   const port = process.env.REDIS_PORT;
 
-  // In production, require env vars to be set
-  if (process.env.NODE_ENV === 'production') {
+  // In production RUNTIME (not build time), require env vars
+  // Skip check during build (NEXT_PHASE === 'phase-production-build')
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.NEXT_PHASE !== 'phase-production-build'
+  ) {
     if (!password || !host || !port) {
-      throw new Error(
+      console.warn(
         'Redis configuration missing. Set REDIS_URL or REDIS_PASSWORD, REDIS_HOST, REDIS_PORT environment variables.'
       );
     }
@@ -32,15 +36,30 @@ const getRedisURL = (): string => {
   return `redis://:${finalPassword}@${finalHost}:${finalPort}`;
 };
 
-export const redis =
-  globalForRedis.redis ??
-  new Redis(getRedisURL(), {
-    maxRetriesPerRequest: 1,
-    enableOfflineQueue: false,
-    lazyConnect: true,
-    retryStrategy: () => null, // Don't retry during build
-    reconnectOnError: () => false,
+const createRedisClient = () => {
+  // During build phase, create a dummy client that won't connect
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return new Redis(getRedisURL(), {
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      lazyConnect: true,
+      retryStrategy: () => null,
+      reconnectOnError: () => false,
+    });
+  }
+
+  // Runtime: create a real connected client
+  return new Redis(getRedisURL(), {
+    maxRetriesPerRequest: 3,
+    enableOfflineQueue: true,
+    retryStrategy: (times) => {
+      if (times > 3) return null;
+      return Math.min(times * 100, 2000);
+    },
   });
+};
+
+export const redis = globalForRedis.redis ?? createRedisClient();
 
 // Suppress error events during build
 redis.on('error', () => {

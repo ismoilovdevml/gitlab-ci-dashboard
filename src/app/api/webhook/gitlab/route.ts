@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { cacheHelpers } from '@/lib/db/redis';
 
 interface GitLabWebhookPayload {
   object_kind: string;
@@ -79,14 +80,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Get alert rules and channels
+    // Get alert rules and channels (cached for 60 seconds to prevent N+1 query problem)
     const [rules, channels] = await Promise.all([
-      prisma.alertRule.findMany({
-        where: { enabled: true },
-      }),
-      prisma.alertChannel.findMany({
-        where: { enabled: true },
-      }),
+      cacheHelpers.getOrSet(
+        'alert:active-rules',
+        async () => await prisma.alertRule.findMany({ where: { enabled: true } }),
+        60 // Cache for 60 seconds
+      ),
+      cacheHelpers.getOrSet(
+        'alert:active-channels',
+        async () => await prisma.alertChannel.findMany({ where: { enabled: true } }),
+        60 // Cache for 60 seconds
+      ),
     ]);
 
     console.log('📋 Alert rules:', rules.length);
