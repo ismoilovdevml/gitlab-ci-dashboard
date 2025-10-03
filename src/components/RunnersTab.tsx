@@ -11,6 +11,7 @@ export default function RunnersTab() {
   const { runners, setRunners } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadRunners();
@@ -20,11 +21,19 @@ export default function RunnersTab() {
   const loadRunners = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const api = getGitLabAPI();
-      const runnersList = await api.getRunners(1, 50);
+      const runnersList = await api.getRunners(1, 100);
       setRunners(runnersList);
+
+      if (runnersList.length === 0) {
+        console.log('No runners found. This might be because:');
+        console.log('1. You have no runners configured');
+        console.log('2. You lack admin permissions (trying project runners fallback)');
+      }
     } catch (error) {
       console.error('Failed to load runners:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load runners');
     } finally {
       setIsLoading(false);
     }
@@ -45,96 +54,135 @@ export default function RunnersTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Runners</h1>
-        <p className={textSecondary}>GitLab CI/CD runners status</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Runners</h1>
+          <p className={textSecondary}>GitLab CI/CD runners status</p>
+        </div>
+        <button
+          onClick={loadRunners}
+          disabled={isLoading}
+          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          <Server className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {runners.map((runner) => (
-          <div
-            key={runner.id}
-            className={`rounded-xl p-6 transition-all ${card} ${
-              theme === 'light'
-                ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
-                : 'hover:border-zinc-700'
-            }`}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <Server className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className={`font-semibold ${textPrimary}`}>
-                    {runner.description || runner.name || `Runner #${runner.id}`}
-                  </h3>
-                  <p className={`text-xs ${textSecondary}`}>
-                    {runner.runner_type} {runner.is_shared ? '• Shared' : ''}
-                  </p>
-                </div>
-              </div>
-              <div className={cn(
-                'px-3 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-2',
-                getRunnerStatusColor(runner.status)
-              )}>
-                <Circle className={cn('w-2 h-2 fill-current', runner.online && 'animate-pulse')} />
-                <span>{runner.status}</span>
-              </div>
-            </div>
+      {error && (
+        <div className={`rounded-xl p-4 border ${
+          theme === 'light'
+            ? 'bg-red-50 border-red-200 text-red-800'
+            : 'bg-red-500/10 border-red-500/20 text-red-400'
+        }`}>
+          <p className="font-semibold">Error loading runners:</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      )}
 
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className={textSecondary}>IP Address:</span>
-                <span className={`font-mono ${textPrimary}`}>{runner.ip_address || 'N/A'}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className={textSecondary}>Platform:</span>
-                <span className={textPrimary}>{runner.platform || 'N/A'}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className={textSecondary}>Architecture:</span>
-                <span className={textPrimary}>{runner.architecture || 'N/A'}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className={textSecondary}>Last Contact:</span>
-                <span className={textPrimary}>
-                  {runner.contacted_at ? formatRelativeTime(runner.contacted_at) : 'Never'}
-                </span>
-              </div>
-            </div>
-
-            {runner.projects && runner.projects.length > 0 && (
-              <div className={`pt-4 border-t ${theme === 'light' ? 'border-[#d2d2d7]' : 'border-zinc-800'}`}>
-                <p className={`text-xs mb-2 ${textSecondary}`}>Associated Projects:</p>
-                <div className="flex flex-wrap gap-2">
-                  {runner.projects.slice(0, 3).map((project) => (
-                    <span
-                      key={project.id}
-                      className={`text-xs px-2 py-1 rounded ${
-                        theme === 'light' ? 'bg-[#f5f5f7] text-[#6e6e73] border border-[#d2d2d7]' : 'bg-zinc-800 text-zinc-300'
-                      }`}
-                    >
-                      {project.name}
-                    </span>
-                  ))}
-                  {runner.projects.length > 3 && (
-                    <span className={`text-xs ${textSecondary}`}>
-                      +{runner.projects.length - 3} more
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {runners.length === 0 && !isLoading && (
+      {isLoading && runners.length === 0 ? (
+        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className={textSecondary}>Loading runners...</p>
+        </div>
+      ) : runners.length === 0 ? (
         <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
           <Server className={`w-16 h-16 mx-auto mb-4 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
           <p className={`text-lg ${textSecondary}`}>No runners found</p>
-          <p className={`text-sm mt-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'}`}>Configure runners to execute CI/CD jobs</p>
+          <p className={`text-sm mt-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'}`}>
+            This might happen if:
+          </p>
+          <ul className={`text-sm mt-2 ${textSecondary} text-left max-w-md mx-auto`}>
+            <li>• No runners are configured for your projects</li>
+            <li>• You don&apos;t have admin access to view all runners</li>
+            <li>• Your projects use shared runners only</li>
+          </ul>
+          <button
+            onClick={loadRunners}
+            className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {runners.map((runner) => (
+            <div
+              key={runner.id}
+              className={`rounded-xl p-6 transition-all ${card} ${
+                theme === 'light'
+                  ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                  : 'hover:border-zinc-700'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <Server className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`font-semibold ${textPrimary}`}>
+                      {runner.description || runner.name || `Runner #${runner.id}`}
+                    </h3>
+                    <p className={`text-xs ${textSecondary}`}>
+                      {runner.runner_type} {runner.is_shared ? '• Shared' : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className={cn(
+                  'px-3 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-2',
+                  getRunnerStatusColor(runner.status)
+                )}>
+                  <Circle className={cn('w-2 h-2 fill-current', runner.online && 'animate-pulse')} />
+                  <span>{runner.status}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className={textSecondary}>IP Address:</span>
+                  <span className={`font-mono ${textPrimary}`}>{runner.ip_address || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={textSecondary}>Platform:</span>
+                  <span className={textPrimary}>{runner.platform || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={textSecondary}>Architecture:</span>
+                  <span className={textPrimary}>{runner.architecture || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={textSecondary}>Last Contact:</span>
+                  <span className={textPrimary}>
+                    {runner.contacted_at ? formatRelativeTime(runner.contacted_at) : 'Never'}
+                  </span>
+                </div>
+              </div>
+
+              {runner.projects && runner.projects.length > 0 && (
+                <div className={`pt-4 border-t ${theme === 'light' ? 'border-[#d2d2d7]' : 'border-zinc-800'}`}>
+                  <p className={`text-xs mb-2 ${textSecondary}`}>Associated Projects:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {runner.projects.slice(0, 3).map((project) => (
+                      <span
+                        key={project.id}
+                        className={`text-xs px-2 py-1 rounded ${
+                          theme === 'light' ? 'bg-[#f5f5f7] text-[#6e6e73] border border-[#d2d2d7]' : 'bg-zinc-800 text-zinc-300'
+                        }`}
+                      >
+                        {project.name}
+                      </span>
+                    ))}
+                    {runner.projects.length > 3 && (
+                      <span className={`text-xs ${textSecondary}`}>
+                        +{runner.projects.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -354,15 +354,45 @@ class GitLabAPI {
   // Runners
   async getRunners(page = 1, perPage = 20): Promise<Runner[]> {
     return cachedFetch(
-      `/runners/all?page=${page}&perPage=${perPage}`,
+      `/runners?page=${page}&perPage=${perPage}`,
       async () => {
-        const response = await this.api.get('/runners/all', {
-          params: {
-            per_page: perPage,
-            page,
-          },
-        });
-        return response.data;
+        try {
+          // Try to get all runners (requires admin access)
+          const response = await this.api.get('/runners/all', {
+            params: {
+              per_page: perPage,
+              page,
+            },
+          });
+          return response.data;
+        } catch {
+          console.log('Admin access not available, fetching project runners...');
+
+          // Fallback: Get runners from user's projects
+          try {
+            const projects = await this.getProjects(1, 50);
+            const runnerSets = await Promise.all(
+              projects.map(project =>
+                this.api.get(`/projects/${project.id}/runners`, {
+                  params: { per_page: 20 }
+                }).then(res => res.data).catch(() => [])
+              )
+            );
+
+            // Deduplicate runners by ID
+            const runnersMap = new Map<number, Runner>();
+            runnerSets.flat().forEach((runner: Runner) => {
+              if (!runnersMap.has(runner.id)) {
+                runnersMap.set(runner.id, runner);
+              }
+            });
+
+            return Array.from(runnersMap.values());
+          } catch (fallbackError) {
+            console.error('Failed to fetch runners from projects:', fallbackError);
+            return [];
+          }
+        }
       },
       CacheTTL.MEDIUM // 2 minutes cache for runners
     );
