@@ -5,16 +5,11 @@ import { Activity } from 'lucide-react'
 import { gitlabThrottler } from '@/lib/api-throttle'
 
 export default function ApiRateLimitIndicator() {
-  const [status, setStatus] = useState({ queueLength: 0, processing: false })
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
       const currentStatus = gitlabThrottler.getStatus()
-      setStatus({
-        queueLength: currentStatus.queueLength,
-        processing: currentStatus.processing
-      })
 
       // UNLIMITED mode: Show only when processing
       setIsVisible(currentStatus.processing)

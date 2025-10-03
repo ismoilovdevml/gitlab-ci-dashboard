@@ -32,7 +32,7 @@ class APIThrottler {
    * Check if we can make a request without hitting rate limit
    * UNLIMITED MODE: Always returns true
    */
-  private canMakeRequest(_key: string): boolean {
+  private canMakeRequest(): boolean {
     // UNLIMITED: No rate limiting
     return true
   }
@@ -41,7 +41,7 @@ class APIThrottler {
    * Record a request
    * UNLIMITED MODE: No-op
    */
-  private recordRequest(_key: string): void {
+  private recordRequest(): void {
     // UNLIMITED: No tracking needed
   }
 

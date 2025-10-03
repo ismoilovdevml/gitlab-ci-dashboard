@@ -1,10 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 
-interface UseInfiniteScrollOptions {
-  threshold?: number // Distance from bottom to trigger load (in pixels)
-  rootMargin?: string // IntersectionObserver rootMargin
-}
-
 interface UseInfiniteScrollReturn {
   hasMore: boolean
   isLoading: boolean
@@ -20,16 +15,9 @@ interface UseInfiniteScrollReturn {
  * Custom hook for implementing infinite scroll pagination
  *
  * @example
- * const { observerTarget, hasMore, isLoading, page, setHasMore, setIsLoading, setPage, resetPagination } = useInfiniteScroll({
- *   threshold: 100,
- *   onLoadMore: async (page) => {
- *     const data = await fetchData(page)
- *     if (data.length === 0) setHasMore(false)
- *     return data
- *   }
- * })
+ * const { observerTarget, hasMore, isLoading, page, setHasMore, setIsLoading, setPage, resetPagination } = useInfiniteScroll()
  */
-export function useInfiniteScroll(_options: UseInfiniteScrollOptions = {}): UseInfiniteScrollReturn {
+export function useInfiniteScroll(): UseInfiniteScrollReturn {
   const [hasMore, setHasMore] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [page, setPage] = useState(1)

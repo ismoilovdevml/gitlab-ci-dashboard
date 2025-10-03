@@ -104,7 +104,7 @@ export default function SettingsTab() {
         if (typeof settings.notifyPipelineSuccess === 'boolean') setNotifyPipelineSuccess(settings.notifyPipelineSuccess);
 
         notifySuccess('Settings Imported', 'Applied settings from file. GitLab URL updated - please add your token and test connection.');
-      } catch (error) {
+      } catch {
         notifyError('Import Failed', 'Invalid settings file');
       }
     };
