@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, RefreshCw, Bell, Moon, Eye, EyeOff, Save, AlertCircle, Zap, Trash2, Download, Upload } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -10,21 +10,17 @@ import axios from 'axios';
 
 export default function SettingsTab() {
   const {
-    autoRefresh,
-    refreshInterval,
-    gitlabUrl,
-    gitlabToken,
     theme: currentTheme,
-    notifyPipelineFailures,
-    notifyPipelineSuccess,
-    setAutoRefresh,
-    setRefreshInterval,
-    setGitlabUrl,
-    setGitlabToken,
     setTheme,
-    setNotifyPipelineFailures,
-    setNotifyPipelineSuccess,
   } = useDashboardStore();
+
+  // Load config from database API instead of Zustand
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(10000);
+  const [gitlabUrl, setGitlabUrl] = useState('https://gitlab.com');
+  const [gitlabToken, setGitlabToken] = useState('');
+  const [notifyPipelineFailures, setNotifyPipelineFailures] = useState(true);
+  const [notifyPipelineSuccess, setNotifyPipelineSuccess] = useState(false);
 
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
   const { theme, card, textPrimary, textSecondary } = useTheme();
@@ -35,6 +31,27 @@ export default function SettingsTab() {
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [cacheStats, setCacheStats] = useState({ size: 0, entries: 0 });
+
+  // Load config from database on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = await axios.get('/api/config');
+        const config = response.data;
+
+        setGitlabUrl(config.url || 'https://gitlab.com');
+        setGitlabToken(config.token || '');
+        setAutoRefresh(config.autoRefresh ?? true);
+        setRefreshInterval(config.refreshInterval ?? 10000);
+        setNotifyPipelineFailures(config.notifyPipelineFailures ?? true);
+        setNotifyPipelineSuccess(config.notifyPipelineSuccess ?? false);
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    };
+
+    loadConfig();
+  }, []);
 
   const refreshIntervals = [
     { value: 5000, label: '5 seconds' },
@@ -148,14 +165,30 @@ export default function SettingsTab() {
     const isConnected = await testGitLabConnection();
 
     if (isConnected) {
-      setGitlabUrl(localUrl);
-      setGitlabToken(localToken);
-      setSaved(true);
+      try {
+        // Save to database via API
+        await axios.post('/api/config', {
+          url: localUrl,
+          token: localToken,
+          autoRefresh,
+          refreshInterval,
+          theme: currentTheme,
+          notifyPipelineFailures,
+          notifyPipelineSuccess,
+        });
 
-      setTimeout(() => {
-        setSaved(false);
-        window.location.reload();
-      }, 1500);
+        setGitlabUrl(localUrl);
+        setGitlabToken(localToken);
+        setSaved(true);
+
+        setTimeout(() => {
+          setSaved(false);
+          window.location.reload();
+        }, 1500);
+      } catch (error) {
+        console.error('Failed to save config:', error);
+        notifyError('Save Failed', 'Could not save configuration to database');
+      }
     }
   };
 

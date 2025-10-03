@@ -5,15 +5,31 @@ const globalForRedis = globalThis as unknown as {
 };
 
 const getRedisURL = (): string => {
+  // Use REDIS_URL if provided
   if (process.env.REDIS_URL) {
     return process.env.REDIS_URL;
   }
 
-  const password = process.env.REDIS_PASSWORD || 'redis_2024';
-  const host = process.env.REDIS_HOST || 'localhost';
-  const port = process.env.REDIS_PORT || '6379';
+  // Construct from individual env vars
+  const password = process.env.REDIS_PASSWORD;
+  const host = process.env.REDIS_HOST;
+  const port = process.env.REDIS_PORT;
 
-  return `redis://:${password}@${host}:${port}`;
+  // In production, require env vars to be set
+  if (process.env.NODE_ENV === 'production') {
+    if (!password || !host || !port) {
+      throw new Error(
+        'Redis configuration missing. Set REDIS_URL or REDIS_PASSWORD, REDIS_HOST, REDIS_PORT environment variables.'
+      );
+    }
+  }
+
+  // Development fallback values
+  const finalPassword = password || 'redis_2024';
+  const finalHost = host || 'localhost';
+  const finalPort = port || '6379';
+
+  return `redis://:${finalPassword}@${finalHost}:${finalPort}`;
 };
 
 export const redis =

@@ -60,12 +60,8 @@ export const useDashboardStore = create<DashboardStore>()(
       error: null,
       autoRefresh: true,
       refreshInterval: 10000, // 10 seconds
-      gitlabUrl: typeof window !== 'undefined'
-        ? (process.env.NEXT_PUBLIC_GITLAB_URL || 'https://gitlab.com')
-        : 'https://gitlab.com',
-      gitlabToken: typeof window !== 'undefined'
-        ? (process.env.NEXT_PUBLIC_GITLAB_TOKEN || '')
-        : '',
+      gitlabUrl: 'https://gitlab.com', // Default value, loaded from database
+      gitlabToken: '', // Not persisted in localStorage anymore
       theme: 'dark',
       notifyPipelineFailures: true,
       notifyPipelineSuccess: false,
@@ -95,14 +91,9 @@ export const useDashboardStore = create<DashboardStore>()(
     }),
     {
       name: 'gitlab-dashboard-storage',
+      // Only persist theme preference - NO sensitive data!
       partialize: (state) => ({
-        autoRefresh: state.autoRefresh,
-        refreshInterval: state.refreshInterval,
-        gitlabUrl: state.gitlabUrl,
-        gitlabToken: state.gitlabToken,
         theme: state.theme,
-        notifyPipelineFailures: state.notifyPipelineFailures,
-        notifyPipelineSuccess: state.notifyPipelineSuccess,
       }),
     }
   )
