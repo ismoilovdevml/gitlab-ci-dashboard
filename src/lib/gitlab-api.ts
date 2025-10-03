@@ -238,6 +238,21 @@ class GitLabAPI {
     });
   }
 
+  // Health check - no cache
+  async checkConnection(): Promise<boolean> {
+    try {
+      const response = await this.api.get('/projects', {
+        params: {
+          per_page: 1,
+          page: 1,
+        },
+      });
+      return response.status === 200;
+    } catch {
+      return false;
+    }
+  }
+
   // Projects
   async getProjects(page = 1, perPage = 20): Promise<Project[]> {
     return cachedFetch(
@@ -493,18 +508,21 @@ class GitLabAPI {
 
   // CI/CD Insights
   async getInsightsSummary(days = 30): Promise<InsightsSummary> {
-    // Limit to 20 projects and 50 pipelines per project
-    const projects = await this.getProjects(1, 20);
-    const since = new Date();
-    since.setDate(since.getDate() - days);
+    return cachedFetch(
+      `/insights/summary?days=${days}`,
+      async () => {
+        // Limit to 10 projects and 30 pipelines per project
+        const projects = await this.getProjects(1, 10);
+        const since = new Date();
+        since.setDate(since.getDate() - days);
 
-    const pipelinePromises = projects.map(project =>
-      this.getPipelines(project.id, 1, 50).catch(() => [])
-    );
-    const allPipelines = await Promise.all(pipelinePromises);
-    const pipelines = allPipelines
-      .flat()
-      .filter(p => new Date(p.created_at) >= since);
+        const pipelinePromises = projects.map(project =>
+          this.getPipelines(project.id, 1, 30).catch(() => [])
+        );
+        const allPipelines = await Promise.all(pipelinePromises);
+        const pipelines = allPipelines
+          .flat()
+          .filter(p => new Date(p.created_at) >= since);
 
     const successful = pipelines.filter(p => p.status === 'success').length;
     const failed = pipelines.filter(p => p.status === 'failed').length;
@@ -541,311 +559,351 @@ class GitLabAPI {
 
     const mttr = mttrCount > 0 ? mttrSum / mttrCount : 0;
 
-    return {
-      total_pipelines: total,
-      successful_pipelines: successful,
-      failed_pipelines: failed,
-      success_rate: total > 0 ? (successful / total) * 100 : 0,
-      avg_pipeline_duration: avgDuration,
-      total_deployments: successful,
-      mttr,
-      change_failure_rate: total > 0 ? (failed / total) * 100 : 0,
-    };
+        return {
+          total_pipelines: total,
+          successful_pipelines: successful,
+          failed_pipelines: failed,
+          success_rate: total > 0 ? (successful / total) * 100 : 0,
+          avg_pipeline_duration: avgDuration,
+          total_deployments: successful,
+          mttr,
+          change_failure_rate: total > 0 ? (failed / total) * 100 : 0,
+        };
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
+    );
   }
 
   async getFailureAnalysis(days = 7): Promise<FailureAnalysis[]> {
-    // Limit to top 10 projects to reduce API calls and memory usage
-    const projects = await this.getProjects(1, 10);
-    const since = new Date();
-    since.setDate(since.getDate() - days);
+    return cachedFetch(
+      `/insights/failures?days=${days}`,
+      async () => {
+        // Limit to top 5 projects to reduce API calls
+        const projects = await this.getProjects(1, 5);
+        const since = new Date();
+        since.setDate(since.getDate() - days);
 
-    const failures: FailureAnalysis[] = [];
+        const failures: FailureAnalysis[] = [];
 
-    for (const project of projects) {
-      try {
-        const pipelines = await this.getPipelines(project.id, 1, 20);
-        const failedPipelines = pipelines.filter(p => p.status === 'failed').slice(0, 5);
+        // Process projects in batches to avoid overwhelming the API
+        for (const project of projects) {
+          try {
+            const pipelines = await this.getPipelines(project.id, 1, 10);
+            const failedPipelines = pipelines.filter(p => p.status === 'failed').slice(0, 3);
 
-        for (const pipeline of failedPipelines) {
-          if (new Date(pipeline.created_at) < since) continue;
+            // Batch fetch jobs for all failed pipelines
+            const jobsPromises = failedPipelines.map(pipeline =>
+              this.getPipelineJobs(project.id, pipeline.id).catch(() => [])
+            );
+            const allJobs = await Promise.all(jobsPromises);
 
-          const jobs = await this.getPipelineJobs(project.id, pipeline.id);
-          const failedJobs = jobs.filter(j => j.status === 'failed');
+            failedPipelines.forEach((pipeline, index) => {
+              if (new Date(pipeline.created_at) < since) return;
 
-          for (const job of failedJobs) {
-            const failureReason = `Job ${job.name} failed`;
-            const errorMessage = '';
-            const failureType: FailureAnalysis['failure_type'] = 'script_failure';
+              const jobs = allJobs[index];
+              const failedJobs = jobs.filter(j => j.status === 'failed').slice(0, 2);
 
-            failures.push({
-              job_id: job.id,
-              job_name: job.name,
-              project_name: project.name,
-              failure_reason: failureReason,
-              error_message: errorMessage,
-              failure_type: failureType,
-              failed_at: job.finished_at,
-              duration: job.duration || 0,
-              retry_count: 0,
+              for (const job of failedJobs) {
+                const failureReason = `Job ${job.name} failed`;
+                const errorMessage = '';
+                const failureType: FailureAnalysis['failure_type'] = 'script_failure';
+
+                failures.push({
+                  job_id: job.id,
+                  job_name: job.name,
+                  project_name: project.name,
+                  failure_reason: failureReason,
+                  error_message: errorMessage,
+                  failure_type: failureType,
+                  failed_at: job.finished_at,
+                  duration: job.duration || 0,
+                  retry_count: 0,
+                });
+              }
             });
+          } catch (error) {
+            console.error(`Failed to analyze project ${project.id}:`, error);
           }
         }
-      } catch (error) {
-        console.error(`Failed to analyze project ${project.id}:`, error);
-      }
-    }
 
-    return failures.slice(0, 20); // Return top 20
+        return failures.slice(0, 15); // Return top 15
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
+    );
   }
 
   async getFlakyTests(days = 30): Promise<FlakyTest[]> {
-    // Limit to 10 projects to reduce API calls
-    const projects = await this.getProjects(1, 10);
-    const since = new Date();
-    since.setDate(since.getDate() - days);
+    return cachedFetch(
+      `/insights/flaky-tests?days=${days}`,
+      async () => {
+        // Limit to 5 projects to reduce API calls
+        const projects = await this.getProjects(1, 5);
+        const since = new Date();
+        since.setDate(since.getDate() - days);
 
-    const testStats = new Map<string, {
-      job_name: string;
-      project_name: string;
-      total: number;
-      failed: number;
-      success: number;
-      last_failed: string;
-      recent_results: boolean[];
-    }>();
+        const testStats = new Map<string, {
+          job_name: string;
+          project_name: string;
+          total: number;
+          failed: number;
+          success: number;
+          last_failed: string;
+          recent_results: boolean[];
+        }>();
 
-    for (const project of projects) {
-      try {
-        const jobs = await this.api.get(`/projects/${project.id}/jobs`, {
-          params: {
-            per_page: 50, // Reduced from 100
-            scope: ['success', 'failed'],
-          },
-        });
+        for (const project of projects) {
+          try {
+            const jobs = await this.api.get(`/projects/${project.id}/jobs`, {
+              params: {
+                per_page: 30, // Reduced from 50
+                scope: ['success', 'failed'],
+              },
+            });
 
-        for (const job of jobs.data) {
-          if (new Date(job.created_at) < since) continue;
-          if (!job.name.toLowerCase().includes('test')) continue;
+            for (const job of jobs.data) {
+              if (new Date(job.created_at) < since) continue;
+              if (!job.name.toLowerCase().includes('test')) continue;
 
-          const key = `${project.name}:${job.name}`;
-          const stats = testStats.get(key) || {
-            job_name: job.name,
-            project_name: project.name,
-            total: 0,
-            failed: 0,
-            success: 0,
-            last_failed: '',
-            recent_results: [] as boolean[],
-          };
+              const key = `${project.name}:${job.name}`;
+              const stats = testStats.get(key) || {
+                job_name: job.name,
+                project_name: project.name,
+                total: 0,
+                failed: 0,
+                success: 0,
+                last_failed: '',
+                recent_results: [] as boolean[],
+              };
 
-          stats.total++;
-          const isSuccess = job.status === 'success';
-          stats.recent_results.push(isSuccess);
+              stats.total++;
+              const isSuccess = job.status === 'success';
+              stats.recent_results.push(isSuccess);
 
-          if (job.status === 'failed') {
-            stats.failed++;
-            stats.last_failed = job.finished_at;
-          } else if (job.status === 'success') {
-            stats.success++;
+              if (job.status === 'failed') {
+                stats.failed++;
+                stats.last_failed = job.finished_at;
+              } else if (job.status === 'success') {
+                stats.success++;
+              }
+
+              testStats.set(key, stats);
+            }
+          } catch (error) {
+            console.error(`Failed to get flaky tests for project ${project.id}:`, error);
           }
-
-          testStats.set(key, stats);
-        }
-      } catch (error) {
-        console.error(`Failed to get flaky tests for project ${project.id}:`, error);
-      }
-    }
-
-    const flakyTests: FlakyTest[] = [];
-
-    testStats.forEach((stats) => {
-      if (stats.total < 3) return; // Need at least 3 runs
-      const failureRate = (stats.failed / stats.total) * 100;
-
-      // Flaky if failure rate is between 10% and 90%
-      if (failureRate > 10 && failureRate < 90) {
-        // Calculate trend
-        const recentResults = stats.recent_results.slice(-5);
-        const recentFailures = recentResults.filter(r => !r).length;
-        const olderResults = stats.recent_results.slice(0, -5);
-        const olderFailures = olderResults.filter(r => !r).length;
-
-        let trend: FlakyTest['trend'] = 'stable';
-        if (olderResults.length > 0) {
-          const recentRate = recentFailures / recentResults.length;
-          const olderRate = olderFailures / olderResults.length;
-          if (recentRate < olderRate - 0.1) trend = 'improving';
-          else if (recentRate > olderRate + 0.1) trend = 'worsening';
         }
 
-        flakyTests.push({
-          test_name: stats.job_name,
-          job_name: stats.job_name,
-          project_name: stats.project_name,
-          total_runs: stats.total,
-          failure_count: stats.failed,
-          success_count: stats.success,
-          failure_rate: failureRate,
-          last_failed: stats.last_failed,
-          trend,
+        const flakyTests: FlakyTest[] = [];
+
+        testStats.forEach((stats) => {
+          if (stats.total < 3) return; // Need at least 3 runs
+          const failureRate = (stats.failed / stats.total) * 100;
+
+          // Flaky if failure rate is between 10% and 90%
+          if (failureRate > 10 && failureRate < 90) {
+            // Calculate trend
+            const recentResults = stats.recent_results.slice(-5);
+            const recentFailures = recentResults.filter(r => !r).length;
+            const olderResults = stats.recent_results.slice(0, -5);
+            const olderFailures = olderResults.filter(r => !r).length;
+
+            let trend: FlakyTest['trend'] = 'stable';
+            if (olderResults.length > 0) {
+              const recentRate = recentFailures / recentResults.length;
+              const olderRate = olderFailures / olderResults.length;
+              if (recentRate < olderRate - 0.1) trend = 'improving';
+              else if (recentRate > olderRate + 0.1) trend = 'worsening';
+            }
+
+            flakyTests.push({
+              test_name: stats.job_name,
+              job_name: stats.job_name,
+              project_name: stats.project_name,
+              total_runs: stats.total,
+              failure_count: stats.failed,
+              success_count: stats.success,
+              failure_rate: failureRate,
+              last_failed: stats.last_failed,
+              trend,
+            });
+          }
         });
-      }
-    });
 
-    return flakyTests.sort((a, b) => b.failure_rate - a.failure_rate);
+        return flakyTests.sort((a, b) => b.failure_rate - a.failure_rate).slice(0, 10);
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
+    );
   }
 
   async getPerformanceBottlenecks(days = 30): Promise<PerformanceBottleneck[]> {
-    // Limit to 10 projects to reduce API calls
-    const projects = await this.getProjects(1, 10);
-    const since = new Date();
-    since.setDate(since.getDate() - days);
+    return cachedFetch(
+      `/insights/bottlenecks?days=${days}`,
+      async () => {
+        // Limit to 5 projects to reduce API calls
+        const projects = await this.getProjects(1, 5);
+        const since = new Date();
+        since.setDate(since.getDate() - days);
 
-    const stageStats = new Map<string, {
-      durations: number[];
-      recent_durations: number[];
-    }>();
+        const stageStats = new Map<string, {
+          durations: number[];
+          recent_durations: number[];
+        }>();
 
-    for (const project of projects) {
-      try {
-        const pipelines = await this.getPipelines(project.id, 1, 20);
+        for (const project of projects) {
+          try {
+            const pipelines = await this.getPipelines(project.id, 1, 10);
 
-        for (const pipeline of pipelines.slice(0, 10)) { // Limit to 10 pipelines per project
-          if (new Date(pipeline.created_at) < since) continue;
+            // Batch fetch jobs for all pipelines
+            const jobsPromises = pipelines.slice(0, 5).map(pipeline =>
+              this.getPipelineJobs(project.id, pipeline.id).catch(() => [])
+            );
+            const allJobs = await Promise.all(jobsPromises);
 
-          const jobs = await this.getPipelineJobs(project.id, pipeline.id);
+            pipelines.slice(0, 5).forEach((pipeline, index) => {
+              if (new Date(pipeline.created_at) < since) return;
 
-          for (const job of jobs) {
-            if (!job.duration || job.duration < 1) continue;
+              const jobs = allJobs[index];
 
-            const key = `${project.name}:${job.stage}:${job.name}`;
-            const stats = stageStats.get(key) || {
-              durations: [],
-              recent_durations: [],
-            };
+              for (const job of jobs) {
+                if (!job.duration || job.duration < 1) continue;
 
-            stats.durations.push(job.duration);
-            if (stats.durations.length <= 10) {
-              stats.recent_durations.push(job.duration);
-            }
+                const key = `${project.name}:${job.stage}:${job.name}`;
+                const stats = stageStats.get(key) || {
+                  durations: [],
+                  recent_durations: [],
+                };
 
-            stageStats.set(key, stats);
+                stats.durations.push(job.duration);
+                if (stats.durations.length <= 10) {
+                  stats.recent_durations.push(job.duration);
+                }
+
+                stageStats.set(key, stats);
+              }
+            });
+          } catch (error) {
+            console.error(`Failed to get performance data for project ${project.id}:`, error);
           }
         }
-      } catch (error) {
-        console.error(`Failed to get performance data for project ${project.id}:`, error);
-      }
-    }
 
-    const bottlenecks: PerformanceBottleneck[] = [];
+        const bottlenecks: PerformanceBottleneck[] = [];
 
-    stageStats.forEach((stats, key) => {
-      if (stats.durations.length < 3) return;
+        stageStats.forEach((stats, key) => {
+          if (stats.durations.length < 3) return;
 
-      const [projectName, stage, jobName] = key.split(':');
-      const avgDuration = stats.durations.reduce((a, b) => a + b, 0) / stats.durations.length;
-      const maxDuration = Math.max(...stats.durations);
-      const minDuration = Math.min(...stats.durations);
+          const [projectName, stage, jobName] = key.split(':');
+          const avgDuration = stats.durations.reduce((a, b) => a + b, 0) / stats.durations.length;
+          const maxDuration = Math.max(...stats.durations);
+          const minDuration = Math.min(...stats.durations);
 
-      // Calculate trend
-      let trend: PerformanceBottleneck['trend'] = 'stable';
-      if (stats.recent_durations.length >= 3) {
-        const recentAvg =
-          stats.recent_durations.reduce((a, b) => a + b, 0) / stats.recent_durations.length;
-        const olderDurations = stats.durations.slice(0, -stats.recent_durations.length);
-        if (olderDurations.length > 0) {
-          const olderAvg = olderDurations.reduce((a, b) => a + b, 0) / olderDurations.length;
-          if (recentAvg < olderAvg * 0.9) trend = 'improving';
-          else if (recentAvg > olderAvg * 1.1) trend = 'worsening';
-        }
-      }
+          // Calculate trend
+          let trend: PerformanceBottleneck['trend'] = 'stable';
+          if (stats.recent_durations.length >= 3) {
+            const recentAvg =
+              stats.recent_durations.reduce((a, b) => a + b, 0) / stats.recent_durations.length;
+            const olderDurations = stats.durations.slice(0, -stats.recent_durations.length);
+            if (olderDurations.length > 0) {
+              const olderAvg = olderDurations.reduce((a, b) => a + b, 0) / olderDurations.length;
+              if (recentAvg < olderAvg * 0.9) trend = 'improving';
+              else if (recentAvg > olderAvg * 1.1) trend = 'worsening';
+            }
+          }
 
-      bottlenecks.push({
-        stage,
-        job_name: jobName,
-        project_name: projectName,
-        avg_duration: avgDuration,
-        max_duration: maxDuration,
-        min_duration: minDuration,
-        total_runs: stats.durations.length,
-        trend,
-      });
-    });
+          bottlenecks.push({
+            stage,
+            job_name: jobName,
+            project_name: projectName,
+            avg_duration: avgDuration,
+            max_duration: maxDuration,
+            min_duration: minDuration,
+            total_runs: stats.durations.length,
+            trend,
+          });
+        });
 
-    return bottlenecks
-      .sort((a, b) => b.avg_duration - a.avg_duration)
-      .slice(0, 20);
+        return bottlenecks
+          .sort((a, b) => b.avg_duration - a.avg_duration)
+          .slice(0, 10);
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
+    );
   }
 
   async getDeploymentFrequency(days = 30): Promise<DeploymentFrequency[]> {
-    // Limit to 10 projects to reduce API calls
-    const projects = await this.getProjects(1, 10);
-    const since = new Date();
-    since.setDate(since.getDate() - days);
+    return cachedFetch(
+      `/insights/deployments?days=${days}`,
+      async () => {
+        // Limit to 5 projects to reduce API calls
+        const projects = await this.getProjects(1, 5);
+        const since = new Date();
+        since.setDate(since.getDate() - days);
 
-    const deploymentStats: DeploymentFrequency[] = [];
+        const deploymentStats: DeploymentFrequency[] = [];
 
-    for (const project of projects) {
-      try {
-        const pipelines = await this.getPipelines(project.id, 1, 50);
+        for (const project of projects) {
+          try {
+            const pipelines = await this.getPipelines(project.id, 1, 30);
 
-        // Filter deployment pipelines (those with 'deploy' stage/job)
-        const deploymentPipelines = [];
+            // Batch fetch jobs for all pipelines to reduce API calls
+            const jobsPromises = pipelines.slice(0, 15).map(pipeline =>
+              this.getPipelineJobs(project.id, pipeline.id).catch(() => [])
+            );
+            const allJobs = await Promise.all(jobsPromises);
 
-        for (const pipeline of pipelines) {
-          if (new Date(pipeline.created_at) < since) continue;
+            // Filter deployment pipelines (those with 'deploy' stage/job)
+            const deploymentPipelines = pipelines.slice(0, 15).filter((pipeline, index) => {
+              if (new Date(pipeline.created_at) < since) return false;
 
-          const jobs = await this.getPipelineJobs(project.id, pipeline.id);
-          const hasDeployJob = jobs.some(
-            j => j.stage.toLowerCase().includes('deploy') ||
-                 j.name.toLowerCase().includes('deploy')
-          );
+              const jobs = allJobs[index];
+              return jobs.some(
+                j => j.stage.toLowerCase().includes('deploy') ||
+                     j.name.toLowerCase().includes('deploy')
+              );
+            });
 
-          if (hasDeployJob) {
-            deploymentPipelines.push(pipeline);
+            if (deploymentPipelines.length === 0) continue;
+
+            const successful = deploymentPipelines.filter(p => p.status === 'success').length;
+            const failed = deploymentPipelines.filter(p => p.status === 'failed').length;
+            const totalDuration = deploymentPipelines.reduce((sum, p) => sum + (p.duration || 0), 0);
+            const avgTime = totalDuration / deploymentPipelines.length;
+            const deploymentsPerDay = deploymentPipelines.length / days;
+
+            const sortedDeployments = deploymentPipelines.sort(
+              (a, b) => new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime()
+            );
+
+            // Calculate trend
+            const midpoint = Math.floor(deploymentPipelines.length / 2);
+            const recentCount = deploymentPipelines.slice(0, midpoint).length;
+            const olderCount = deploymentPipelines.slice(midpoint).length;
+            const recentDays = days / 2;
+            const recentRate = recentCount / recentDays;
+            const olderRate = olderCount / recentDays;
+
+            let trend: DeploymentFrequency['trend'] = 'stable';
+            if (recentRate > olderRate * 1.2) trend = 'increasing';
+            else if (recentRate < olderRate * 0.8) trend = 'decreasing';
+
+            deploymentStats.push({
+              project_name: project.name,
+              total_deployments: deploymentPipelines.length,
+              successful_deployments: successful,
+              failed_deployments: failed,
+              avg_deployment_time: avgTime,
+              deployments_per_day: deploymentsPerDay,
+              last_deployment: sortedDeployments[0]?.finished_at || '',
+              trend,
+            });
+          } catch (error) {
+            console.error(`Failed to get deployment stats for project ${project.id}:`, error);
           }
         }
 
-        if (deploymentPipelines.length === 0) continue;
-
-        const successful = deploymentPipelines.filter(p => p.status === 'success').length;
-        const failed = deploymentPipelines.filter(p => p.status === 'failed').length;
-        const totalDuration = deploymentPipelines.reduce((sum, p) => sum + (p.duration || 0), 0);
-        const avgTime = totalDuration / deploymentPipelines.length;
-        const deploymentsPerDay = deploymentPipelines.length / days;
-
-        const sortedDeployments = deploymentPipelines.sort(
-          (a, b) => new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime()
-        );
-
-        // Calculate trend
-        const midpoint = Math.floor(deploymentPipelines.length / 2);
-        const recentCount = deploymentPipelines.slice(0, midpoint).length;
-        const olderCount = deploymentPipelines.slice(midpoint).length;
-        const recentDays = days / 2;
-        const recentRate = recentCount / recentDays;
-        const olderRate = olderCount / recentDays;
-
-        let trend: DeploymentFrequency['trend'] = 'stable';
-        if (recentRate > olderRate * 1.2) trend = 'increasing';
-        else if (recentRate < olderRate * 0.8) trend = 'decreasing';
-
-        deploymentStats.push({
-          project_name: project.name,
-          total_deployments: deploymentPipelines.length,
-          successful_deployments: successful,
-          failed_deployments: failed,
-          avg_deployment_time: avgTime,
-          deployments_per_day: deploymentsPerDay,
-          last_deployment: sortedDeployments[0]?.finished_at || '',
-          trend,
-        });
-      } catch (error) {
-        console.error(`Failed to get deployment stats for project ${project.id}:`, error);
-      }
-    }
-
-    return deploymentStats.sort((a, b) => b.total_deployments - a.total_deployments);
+        return deploymentStats.sort((a, b) => b.total_deployments - a.total_deployments);
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
+    );
   }
 }
 

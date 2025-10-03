@@ -25,7 +25,7 @@ interface ProjectActivity {
 }
 
 export default function DashboardAnalytics() {
-  const { gitlabUrl, gitlabToken, projects } = useDashboardStore();
+  const { gitlabUrl, gitlabToken, projects, setRunners: setGlobalRunners } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [loading, setLoading] = useState(true);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
@@ -139,6 +139,7 @@ export default function DashboardAnalytics() {
       try {
         const runnerData = await api.getRunners(1, 50);
         setRunners(runnerData);
+        setGlobalRunners(runnerData); // Update global store for RunnersTab
       } catch (error) {
         console.error('Failed to load runners:', error);
       }

@@ -1,8 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
+import { useDashboardStore } from '@/store/dashboard-store';
+import { getGitLabAPI } from '@/lib/gitlab-api';
 
 interface SidebarProps {
   activeTab: string;
@@ -11,6 +14,36 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const { theme, sidebar, sidebarItem, textPrimary, textMuted } = useTheme();
+  const { gitlabUrl, gitlabToken } = useDashboardStore();
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (!gitlabToken) {
+        setIsConnected(false);
+        return;
+      }
+
+      setIsChecking(true);
+      try {
+        const api = getGitLabAPI(gitlabUrl, gitlabToken);
+        const connected = await api.checkConnection(); // Direct API check, no cache
+        setIsConnected(connected);
+      } catch (error) {
+        console.error('GitLab connection check failed:', error);
+        setIsConnected(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkConnection();
+
+    // Check connection every 30 seconds
+    const interval = setInterval(checkConnection, 30000);
+    return () => clearInterval(interval);
+  }, [gitlabUrl, gitlabToken]);
 
   const menuItems = [
     { id: 'overview', icon: Activity, label: 'Overview' },
@@ -65,10 +98,28 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       </nav>
 
       <div className={`p-4 ${theme === 'light' ? 'border-t border-gray-200' : 'border-t border-zinc-800'}`}>
-        <div className={`flex items-center gap-2 text-xs ${textMuted}`}>
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span>Connected to GitLab</span>
+        <div className="flex items-center justify-between">
+          <div className={`flex items-center gap-2 text-xs ${
+            isConnected === null ? textMuted :
+            isConnected ? 'text-green-500' : 'text-red-500'
+          }`}>
+            <div className={cn(
+              'w-2 h-2 rounded-full',
+              isChecking && 'animate-pulse',
+              isConnected === null ? 'bg-gray-400' :
+              isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+            )}></div>
+            <span className="font-medium">
+              {isConnected === null ? 'Checking...' :
+               isConnected ? 'Connected to GitLab' : 'Disconnected'}
+            </span>
+          </div>
         </div>
+        {isConnected === false && (
+          <p className={`text-[10px] mt-1 ${theme === 'light' ? 'text-red-600' : 'text-red-400'}`}>
+            Check your GitLab URL and token
+          </p>
+        )}
       </div>
     </div>
   );
