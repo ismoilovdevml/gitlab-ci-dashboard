@@ -1,21 +1,19 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Activity, GitBranch, CheckCircle, XCircle, Clock, PlayCircle, Search, TrendingUp, Zap, Award } from 'lucide-react';
+import { Activity, GitBranch, CheckCircle, XCircle, Clock, Search, Award, Zap, TrendingUp } from 'lucide-react';
 import StatsCard from './StatsCard';
-import PipelineCard from './PipelineCard';
 import PipelineDetailsModal from './PipelineDetailsModal';
 import PipelineListModal from './PipelineListModal';
 import DashboardAnalytics from './DashboardAnalytics';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
-import { Pipeline } from '@/lib/gitlab-api';
-import { getStatusIcon, formatRelativeTime, formatDuration } from '@/lib/utils';
+import { Pipeline, Job } from '@/lib/gitlab-api';
+import { getStatusIcon, formatRelativeTime } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function Overview() {
   const {
-    activePipelines,
     stats,
     projects,
     setActivePipelines,
@@ -32,7 +30,7 @@ export default function Overview() {
   const [showPipelineList, setShowPipelineList] = useState<{ title: string; status?: string } | null>(null);
   const [recentPipelines, setRecentPipelines] = useState<Pipeline[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeJobs, setActiveJobs] = useState<any[]>([]);
+  const [activeJobs, setActiveJobs] = useState<Job[]>([]);
 
   const loadData = async (abortSignal?: AbortSignal) => {
     try {
@@ -116,7 +114,11 @@ export default function Overview() {
 
   // Top projects by pipeline count
   const topProjects = useMemo(() => {
-    const projectPipelineCounts = new Map<number, { project: any; count: number }>();
+    interface ProjectCount {
+      project: typeof projects[0];
+      count: number;
+    }
+    const projectPipelineCounts = new Map<number, ProjectCount>();
 
     recentPipelines.forEach(pipeline => {
       const project = projects.find(p => p.id === pipeline.project_id);

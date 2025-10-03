@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Server, Circle, Search, Filter, Activity, CheckCircle, XCircle, Pause, Play, TrendingUp, Clock, Cpu, HardDrive } from 'lucide-react';
+import { Server, Circle, Search, Filter, Activity, CheckCircle, XCircle, Pause, TrendingUp, Clock, Cpu, HardDrive } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync, Runner } from '@/lib/gitlab-api';
 import { formatRelativeTime, cn } from '@/lib/utils';

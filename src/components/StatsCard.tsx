@@ -16,7 +16,7 @@ interface StatsCardProps {
 }
 
 export default function StatsCard({ title, value, icon: Icon, trend, color = 'blue' }: StatsCardProps) {
-  const { theme, textPrimary, textSecondary } = useTheme();
+  const { theme, textPrimary } = useTheme();
 
   const getColorClasses = () => {
     const colors = {

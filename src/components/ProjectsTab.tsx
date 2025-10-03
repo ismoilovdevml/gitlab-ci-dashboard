@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { ExternalLink, Star, GitFork, Clock, Lock, Globe, Eye, Search, Filter, FolderGit2, TrendingUp, Users, Activity } from 'lucide-react';
+import { ExternalLink, Star, GitFork, Clock, Lock, Globe, Eye, Search, Filter, FolderGit2 } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { formatRelativeTime } from '@/lib/utils';

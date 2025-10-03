@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { X, ExternalLink, Clock, GitCommit, PlayCircle, RotateCw, XCircle, GitBranch, User, Calendar, Timer, CheckCircle2, AlertCircle, Zap, Activity } from 'lucide-react';
+import { X, ExternalLink, Clock, GitCommit, PlayCircle, RotateCw, XCircle, GitBranch, User, Timer, CheckCircle2, Activity } from 'lucide-react';
 import { Pipeline, Job } from '@/lib/gitlab-api';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
@@ -20,7 +20,7 @@ interface PipelineDetailsModalProps {
 export default function PipelineDetailsModal({ pipeline, projectId, onClose }: PipelineDetailsModalProps) {
   const {  } = useDashboardStore();
   const { notifySuccess, notifyError } = useNotifications();
-  const { theme, surface, border, textPrimary, textSecondary } = useTheme();
+  const { theme, surface, textPrimary, textSecondary } = useTheme();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [logs, setLogs] = useState('');

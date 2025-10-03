@@ -37,6 +37,7 @@ export default function RunnerDetailsModal({
     if (isOpen && runner) {
       loadRunnerJobs();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, runner]);
 
   const loadRunnerJobs = async () => {
@@ -168,7 +169,7 @@ export default function RunnerDetailsModal({
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'jobs' | 'stats')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition-all ${
                 activeTab === tab.id
                   ? theme === 'light'
