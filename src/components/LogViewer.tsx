@@ -145,7 +145,7 @@ export default function LogViewer({
           <div className="flex items-center justify-between mb-3">
             <div>
               <div className="flex items-center gap-3">
-                <h2 className="text-white font-semibold text-lg">Job Logs: {jobName}</h2>
+                <h2 className={`font-semibold text-lg ${textPrimary}`}>Job Logs: {jobName}</h2>
                 {isLive && (
                   <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
                     <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
@@ -154,7 +154,7 @@ export default function LogViewer({
                 )}
               </div>
               <div className="flex items-center gap-4 mt-1 text-xs">
-                <span className="text-zinc-500">
+                <span className={textSecondary}>
                   {processedLogs.length} / {logs.split('\n').length} lines
                 </span>
                 {errorCount > 0 && (
@@ -181,9 +181,11 @@ export default function LogViewer({
               {isLive && (
                 <button
                   onClick={() => setAutoScroll(!autoScroll)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     autoScroll
                       ? 'bg-blue-500 text-white'
+                      : theme === 'light'
+                      ? 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]'
                       : 'bg-zinc-800 text-zinc-400 hover:text-white'
                   }`}
                   title="Auto-scroll to bottom"
@@ -193,21 +195,33 @@ export default function LogViewer({
               )}
               <button
                 onClick={downloadLogs}
-                className="p-2 rounded-md bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors"
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'light'
+                    ? 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                }`}
                 title="Download logs"
               >
                 <Download className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
-                className="p-2 rounded-md bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors"
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'light'
+                    ? 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                }`}
                 title="Toggle fullscreen"
               >
                 <Maximize2 className="w-4 h-4" />
               </button>
               <button
                 onClick={onClose}
-                className="p-2 rounded-md bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors"
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'light'
+                    ? 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                }`}
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -219,13 +233,17 @@ export default function LogViewer({
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
               <input
                 type="text"
                 placeholder="Search in logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-orange-500"
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:border-orange-500 ${
+                  theme === 'light'
+                    ? 'bg-[#f5f5f7] border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b]'
+                    : 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500'
+                }`}
               />
             </div>
 
@@ -236,6 +254,8 @@ export default function LogViewer({
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filterLevel === 'all'
                     ? 'bg-orange-500 text-white'
+                    : theme === 'light'
+                    ? 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]'
                     : 'bg-zinc-800 text-zinc-400 hover:text-white'
                 }`}
               >
@@ -246,6 +266,8 @@ export default function LogViewer({
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filterLevel === 'error'
                     ? 'bg-red-500 text-white'
+                    : theme === 'light'
+                    ? 'bg-[#f5f5f7] text-red-500 hover:bg-red-50'
                     : 'bg-zinc-800 text-red-400 hover:bg-red-500/20'
                 }`}
               >
@@ -256,6 +278,8 @@ export default function LogViewer({
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filterLevel === 'warning'
                     ? 'bg-yellow-500 text-white'
+                    : theme === 'light'
+                    ? 'bg-[#f5f5f7] text-yellow-600 hover:bg-yellow-50'
                     : 'bg-zinc-800 text-yellow-400 hover:bg-yellow-500/20'
                 }`}
               >
@@ -266,6 +290,8 @@ export default function LogViewer({
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filterLevel === 'info'
                     ? 'bg-blue-500 text-white'
+                    : theme === 'light'
+                    ? 'bg-[#f5f5f7] text-blue-600 hover:bg-blue-50'
                     : 'bg-zinc-800 text-blue-400 hover:bg-blue-500/20'
                 }`}
               >
@@ -276,7 +302,9 @@ export default function LogViewer({
         </div>
 
         {/* Log Content */}
-        <div id="log-container" className="flex-1 overflow-auto bg-black">
+        <div id="log-container" className={`flex-1 overflow-auto ${
+          theme === 'light' ? 'bg-[#1d1d1f]' : 'bg-black'
+        }`}>
           {processedLogs.length === 0 ? (
             <div className="flex items-center justify-center h-full text-zinc-500">
               No logs match your filters

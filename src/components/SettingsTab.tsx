@@ -92,14 +92,18 @@ export default function SettingsTab() {
       try {
         const settings = JSON.parse(e.target?.result as string);
 
-        if (settings.gitlabUrl) setLocalUrl(settings.gitlabUrl);
+        // Apply all settings immediately to the store
+        if (settings.gitlabUrl) {
+          setLocalUrl(settings.gitlabUrl);
+          setGitlabUrl(settings.gitlabUrl);
+        }
         if (typeof settings.autoRefresh === 'boolean') setAutoRefresh(settings.autoRefresh);
         if (settings.refreshInterval) setRefreshInterval(settings.refreshInterval);
         if (settings.theme) setTheme(settings.theme);
         if (typeof settings.notifyPipelineFailures === 'boolean') setNotifyPipelineFailures(settings.notifyPipelineFailures);
         if (typeof settings.notifyPipelineSuccess === 'boolean') setNotifyPipelineSuccess(settings.notifyPipelineSuccess);
 
-        notifySuccess('Settings Imported', 'Applied settings from file');
+        notifySuccess('Settings Imported', 'Applied settings from file. GitLab URL updated - please add your token and test connection.');
       } catch (error) {
         notifyError('Import Failed', 'Invalid settings file');
       }

@@ -5,9 +5,11 @@ import { Server, Circle } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { formatRelativeTime, cn } from '@/lib/utils';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function RunnersTab() {
   const { runners, setRunners } = useDashboardStore();
+  const { theme, textPrimary, textSecondary, card } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -44,15 +46,19 @@ export default function RunnersTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Runners</h1>
-        <p className="text-zinc-400">GitLab CI/CD runners status</p>
+        <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Runners</h1>
+        <p className={textSecondary}>GitLab CI/CD runners status</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {runners.map((runner) => (
           <div
             key={runner.id}
-            className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-all"
+            className={`rounded-xl p-6 transition-all ${card} ${
+              theme === 'light'
+                ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                : 'hover:border-zinc-700'
+            }`}
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -60,10 +66,10 @@ export default function RunnersTab() {
                   <Server className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold">
+                  <h3 className={`font-semibold ${textPrimary}`}>
                     {runner.description || runner.name || `Runner #${runner.id}`}
                   </h3>
-                  <p className="text-xs text-zinc-500">
+                  <p className={`text-xs ${textSecondary}`}>
                     {runner.runner_type} {runner.is_shared ? '• Shared' : ''}
                   </p>
                 </div>
@@ -79,39 +85,41 @@ export default function RunnersTab() {
 
             <div className="space-y-2 mb-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">IP Address:</span>
-                <span className="text-white font-mono">{runner.ip_address || 'N/A'}</span>
+                <span className={textSecondary}>IP Address:</span>
+                <span className={`font-mono ${textPrimary}`}>{runner.ip_address || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Platform:</span>
-                <span className="text-white">{runner.platform || 'N/A'}</span>
+                <span className={textSecondary}>Platform:</span>
+                <span className={textPrimary}>{runner.platform || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Architecture:</span>
-                <span className="text-white">{runner.architecture || 'N/A'}</span>
+                <span className={textSecondary}>Architecture:</span>
+                <span className={textPrimary}>{runner.architecture || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Last Contact:</span>
-                <span className="text-white">
+                <span className={textSecondary}>Last Contact:</span>
+                <span className={textPrimary}>
                   {runner.contacted_at ? formatRelativeTime(runner.contacted_at) : 'Never'}
                 </span>
               </div>
             </div>
 
             {runner.projects && runner.projects.length > 0 && (
-              <div className="pt-4 border-t border-zinc-800">
-                <p className="text-xs text-zinc-500 mb-2">Associated Projects:</p>
+              <div className={`pt-4 border-t ${theme === 'light' ? 'border-[#d2d2d7]' : 'border-zinc-800'}`}>
+                <p className={`text-xs mb-2 ${textSecondary}`}>Associated Projects:</p>
                 <div className="flex flex-wrap gap-2">
                   {runner.projects.slice(0, 3).map((project) => (
                     <span
                       key={project.id}
-                      className="text-xs bg-zinc-800 text-zinc-300 px-2 py-1 rounded"
+                      className={`text-xs px-2 py-1 rounded ${
+                        theme === 'light' ? 'bg-[#f5f5f7] text-[#6e6e73] border border-[#d2d2d7]' : 'bg-zinc-800 text-zinc-300'
+                      }`}
                     >
                       {project.name}
                     </span>
                   ))}
                   {runner.projects.length > 3 && (
-                    <span className="text-xs text-zinc-500">
+                    <span className={`text-xs ${textSecondary}`}>
                       +{runner.projects.length - 3} more
                     </span>
                   )}
@@ -123,10 +131,10 @@ export default function RunnersTab() {
       </div>
 
       {runners.length === 0 && !isLoading && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-12 text-center">
-          <Server className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-          <p className="text-zinc-500 text-lg">No runners found</p>
-          <p className="text-zinc-600 text-sm mt-2">Configure runners to execute CI/CD jobs</p>
+        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <Server className={`w-16 h-16 mx-auto mb-4 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
+          <p className={`text-lg ${textSecondary}`}>No runners found</p>
+          <p className={`text-sm mt-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'}`}>Configure runners to execute CI/CD jobs</p>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { TrendingUp, DollarSign, Zap, Users, Activity } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI, Project, Runner } from '@/lib/gitlab-api';
 import { formatDuration } from '@/lib/utils';
+import { useTheme } from '@/hooks/useTheme';
 
 interface TimeSeriesData {
   date: string;
@@ -25,6 +26,7 @@ interface ProjectActivity {
 
 export default function DashboardAnalytics() {
   const { gitlabUrl, gitlabToken, projects } = useDashboardStore();
+  const { theme, textPrimary, textSecondary, card } = useTheme();
   const [loading, setLoading] = useState(true);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
   const [activeProjects, setActiveProjects] = useState<ProjectActivity[]>([]);
@@ -176,7 +178,7 @@ export default function DashboardAnalytics() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Activity className="w-12 h-12 text-orange-500 mx-auto mb-4 animate-pulse" />
-          <p className="text-zinc-400">Loading analytics...</p>
+          <p className={textSecondary}>Loading analytics...</p>
         </div>
       </div>
     );
@@ -186,54 +188,70 @@ export default function DashboardAnalytics() {
     <div className="space-y-6">
       {/* Analytics Header */}
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Analytics & Metrics</h2>
-        <p className="text-zinc-400">Last 30 days performance insights</p>
+        <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>Analytics & Metrics</h2>
+        <p className={textSecondary}>Last 30 days performance insights</p>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-lg p-4">
+        <div className={`rounded-xl p-4 ${
+          theme === 'light'
+            ? 'bg-gradient-to-br from-green-50 to-green-100/50 border border-green-200 shadow-sm'
+            : 'bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20'
+        }`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-zinc-400">Success Rate</span>
+            <span className={`text-sm ${textSecondary}`}>Success Rate</span>
             <TrendingUp className="w-5 h-5 text-green-500" />
           </div>
-          <p className="text-3xl font-bold text-white">{successRate.toFixed(1)}%</p>
-          <p className="text-xs text-zinc-500 mt-1">30-day average</p>
+          <p className={`text-3xl font-bold ${textPrimary}`}>{successRate.toFixed(1)}%</p>
+          <p className={`text-xs mt-1 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-500'}`}>30-day average</p>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-4">
+        <div className={`rounded-xl p-4 ${
+          theme === 'light'
+            ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 shadow-sm'
+            : 'bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20'
+        }`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-zinc-400">Avg Build Time</span>
+            <span className={`text-sm ${textSecondary}`}>Avg Build Time</span>
             <Zap className="w-5 h-5 text-blue-500" />
           </div>
-          <p className="text-3xl font-bold text-white">{formatDuration(avgDuration)}</p>
-          <p className="text-xs text-zinc-500 mt-1">per pipeline</p>
+          <p className={`text-3xl font-bold ${textPrimary}`}>{formatDuration(avgDuration)}</p>
+          <p className={`text-xs mt-1 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-500'}`}>per pipeline</p>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-lg p-4">
+        <div className={`rounded-xl p-4 ${
+          theme === 'light'
+            ? 'bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-200 shadow-sm'
+            : 'bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20'
+        }`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-zinc-400">Runner Utilization</span>
+            <span className={`text-sm ${textSecondary}`}>Runner Utilization</span>
             <Users className="w-5 h-5 text-purple-500" />
           </div>
-          <p className="text-3xl font-bold text-white">{runnerUtilization.toFixed(0)}%</p>
-          <p className="text-xs text-zinc-500 mt-1">{activeRunners} of {totalRunners} active</p>
+          <p className={`text-3xl font-bold ${textPrimary}`}>{runnerUtilization.toFixed(0)}%</p>
+          <p className={`text-xs mt-1 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-500'}`}>{activeRunners} of {totalRunners} active</p>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/20 rounded-lg p-4">
+        <div className={`rounded-xl p-4 ${
+          theme === 'light'
+            ? 'bg-gradient-to-br from-orange-50 to-orange-100/50 border border-orange-200 shadow-sm'
+            : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/20'
+        }`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-zinc-400">Est. Monthly Cost</span>
+            <span className={`text-sm ${textSecondary}`}>Est. Monthly Cost</span>
             <DollarSign className="w-5 h-5 text-orange-500" />
           </div>
-          <p className="text-3xl font-bold text-white">${totalCost.toFixed(2)}</p>
-          <p className="text-xs text-zinc-500 mt-1">based on runtime</p>
+          <p className={`text-3xl font-bold ${textPrimary}`}>${totalCost.toFixed(2)}</p>
+          <p className={`text-xs mt-1 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-500'}`}>based on runtime</p>
         </div>
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pipeline Success Rate Trend */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Pipeline Success Rate</h3>
+        <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Pipeline Success Rate</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={timeSeriesData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -275,8 +293,8 @@ export default function DashboardAnalytics() {
         </div>
 
         {/* Build Time Trends */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Build Time Trends</h3>
+        <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Build Time Trends</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={timeSeriesData.slice(-14)}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -308,8 +326,8 @@ export default function DashboardAnalytics() {
       </div>
 
       {/* Most Active Projects */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Most Active Projects</h3>
+      <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Most Active Projects</h3>
         <div className="space-y-3">
           {activeProjects.slice(0, 10).map((activity, index) => {
             const successRate = activity.pipelineCount > 0
@@ -317,14 +335,16 @@ export default function DashboardAnalytics() {
               : 0;
 
             return (
-              <div key={activity.project.id} className="flex items-center gap-4 p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
+              <div key={activity.project.id} className={`flex items-center gap-4 p-3 rounded-lg ${
+                theme === 'light' ? 'bg-[#f5f5f7]/50 border border-[#d2d2d7]/30' : 'bg-zinc-950 border border-zinc-800'
+              }`}>
                 <div className="flex items-center justify-center w-8 h-8 bg-orange-500/10 rounded-lg text-orange-500 font-bold text-sm">
                   #{index + 1}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium truncate">{activity.project.name}</p>
-                  <div className="flex items-center gap-3 text-xs text-zinc-500">
+                  <p className={`font-medium truncate ${textPrimary}`}>{activity.project.name}</p>
+                  <div className={`flex items-center gap-3 text-xs ${textSecondary}`}>
                     <span>{activity.pipelineCount} pipelines</span>
                     <span>•</span>
                     <span className="text-green-500">{activity.successCount} success</span>
@@ -334,8 +354,8 @@ export default function DashboardAnalytics() {
                 </div>
 
                 <div className="text-right">
-                  <p className="text-lg font-bold text-white">{successRate.toFixed(0)}%</p>
-                  <p className="text-xs text-zinc-500">{formatDuration(activity.avgDuration)}</p>
+                  <p className={`text-lg font-bold ${textPrimary}`}>{successRate.toFixed(0)}%</p>
+                  <p className={`text-xs ${textSecondary}`}>{formatDuration(activity.avgDuration)}</p>
                 </div>
               </div>
             );
@@ -344,8 +364,8 @@ export default function DashboardAnalytics() {
       </div>
 
       {/* Runner Status */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Runner Utilization</h3>
+      <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Runner Utilization</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <ResponsiveContainer width="100%" height={200}>
@@ -383,26 +403,28 @@ export default function DashboardAnalytics() {
 
           <div className="space-y-3">
             {runners.slice(0, 5).map((runner) => (
-              <div key={runner.id} className="flex items-center justify-between p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
+              <div key={runner.id} className={`flex items-center justify-between p-3 rounded-lg ${
+                theme === 'light' ? 'bg-[#f5f5f7]/50 border border-[#d2d2d7]/30' : 'bg-zinc-950 border border-zinc-800'
+              }`}>
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${runner.online ? 'bg-green-500' : 'bg-zinc-600'}`} />
                   <div>
-                    <p className="text-sm text-white font-medium truncate max-w-[200px]">
+                    <p className={`text-sm font-medium truncate max-w-[200px] ${textPrimary}`}>
                       {runner.description || runner.name || `Runner #${runner.id}`}
                     </p>
-                    <p className="text-xs text-zinc-500">{runner.platform} • {runner.architecture}</p>
+                    <p className={`text-xs ${textSecondary}`}>{runner.platform} • {runner.architecture}</p>
                   </div>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded ${
                   runner.status === 'online' ? 'bg-green-500/10 text-green-500' :
-                  'bg-zinc-700 text-zinc-400'
+                  theme === 'light' ? 'bg-[#f5f5f7] text-[#6e6e73] border border-[#d2d2d7]' : 'bg-zinc-700 text-zinc-400'
                 }`}>
                   {runner.status}
                 </span>
               </div>
             ))}
             {runners.length === 0 && (
-              <p className="text-center text-zinc-500 py-8">No runners available</p>
+              <p className={`text-center py-8 ${textSecondary}`}>No runners available</p>
             )}
           </div>
         </div>

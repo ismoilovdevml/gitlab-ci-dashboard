@@ -4,6 +4,7 @@ import { Pipeline } from '@/lib/gitlab-api';
 import { getStatusColor, getStatusIcon, formatRelativeTime, formatDuration } from '@/lib/utils';
 import { ExternalLink, RotateCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/hooks/useTheme';
 
 interface PipelineCardProps {
   pipeline: Pipeline;
@@ -14,10 +15,16 @@ interface PipelineCardProps {
 }
 
 export default function PipelineCard({ pipeline, projectName, onClick, onRetry, onCancel }: PipelineCardProps) {
+  const { theme, textPrimary, textSecondary, card } = useTheme();
+
   return (
     <div
       onClick={onClick}
-      className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-all cursor-pointer group"
+      className={`rounded-xl p-4 transition-all cursor-pointer group ${card} ${
+        theme === 'light'
+          ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+          : 'hover:border-zinc-700'
+      }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3 flex-1">
@@ -29,9 +36,9 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
             <span>{pipeline.status}</span>
           </div>
           <div className="flex-1">
-            <p className="text-white font-medium">#{pipeline.id}</p>
+            <p className={`font-medium ${textPrimary}`}>#{pipeline.id}</p>
             {projectName && (
-              <p className="text-xs text-zinc-500">{projectName}</p>
+              <p className={`text-xs ${textSecondary}`}>{projectName}</p>
             )}
           </div>
         </div>
@@ -39,7 +46,9 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
           href={pipeline.web_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-zinc-500 hover:text-white transition-colors"
+          className={`transition-colors ${
+            theme === 'light' ? 'text-[#86868b] hover:text-[#1d1d1f]' : 'text-zinc-500 hover:text-white'
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="w-4 h-4" />
@@ -48,21 +57,25 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
 
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-zinc-400 text-sm">Branch:</span>
-          <span className="text-white text-sm font-mono bg-zinc-800 px-2 py-0.5 rounded">
+          <span className={`text-sm ${textSecondary}`}>Branch:</span>
+          <span className={`text-sm font-mono px-2 py-0.5 rounded ${
+            theme === 'light' ? 'bg-[#f5f5f7] text-[#1d1d1f] border border-[#d2d2d7]' : 'bg-zinc-800 text-white'
+          }`}>
             {pipeline.ref}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-zinc-400 text-sm">Commit:</span>
-          <span className="text-zinc-300 text-sm font-mono">
+          <span className={`text-sm ${textSecondary}`}>Commit:</span>
+          <span className={`text-sm font-mono ${textSecondary}`}>
             {pipeline.sha.substring(0, 8)}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
-        <div className="flex items-center gap-4 text-xs text-zinc-500">
+      <div className={`flex items-center justify-between pt-3 border-t ${
+        theme === 'light' ? 'border-[#d2d2d7]' : 'border-zinc-800'
+      }`}>
+        <div className={`flex items-center gap-4 text-xs ${textSecondary}`}>
           <span>{formatRelativeTime(pipeline.updated_at)}</span>
           {pipeline.duration && (
             <>
@@ -101,7 +114,9 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
       </div>
 
       {pipeline.user && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">
+        <div className={`flex items-center gap-2 mt-3 pt-3 border-t ${
+          theme === 'light' ? 'border-[#d2d2d7]' : 'border-zinc-800'
+        }`}>
           {pipeline.user.avatar_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -110,7 +125,7 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
               className="w-6 h-6 rounded-full"
             />
           )}
-          <span className="text-xs text-zinc-400">{pipeline.user.name}</span>
+          <span className={`text-xs ${textSecondary}`}>{pipeline.user.name}</span>
         </div>
       )}
     </div>
