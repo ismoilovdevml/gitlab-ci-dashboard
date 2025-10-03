@@ -2,7 +2,7 @@
 
 Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines with advanced alerting system.
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![Docker](https://img.shields.io/badge/docker-ready-brightgreen) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue) ![Redis](https://img.shields.io/badge/Redis-7-red)
+![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![Docker](https://img.shields.io/badge/docker-ready-brightgreen) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue) ![Redis](https://img.shields.io/badge/Redis-latest-red)
 
 ## ✨ Features
 
@@ -135,8 +135,8 @@ curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
 
 ### Backend
 - **Runtime**: Node.js 20
-- **Database**: PostgreSQL 16
-- **Cache**: Redis 7
+- **Database**: PostgreSQL 17
+- **Cache**: Redis (latest)
 - **ORM**: Prisma
 - **API**: Next.js API Routes
 

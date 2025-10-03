@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'GitLab CI/CD Enterprise Dashboard',
-  description: 'Advanced GitLab CI/CD monitoring and management dashboard',
+  title: 'GitLab CI/CD Dashboard',
+  description: 'Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'GitLab Dashboard',
+    title: 'GitLab CI/CD Dashboard',
   },
   formatDetection: {
     telephone: false,

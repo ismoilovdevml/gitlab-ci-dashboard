@@ -1,6 +1,13 @@
 {
   "name": "gitlab-ci-dashboard",
   "version": "1.0.0",
+  "description": "Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ismoilovdevml/gitlab-ci-dashboard.git"
+  },
+  "author": "Otabek Ismoilov",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev",
