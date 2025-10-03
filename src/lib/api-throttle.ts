@@ -30,33 +30,24 @@ class APIThrottler {
 
   /**
    * Check if we can make a request without hitting rate limit
+   * UNLIMITED MODE: Always returns true
    */
-  private canMakeRequest(key: string): boolean {
-    const now = Date.now()
-    const counts = this.requestCounts.get(key) || []
-
-    // Remove old timestamps outside the window
-    const validCounts = counts.filter(
-      timestamp => now - timestamp < this.options.windowMs
-    )
-
-    this.requestCounts.set(key, validCounts)
-
-    return validCounts.length < this.options.maxRequests
+  private canMakeRequest(_key: string): boolean {
+    // UNLIMITED: No rate limiting
+    return true
   }
 
   /**
    * Record a request
+   * UNLIMITED MODE: No-op
    */
-  private recordRequest(key: string): void {
-    const now = Date.now()
-    const counts = this.requestCounts.get(key) || []
-    counts.push(now)
-    this.requestCounts.set(key, counts)
+  private recordRequest(_key: string): void {
+    // UNLIMITED: No tracking needed
   }
 
   /**
    * Process the request queue
+   * UNLIMITED MODE: Execute all requests in parallel, no waiting
    */
   private async processQueue(): Promise<void> {
     if (this.processing || this.queue.length === 0) {
@@ -65,34 +56,21 @@ class APIThrottler {
 
     this.processing = true
 
-    while (this.queue.length > 0) {
-      // Sort by priority (higher first) and timestamp (older first)
-      this.queue.sort((a, b) => {
-        if (a.priority !== b.priority) {
-          return b.priority - a.priority
-        }
-        return a.timestamp - b.timestamp
-      })
+    // UNLIMITED: Execute ALL requests in parallel immediately
+    const currentQueue = [...this.queue]
+    this.queue = []
 
-      const request = this.queue[0]
-
-      if (this.canMakeRequest('global')) {
-        this.queue.shift() // Remove from queue
-        this.recordRequest('global')
-
+    // Execute all in parallel without waiting
+    await Promise.all(
+      currentQueue.map(async (request) => {
         try {
           const result = await request.execute()
           request.resolve(result)
         } catch (error) {
           request.reject(error)
         }
-      } else {
-        // Wait before trying again
-        await new Promise(resolve =>
-          setTimeout(resolve, this.options.retryAfter || 1000)
-        )
-      }
-    }
+      })
+    )
 
     this.processing = false
   }

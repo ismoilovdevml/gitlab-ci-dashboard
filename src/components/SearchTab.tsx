@@ -110,7 +110,7 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
       }
 
       const projectsToSearch = selectedProjectFilter === 'all'
-        ? projects.slice(0, 20) // Limit to 20 projects for performance
+        ? projects // UNLIMITED: Search all projects
         : projects.filter(p => p.id.toString() === selectedProjectFilter)
 
       // Search in projects
@@ -200,15 +200,15 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
         }
       }
 
-      // Search in jobs (limited to first 3 projects for performance and API limits)
-      for (const project of projectsToSearch.slice(0, 3)) {
+      // Search in jobs - UNLIMITED mode
+      for (const project of projectsToSearch.slice(0, 10)) { // Search 10 projects
         try {
           const pipelines = await gitlabThrottler.throttle(
             () => api.getPipelines(project.id),
             5 // Lower priority for jobs search
           ) as Pipeline[]
 
-          for (const pipeline of pipelines.slice(0, 2)) { // Limit to 2 recent pipelines per project
+          for (const pipeline of pipelines.slice(0, 5)) { // Search 5 pipelines per project
             try {
               const jobs = await gitlabThrottler.throttle(
                 () => api.getPipelineJobs(project.id, pipeline.id),
