@@ -3,41 +3,55 @@ node_modules
 npm-debug.log
 yarn-error.log
 
-# Next.js
+# Next.js build (will be rebuilt in Docker)
 .next
 out
 
 # Git
 .git
 .gitignore
+.gitattributes
 
-# Environment variables
+# Environment variables (should be passed at runtime)
 .env
 .env.local
 .env.development
-.env.production
+.env.test
 
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
-
-# Docker
-.dockerignore
-docker-compose.yml
-
-# Documentation
-README.md
-LICENSE
-
-# CI/CD
-.github
+*.sublime*
 
 # Testing
 coverage
 .nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+jest.config.js
+
+# Documentation (if not needed in image)
+*.md
+!README.md
+docs
 
 # Misc
 .DS_Store
 *.log
+Thumbs.db
+
+# Docker files (don't copy into image)
+.dockerignore
+Dockerfile
+docker-compose*.yml
+
+# CI/CD (GitHub Actions not needed in container)
+.github
+
+# TypeScript cache
+*.tsbuildinfo

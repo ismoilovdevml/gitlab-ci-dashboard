@@ -6,28 +6,32 @@ import Overview from '@/components/Overview';
 import NotificationToast from '@/components/NotificationToast';
 import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
+// import { usePipelineAlerts } from '@/hooks/usePipelineAlerts'; // Disabled - using webhooks now
 
 // Lazy load heavy components
-const SearchTab = lazy(() => import('@/components/SearchTab'));
 const PipelinesTab = lazy(() => import('@/components/PipelinesTab'));
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab'));
 const RunnersTab = lazy(() => import('@/components/RunnersTab'));
 const InsightsTab = lazy(() => import('@/components/InsightsTab'));
 const ArtifactsTab = lazy(() => import('@/components/ArtifactsTab'));
 const ContainerRegistryTab = lazy(() => import('@/components/ContainerRegistryTab'));
+const AlertingTab = lazy(() => import('@/components/AlertingTab'));
 const SettingsTab = lazy(() => import('@/components/SettingsTab'));
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('overview');
   const { theme } = useDashboardStore();
 
+  // Enable pipeline alerts monitoring (DISABLED - using webhooks now for instant alerts)
+  // usePipelineAlerts();
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const handleNavigate = (tab: string) => {
-    setActiveTab(tab);
-  };
+  // const handleNavigate = (tab: string) => {
+  //   setActiveTab(tab);
+  // };
 
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center h-64">
@@ -39,12 +43,6 @@ export default function Home() {
     switch (activeTab) {
       case 'overview':
         return <Overview />;
-      case 'search':
-        return (
-          <Suspense fallback={<LoadingSpinner />}>
-            <SearchTab onNavigate={handleNavigate} />
-          </Suspense>
-        );
       case 'pipelines':
         return (
           <Suspense fallback={<LoadingSpinner />}>
@@ -79,6 +77,12 @@ export default function Home() {
         return (
           <Suspense fallback={<LoadingSpinner />}>
             <ContainerRegistryTab />
+          </Suspense>
+        );
+      case 'alerting':
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <AlertingTab />
           </Suspense>
         );
       case 'settings':
