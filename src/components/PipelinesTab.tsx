@@ -246,51 +246,75 @@ export default function PipelinesTab() {
         <div className="col-span-9 space-y-4">
           {/* Statistics Cards */}
           {selectedProject && (
-            <div className="grid grid-cols-4 gap-4">
-              <div className={`rounded-lg p-4 ${card}`}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className={`rounded-xl p-4 border transition-all ${
+                theme === 'light'
+                  ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-sm hover:shadow-md'
+                  : 'bg-gradient-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30'
+              }`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    theme === 'light' ? 'bg-blue-500/20' : 'bg-blue-500/10'
+                  }`}>
                     <TrendingUp className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${textSecondary}`}>Total Runs</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-blue-700' : 'text-blue-400'}`}>Total Runs</p>
                     <p className={`text-2xl font-bold ${textPrimary}`}>{stats.total}</p>
                   </div>
                 </div>
               </div>
 
-              <div className={`rounded-lg p-4 ${card}`}>
+              <div className={`rounded-xl p-4 border transition-all ${
+                theme === 'light'
+                  ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-sm hover:shadow-md'
+                  : 'bg-gradient-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30'
+              }`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    theme === 'light' ? 'bg-green-500/20' : 'bg-green-500/10'
+                  }`}>
                     <CheckCircle className="w-5 h-5 text-green-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${textSecondary}`}>Success Rate</p>
-                    <p className={`text-2xl font-bold ${textPrimary}`}>{stats.successRate}%</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-green-700' : 'text-green-400'}`}>Success Rate</p>
+                    <p className={`text-2xl font-bold ${theme === 'light' ? 'text-green-600' : textPrimary}`}>{stats.successRate}%</p>
                   </div>
                 </div>
               </div>
 
-              <div className={`rounded-lg p-4 ${card}`}>
+              <div className={`rounded-xl p-4 border transition-all ${
+                theme === 'light'
+                  ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 shadow-sm hover:shadow-md'
+                  : 'bg-gradient-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30 hover:from-purple-500/20 hover:to-purple-600/30'
+              }`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    theme === 'light' ? 'bg-purple-500/20' : 'bg-purple-500/10'
+                  }`}>
                     <Clock className="w-5 h-5 text-purple-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${textSecondary}`}>Avg Duration</p>
-                    <p className={`text-2xl font-bold ${textPrimary}`}>{formatDuration(stats.avgDuration)}</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-purple-700' : 'text-purple-400'}`}>Avg Duration</p>
+                    <p className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : textPrimary}`}>{formatDuration(stats.avgDuration)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className={`rounded-lg p-4 ${card}`}>
+              <div className={`rounded-xl p-4 border transition-all ${
+                theme === 'light'
+                  ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm hover:shadow-md'
+                  : 'bg-gradient-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30'
+              }`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    theme === 'light' ? 'bg-red-500/20' : 'bg-red-500/10'
+                  }`}>
                     <XCircle className="w-5 h-5 text-red-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${textSecondary}`}>Failed</p>
-                    <p className={`text-2xl font-bold ${textPrimary}`}>{stats.failed}</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Failed</p>
+                    <p className={`text-2xl font-bold ${theme === 'light' ? 'text-red-600' : textPrimary}`}>{stats.failed}</p>
                   </div>
                 </div>
               </div>
