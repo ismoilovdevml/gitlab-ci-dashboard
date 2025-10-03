@@ -5,6 +5,7 @@ import { X, Search } from 'lucide-react';
 import { Pipeline } from '@/lib/gitlab-api';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
+import { useTheme } from '@/hooks/useTheme';
 import PipelineCard from './PipelineCard';
 import PipelineDetailsModal from './PipelineDetailsModal';
 
@@ -16,6 +17,7 @@ interface PipelineListModalProps {
 
 export default function PipelineListModal({ title, status, onClose }: PipelineListModalProps) {
   const { gitlabUrl, gitlabToken, projects } = useDashboardStore();
+  const { theme, textPrimary, textSecondary } = useTheme();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [filteredPipelines, setFilteredPipelines] = useState<Pipeline[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
@@ -78,26 +80,34 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className={`fixed inset-0 backdrop-blur-sm z-40 flex items-center justify-center p-4 ${
+        theme === 'light' ? 'bg-black/20' : 'bg-black/80'
+      }`}>
+        <div className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col ${
+          theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
+        }`}>
           {/* Header */}
-          <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+          <div className={`p-6 border-b flex items-center justify-between ${
+            theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'
+          }`}>
             <div>
-              <h2 className="text-2xl font-bold text-white">{title}</h2>
-              <p className="text-sm text-zinc-400 mt-1">
+              <h2 className={`text-2xl font-bold ${textPrimary}`}>{title}</h2>
+              <p className={`text-sm mt-1 ${textSecondary}`}>
                 {loading ? 'Loading...' : `${filteredPipelines.length} pipelines`}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white transition-colors"
+              className={`p-2 transition-colors ${
+                theme === 'light' ? 'text-[#86868b] hover:text-[#1d1d1f]' : 'text-zinc-400 hover:text-white'
+              }`}
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Search */}
-          <div className="p-6 border-b border-zinc-800">
+          <div className={`p-6 border-b ${theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'}`}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-500" />
               <input
@@ -105,7 +115,9 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
                 placeholder="Search by ID, branch, or commit..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
+                className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 ${
+                  theme === 'light' ? 'bg-[#f5f5f7] border border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b]' : 'bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500'
+                }`}
               />
             </div>
           </div>

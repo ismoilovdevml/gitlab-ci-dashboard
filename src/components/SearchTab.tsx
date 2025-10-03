@@ -6,6 +6,7 @@ import { useDashboardStore } from '@/store/dashboard-store'
 import { getGitLabAPI } from '@/lib/gitlab-api'
 import type { Pipeline, Job } from '@/lib/gitlab-api'
 import { debounce, gitlabThrottler } from '@/lib/api-throttle'
+import { useTheme } from '@/hooks/useTheme'
 
 interface SavedFilter {
   id: string
@@ -40,6 +41,7 @@ interface SearchTabProps {
 
 export default function SearchTab({ onNavigate }: SearchTabProps) {
   const { gitlabUrl, gitlabToken, projects, setSelectedProject: setStoreProject, setSelectedPipeline } = useDashboardStore()
+  const { theme, textPrimary, textSecondary, card, input, inputFocus } = useTheme()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -382,12 +384,12 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Global Search</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <h2 className={`text-3xl font-bold ${textPrimary}`}>Global Search</h2>
+          <p className={`text-sm mt-1 ${textSecondary}`}>
             Search across all projects, pipelines, and jobs
           </p>
         </div>
@@ -403,20 +405,20 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
       {/* Search Bar */}
       <div className="flex gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+          <Search className={`absolute left-3 top-3 w-5 h-5 ${theme === 'light' ? 'text-[#86868b]' : 'text-gray-400'}`} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="Search projects, pipelines, jobs..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`w-full pl-10 pr-4 py-3 border rounded-xl ${input} ${inputFocus} transition-all`}
           />
         </div>
         <button
           onClick={handleSearch}
           disabled={isSearching}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isSearching ? (
             <>
@@ -434,9 +436,9 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
 
       {/* Advanced Filters */}
       {showFilters && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+        <div className={`rounded-xl p-6 space-y-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Advanced Filters</h3>
+            <h3 className={`text-lg font-semibold ${textPrimary}`}>Advanced Filters</h3>
             <button
               onClick={() => setShowSaveDialog(true)}
               className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-2"
@@ -449,13 +451,13 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className={`w-full px-3 py-2 border rounded-lg ${input}`}
               >
                 <option value="all">All Statuses</option>
                 <option value="success">Success</option>
@@ -468,13 +470,13 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
 
             {/* Date Range Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
                 Date Range
               </label>
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className={`w-full px-3 py-2 border rounded-lg ${input}`}
               >
                 <option value="all">All Time</option>
                 <option value="7days">Last 7 Days</option>
@@ -485,13 +487,13 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
 
             {/* Project Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
                 Project
               </label>
               <select
                 value={selectedProjectFilter}
                 onChange={(e) => setSelectedProjectFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className={`w-full px-3 py-2 border rounded-lg ${input}`}
               >
                 <option value="all">All Projects</option>
                 {projects.map(project => (
@@ -504,7 +506,7 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
 
             {/* User Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
                 User/Author
               </label>
               <input
@@ -512,7 +514,7 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
                 value={selectedUser}
                 onChange={(e) => setSelectedUser(e.target.value)}
                 placeholder="Username..."
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className={`w-full px-3 py-2 border rounded-lg ${input}`}
               />
             </div>
           </div>
@@ -521,25 +523,25 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
           {dateRange === 'custom' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
                   From Date
                 </label>
                 <input
                   type="date"
                   value={customDateFrom}
                   onChange={(e) => setCustomDateFrom(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className={`w-full px-3 py-2 border rounded-lg ${input}`}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
                   To Date
                 </label>
                 <input
                   type="date"
                   value={customDateTo}
                   onChange={(e) => setCustomDateTo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className={`w-full px-3 py-2 border rounded-lg ${input}`}
                 />
               </div>
             </div>
@@ -549,17 +551,21 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
 
       {/* Saved Filters */}
       {savedFilters.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Saved Filters</h3>
+        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <h3 className={`text-sm font-semibold mb-3 ${textPrimary}`}>Saved Filters</h3>
           <div className="flex flex-wrap gap-2">
             {savedFilters.map(filter => (
               <div
                 key={filter.id}
-                className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2 group"
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-2 group ${
+                  theme === 'light' ? 'bg-blue-50 border border-blue-200' : 'bg-blue-900/20 border border-blue-800'
+                }`}
               >
                 <button
                   onClick={() => handleLoadFilter(filter)}
-                  className="text-sm text-blue-700 dark:text-blue-300 hover:underline"
+                  className={`text-sm hover:underline ${
+                    theme === 'light' ? 'text-blue-700' : 'text-blue-300'
+                  }`}
                 >
                   {filter.name}
                 </button>
@@ -577,30 +583,36 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
 
       {/* Result Detail Modal */}
       {selectedResult && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl">
+        <div className={`fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 ${
+          theme === 'light' ? 'bg-black/20' : 'bg-black/50'
+        }`}>
+          <div className={`rounded-xl p-6 max-w-2xl w-full mx-4 ${card} ${theme === 'light' ? 'shadow-2xl' : 'shadow-xl'}`}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded uppercase font-medium">
+                  <span className={`px-2 py-0.5 text-xs rounded uppercase font-medium ${
+                    theme === 'light' ? 'bg-[#f5f5f7] text-[#6e6e73] border border-[#d2d2d7]' : 'bg-gray-700 text-gray-300'
+                  }`}>
                     {selectedResult.type}
                   </span>
                   {selectedResult.status && (
                     <div className="flex items-center gap-1">
                       {getStatusIcon(selectedResult.status)}
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      <span className={`text-sm font-medium ${textSecondary}`}>
                         {selectedResult.status}
                       </span>
                     </div>
                   )}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h3 className={`text-2xl font-bold ${textPrimary}`}>
                   {selectedResult.name}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedResult(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className={`transition-colors ${
+                  theme === 'light' ? 'text-[#86868b] hover:text-[#6e6e73]' : 'text-gray-400 hover:text-gray-300'
+                }`}
               >
                 <X className="w-6 h-6" />
               </button>
@@ -609,34 +621,34 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
             <div className="space-y-4">
               {selectedResult.project && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Project</p>
-                  <p className="text-lg text-gray-900 dark:text-white">{selectedResult.project}</p>
+                  <p className={`text-sm font-medium ${textSecondary}`}>Project</p>
+                  <p className={`text-lg ${textPrimary}`}>{selectedResult.project}</p>
                 </div>
               )}
               {selectedResult.branch && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Branch</p>
+                  <p className={`text-sm font-medium ${textSecondary}`}>Branch</p>
                   <div className="flex items-center gap-2">
                     <GitBranch className="w-4 h-4" />
-                    <p className="text-lg text-gray-900 dark:text-white">{selectedResult.branch}</p>
+                    <p className={`text-lg ${textPrimary}`}>{selectedResult.branch}</p>
                   </div>
                 </div>
               )}
               {selectedResult.author && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Author</p>
+                  <p className={`text-sm font-medium ${textSecondary}`}>Author</p>
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4" />
-                    <p className="text-lg text-gray-900 dark:text-white">{selectedResult.author}</p>
+                    <p className={`text-lg ${textPrimary}`}>{selectedResult.author}</p>
                   </div>
                 </div>
               )}
               {selectedResult.created_at && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</p>
+                  <p className={`text-sm font-medium ${textSecondary}`}>Created</p>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <p className="text-lg text-gray-900 dark:text-white">
+                    <p className={`text-lg ${textPrimary}`}>
                       {new Date(selectedResult.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -644,10 +656,10 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
               )}
               {selectedResult.duration !== undefined && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</p>
+                  <p className={`text-sm font-medium ${textSecondary}`}>Duration</p>
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    <p className="text-lg text-gray-900 dark:text-white">
+                    <p className={`text-lg ${textPrimary}`}>
                       {formatDuration(selectedResult.duration)}
                     </p>
                   </div>
@@ -676,7 +688,9 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
               )}
               <button
                 onClick={() => setSelectedResult(null)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  theme === 'light' ? 'bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]' : 'bg-gray-700 text-white hover:bg-gray-600'
+                }`}
               >
                 Close
               </button>
@@ -687,16 +701,18 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
 
       {/* Save Filter Dialog */}
       {showSaveDialog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Save Filter</h3>
+        <div className={`fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 ${
+          theme === 'light' ? 'bg-black/20' : 'bg-black/50'
+        }`}>
+          <div className={`rounded-xl p-6 max-w-md w-full mx-4 ${card} ${theme === 'light' ? 'shadow-2xl' : 'shadow-xl'}`}>
+            <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Save Filter</h3>
             <input
               type="text"
               value={filterName}
               onChange={(e) => setFilterName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSaveFilter()}
               placeholder="Filter name..."
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white mb-4"
+              className={`w-full px-4 py-2 border rounded-lg mb-4 ${input} ${inputFocus}`}
               autoFocus
             />
             <div className="flex gap-3">
@@ -709,7 +725,9 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
               </button>
               <button
                 onClick={() => setShowSaveDialog(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                  theme === 'light' ? 'bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]' : 'bg-gray-700 text-white hover:bg-gray-600'
+                }`}
               >
                 Cancel
               </button>
@@ -727,7 +745,7 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
         ) : searchResults.length > 0 ? (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className={`text-sm ${textSecondary}`}>
                 Found {searchResults.length} results
               </p>
             </div>
@@ -735,27 +753,33 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
               <div
                 key={`${result.type}-${result.id}-${index}`}
                 onClick={() => handleResultClick(result)}
-                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer"
+                className={`rounded-xl p-4 transition-all cursor-pointer ${card} ${
+                  theme === 'light'
+                    ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-blue-500'
+                    : 'hover:border-blue-500'
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded uppercase font-medium">
+                      <span className={`px-2 py-0.5 text-xs rounded uppercase font-medium ${
+                        theme === 'light' ? 'bg-[#f5f5f7] text-[#6e6e73] border border-[#d2d2d7]' : 'bg-gray-700 text-gray-300'
+                      }`}>
                         {result.type}
                       </span>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h3 className={`text-lg font-semibold ${textPrimary}`}>
                         {result.name}
                       </h3>
                       {result.status && (
                         <div className="flex items-center gap-1">
                           {getStatusIcon(result.status)}
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className={`text-sm ${textSecondary}`}>
                             {result.status}
                           </span>
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <div className={`flex flex-wrap items-center gap-4 text-sm ${textSecondary}`}>
                       {result.project && (
                         <div className="flex items-center gap-1">
                           <GitBranch className="w-4 h-4" />
@@ -806,13 +830,13 @@ export default function SearchTab({ onNavigate }: SearchTabProps) {
           </>
         ) : searchQuery || statusFilter !== 'all' || dateRange !== 'all' ? (
           <div className="text-center py-12">
-            <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400">No results found</p>
+            <Search className={`w-12 h-12 mx-auto mb-3 ${theme === 'light' ? 'text-[#86868b]' : 'text-gray-400'}`} />
+            <p className={textSecondary}>No results found</p>
           </div>
         ) : (
           <div className="text-center py-12">
-            <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400">
+            <Search className={`w-12 h-12 mx-auto mb-3 ${theme === 'light' ? 'text-[#86868b]' : 'text-gray-400'}`} />
+            <p className={textSecondary}>
               Start searching or apply filters to find projects, pipelines, and jobs
             </p>
           </div>

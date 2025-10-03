@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X, Download, Maximize2, Search } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
 interface LogViewerProps {
   logs: string;
@@ -20,6 +21,7 @@ export default function LogViewer({
   onClose,
   onRefreshLogs
 }: LogViewerProps) {
+  const { theme, textPrimary, textSecondary } = useTheme();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'error' | 'warning' | 'info'>('all');
@@ -130,12 +132,16 @@ export default function LogViewer({
   const warningCount = logs.split('\n').filter(line => parseLogLine(line).level === 'warning').length;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`bg-zinc-900 border border-zinc-800 rounded-lg flex flex-col ${
+    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
+      theme === 'light' ? 'bg-black/20' : 'bg-black/80'
+    }`}>
+      <div className={`rounded-xl flex flex-col ${
         isFullscreen ? 'w-full h-full' : 'w-full max-w-7xl h-[85vh]'
+      } ${
+        theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
       }`}>
         {/* Header */}
-        <div className="p-4 border-b border-zinc-800">
+        <div className={`p-4 border-b ${theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'}`}>
           <div className="flex items-center justify-between mb-3">
             <div>
               <div className="flex items-center gap-3">

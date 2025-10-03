@@ -11,6 +11,7 @@ import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI } from '@/lib/gitlab-api';
 import { Pipeline } from '@/lib/gitlab-api';
 import { getStatusIcon, formatRelativeTime, formatDuration } from '@/lib/utils';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function Overview() {
   const {
@@ -27,6 +28,7 @@ export default function Overview() {
     refreshInterval
   } = useDashboardStore();
 
+  const { theme, textPrimary, textSecondary, card } = useTheme();
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [showPipelineList, setShowPipelineList] = useState<{ title: string; status?: string } | null>(null);
@@ -82,8 +84,8 @@ export default function Overview() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Dashboard Overview</h1>
-        <p className="text-zinc-400">Real-time CI/CD pipeline monitoring</p>
+        <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Dashboard Overview</h1>
+        <p className={textSecondary}>Real-time CI/CD pipeline monitoring</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -123,18 +125,18 @@ export default function Overview() {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Active Pipelines</h2>
+          <h2 className={`text-xl font-semibold ${textPrimary}`}>Active Pipelines</h2>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-xs text-zinc-500">Live updates every {refreshInterval / 1000}s</span>
+            <span className={`text-xs ${textSecondary}`}>Live updates every {refreshInterval / 1000}s</span>
           </div>
         </div>
 
         {activePipelines.length === 0 ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-12 text-center">
-            <PlayCircle className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-500 text-lg">No active pipelines</p>
-            <p className="text-zinc-600 text-sm mt-2">All pipelines are idle or completed</p>
+          <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+            <PlayCircle className={`w-16 h-16 mx-auto mb-4 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
+            <p className={`text-lg ${textSecondary}`}>No active pipelines</p>
+            <p className={`text-sm mt-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'}`}>All pipelines are idle or completed</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -155,7 +157,7 @@ export default function Overview() {
       {/* Recent Pipeline History */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Recent Activity</h2>
+          <h2 className={`text-xl font-semibold ${textPrimary}`}>Recent Activity</h2>
           <button
             onClick={() => setShowPipelineList({ title: 'All Recent Pipelines' })}
             className="text-sm text-orange-500 hover:text-orange-400 transition-colors"
@@ -165,9 +167,9 @@ export default function Overview() {
         </div>
 
         {recentPipelines.length === 0 ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center">
-            <Clock className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
-            <p className="text-zinc-500">No recent activity</p>
+          <div className={`rounded-xl p-8 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+            <Clock className={`w-12 h-12 mx-auto mb-3 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
+            <p className={textSecondary}>No recent activity</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -180,7 +182,11 @@ export default function Overview() {
                     setSelectedPipeline(pipeline);
                     setSelectedProjectId(pipeline.project_id);
                   }}
-                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-all cursor-pointer flex items-center justify-between group"
+                  className={`rounded-xl p-4 transition-all cursor-pointer flex items-center justify-between group ${card} ${
+                    theme === 'light'
+                      ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-[#d2d2d7]'
+                      : 'hover:border-zinc-700'
+                  }`}
                 >
                   <div className="flex items-center gap-4 flex-1">
                     {/* Status Icon */}
@@ -196,14 +202,16 @@ export default function Overview() {
                     {/* Pipeline Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white font-medium group-hover:text-orange-500 transition-colors truncate">
+                        <span className={`font-medium group-hover:text-orange-500 transition-colors truncate ${textPrimary}`}>
                           {project?.name || 'Unknown Project'}
                         </span>
-                        <span className="text-zinc-600">•</span>
-                        <span className="text-zinc-500 text-sm">#{pipeline.id}</span>
+                        <span className={theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'}>•</span>
+                        <span className={`text-sm ${textSecondary}`}>#{pipeline.id}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-zinc-500">
-                        <span className="font-mono bg-zinc-800 px-2 py-0.5 rounded">{pipeline.ref}</span>
+                      <div className={`flex items-center gap-3 text-xs ${textSecondary}`}>
+                        <span className={`font-mono px-2 py-0.5 rounded ${
+                          theme === 'light' ? 'bg-[#f5f5f7] border border-[#d2d2d7]' : 'bg-zinc-800'
+                        }`}>{pipeline.ref}</span>
                         <span>•</span>
                         <span>{formatRelativeTime(pipeline.updated_at)}</span>
                         {pipeline.duration && (
@@ -238,28 +246,28 @@ export default function Overview() {
 
       {/* Quick Stats */}
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Quick Stats</h2>
+        <h2 className={`text-xl font-semibold mb-4 ${textPrimary}`}>Quick Stats</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+          <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
                 <Activity className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Active Projects</p>
-                <p className="text-2xl font-bold text-white">{projects.length}</p>
+                <p className={`text-xs ${textSecondary}`}>Active Projects</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>{projects.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+          <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
                 <Clock className="w-5 h-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Avg Duration</p>
-                <p className="text-2xl font-bold text-white">
+                <p className={`text-xs ${textSecondary}`}>Avg Duration</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>
                   {stats && stats.total > 0
                     ? formatDuration(
                         recentPipelines
@@ -273,14 +281,14 @@ export default function Overview() {
             </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+          <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
                 <CheckCircle className="w-5 h-5 text-green-500" />
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Success Rate</p>
-                <p className="text-2xl font-bold text-white">
+                <p className={`text-xs ${textSecondary}`}>Success Rate</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>
                   {stats && stats.total > 0
                     ? Math.round((stats.success / stats.total) * 100)
                     : 0}%
@@ -289,14 +297,14 @@ export default function Overview() {
             </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+          <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
                 <GitBranch className="w-5 h-5 text-orange-500" />
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Today&apos;s Runs</p>
-                <p className="text-2xl font-bold text-white">
+                <p className={`text-xs ${textSecondary}`}>Today&apos;s Runs</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>
                   {recentPipelines.filter(p => {
                     const today = new Date();
                     const pipelineDate = new Date(p.created_at);
