@@ -463,7 +463,7 @@ export default function AlertingTab() {
                         telegram: { ...channelConfig.telegram, botToken: e.target.value }
                       })}
                       placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                     <p className={`text-sm ${textSecondary} mt-1`}>Get from @BotFather</p>
                   </div>
@@ -477,7 +477,7 @@ export default function AlertingTab() {
                         telegram: { ...channelConfig.telegram, chatId: e.target.value }
                       })}
                       placeholder="-1001234567890"
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
@@ -496,7 +496,7 @@ export default function AlertingTab() {
                         slack: { ...channelConfig.slack, webhookUrl: e.target.value }
                       })}
                       placeholder="https://hooks.slack.com/services/..."
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                   <div>
@@ -509,7 +509,7 @@ export default function AlertingTab() {
                         slack: { ...channelConfig.slack, channel: e.target.value }
                       })}
                       placeholder="#general"
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
@@ -528,7 +528,7 @@ export default function AlertingTab() {
                         discord: { ...channelConfig.discord, webhookUrl: e.target.value }
                       })}
                       placeholder="https://discord.com/api/webhooks/..."
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
@@ -548,7 +548,7 @@ export default function AlertingTab() {
                           email: { ...channelConfig.email, smtpHost: e.target.value }
                         })}
                         placeholder="smtp.gmail.com"
-                        className={`${input} w-full`}
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
                     </div>
                     <div>
@@ -561,7 +561,7 @@ export default function AlertingTab() {
                           email: { ...channelConfig.email, smtpPort: e.target.value }
                         })}
                         placeholder="587"
-                        className={`${input} w-full`}
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
                     </div>
                   </div>
@@ -575,7 +575,7 @@ export default function AlertingTab() {
                         email: { ...channelConfig.email, from: e.target.value }
                       })}
                       placeholder="alerts@example.com"
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                   <div>
@@ -588,7 +588,7 @@ export default function AlertingTab() {
                         email: { ...channelConfig.email, to: e.target.value }
                       })}
                       placeholder="team@example.com"
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                   <p className={`text-sm ${textSecondary}`}>
@@ -610,7 +610,7 @@ export default function AlertingTab() {
                         webhook: { ...channelConfig.webhook, url: e.target.value }
                       })}
                       placeholder="https://your-api.com/webhook"
-                      className={`${input} w-full`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
