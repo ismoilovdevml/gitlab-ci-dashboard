@@ -8,7 +8,7 @@ interface UseInfiniteScrollReturn {
   setIsLoading: (isLoading: boolean) => void
   setPage: (page: number) => void
   resetPagination: () => void
-  observerTarget: React.RefObject<HTMLDivElement>
+  observerTarget: React.RefObject<HTMLDivElement | null>
 }
 
 /**

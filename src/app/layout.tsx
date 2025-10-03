@@ -1,11 +1,10 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'GitLab CI/CD Enterprise Dashboard',
   description: 'Advanced GitLab CI/CD monitoring and management dashboard',
   manifest: '/manifest.json',
-  themeColor: '#FC6D26',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -26,6 +25,14 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: '#FC6D26',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -33,9 +40,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
-      </head>
       <body>{children}</body>
     </html>
   )
