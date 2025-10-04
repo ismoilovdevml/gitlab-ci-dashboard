@@ -363,7 +363,7 @@ export default function AlertingTab() {
           }`}
         >
           <History className="w-4 h-4 inline mr-2" />
-          History ({alertHistory.length})
+          History
         </button>
       </div>
 

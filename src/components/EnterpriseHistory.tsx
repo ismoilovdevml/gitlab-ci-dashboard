@@ -341,70 +341,69 @@ export default function EnterpriseHistory() {
 
       {/* Search and Filters */}
       <div className={`${card} p-6`}>
-        <div className="flex flex-col lg:flex-row gap-4 mb-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
-            <input
-              type="text"
-              placeholder="Search by project name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={`${input} pl-10 w-full`}
-            />
+        <div className="flex flex-col gap-4">
+          {/* Search Bar */}
+          <div className="flex flex-col lg:flex-row gap-3">
+            <div className="flex-1 relative">
+              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${textSecondary}`} />
+              <input
+                type="text"
+                placeholder="Search by project name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={`${input} pl-11 pr-4 py-3 w-full text-base`}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`px-4 py-3 rounded-lg flex items-center gap-2 transition-colors ${
+                  showFilters ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                <span className="hidden sm:inline">Filters</span>
+              </button>
+
+              <button
+                onClick={() => { loadHistory(); loadAnalytics(); }}
+                className="px-4 py-3 bg-gray-700 text-gray-300 rounded-lg flex items-center gap-2 hover:bg-gray-600 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+
+              <button
+                onClick={() => handleExport('csv')}
+                className="px-4 py-3 bg-green-600 text-white rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
+
+              <button
+                onClick={() => handleExport('json')}
+                className="px-4 py-3 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">JSON</span>
+              </button>
+
+              <button
+                onClick={handleClearHistory}
+                className="px-4 py-3 bg-red-600 text-white rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Clear All</span>
+              </button>
+            </div>
           </div>
 
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-              showFilters ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-            }`}
-          >
-            <Filter className="w-4 h-4" />
-            Filters
-          </button>
-
-          {/* Refresh */}
-          <button
-            onClick={() => { loadHistory(); loadAnalytics(); }}
-            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg flex items-center gap-2 hover:bg-gray-600"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-
-          {/* Export */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleExport('csv')}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center gap-2 hover:bg-green-700"
-            >
-              <Download className="w-4 h-4" />
-              CSV
-            </button>
-            <button
-              onClick={() => handleExport('json')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700"
-            >
-              <Download className="w-4 h-4" />
-              JSON
-            </button>
-          </div>
-
-          {/* Clear All */}
-          <button
-            onClick={handleClearHistory}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center gap-2 hover:bg-red-700"
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear All
-          </button>
-        </div>
-
-        {/* Advanced Filters */}
-        {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-700/30 rounded-lg">
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-700/30 rounded-lg">
             <div>
               <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Status</label>
               <select
@@ -455,8 +454,9 @@ export default function EnterpriseHistory() {
                 className={input}
               />
             </div>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* History List */}
