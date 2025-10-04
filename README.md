@@ -16,26 +16,37 @@ Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines w
 
 ## 🚀 Quick Start
 
-### Using Docker Compose (Recommended)
+### Production Deployment (Docker Compose)
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/ismoilovdevml/gitlab-ci-dashboard.git
 cd gitlab-ci-dashboard
 
-# Start all services (PostgreSQL + Redis + App)
+# 2. Setup environment variables
+cp .env.example .env
+
+# 3. Review and edit .env file if needed
+nano .env
+
+# 6. Start all services (PostgreSQL + Redis + App)
 docker-compose up -d
 
-# View logs
+# 7. View logs
 docker-compose logs -f app
 ```
 
 Open `http://localhost:3000` in your browser.
 
+**First Login:**
+- URL: `http://localhost:3000/login`
+- Username: `admin` (or value from `ADMIN_USERNAME` in .env)
+- Password: Check `ADMIN_PASSWORD` in .env file
+
 **Services:**
 - Dashboard UI: `http://localhost:3000`
-- PostgreSQL: `localhost:5432` (exposed for development)
-- Redis: `localhost:6379` (exposed for development)
+- PostgreSQL: Internal network only (secure by default)
+- Redis: Internal network only (secure by default)
 
 ### Stop Services
 
