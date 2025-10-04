@@ -283,9 +283,12 @@ function formatEventMessage(payload: WebhookPayload): {
   switch (payload.object_kind) {
     case 'pipeline': {
       const p = payload as PipelinePayload;
+      const duration = p.object_attributes.duration
+        ? `\n⏱️ Duration: ${Math.floor(p.object_attributes.duration / 60)}m ${p.object_attributes.duration % 60}s`
+        : '';
       return {
         title: `Pipeline ${p.object_attributes.status.toUpperCase()}`,
-        message: `📦 Project: ${projectName}\n🔢 Pipeline: #${p.object_attributes.id}\n🌿 Branch: ${p.object_attributes.ref}\n📊 Status: ${p.object_attributes.status}\n👤 Triggered by: ${userName}`,
+        message: `📦 *Project:* ${projectName}\n🔢 *Pipeline:* #${p.object_attributes.id}\n🌿 *Branch:* \`${p.object_attributes.ref}\`\n📊 *Status:* ${p.object_attributes.status.toUpperCase()}${duration}\n👤 *By:* ${userName}`,
         url: p.object_attributes.web_url,
         status: p.object_attributes.status,
       };
@@ -294,9 +297,12 @@ function formatEventMessage(payload: WebhookPayload): {
     case 'push': {
       const p = payload as PushPayload;
       const branch = p.ref.replace('refs/heads/', '');
+      const commits = p.commits?.slice(0, 3) || [];
+      const commitList = commits.map(c => `  • ${c.title}`).join('\n');
+      const moreCommits = p.total_commits_count > 3 ? `\n  ... and ${p.total_commits_count - 3} more` : '';
       return {
-        title: `Push to ${branch}`,
-        message: `📦 Project: ${projectName}\n🌿 Branch: ${branch}\n📝 Commits: ${p.total_commits_count}\n👤 Pushed by: ${userName}`,
+        title: `📤 Push to ${branch}`,
+        message: `📦 *Project:* ${projectName}\n🌿 *Branch:* \`${branch}\`\n📝 *Commits:* ${p.total_commits_count}\n${commitList}${moreCommits}\n👤 *By:* ${userName}`,
         url: payload.project?.web_url || '',
         status: 'push',
       };
@@ -304,9 +310,18 @@ function formatEventMessage(payload: WebhookPayload): {
 
     case 'merge_request': {
       const mr = payload as MergeRequestPayload;
+      const actionEmoji = {
+        open: '📂',
+        close: '🔒',
+        reopen: '🔓',
+        update: '🔄',
+        merge: '🔀',
+        approved: '✅',
+        unapproved: '❌',
+      }[mr.object_attributes.action] || '📝';
       return {
-        title: `Merge Request ${mr.object_attributes.action}`,
-        message: `📦 Project: ${projectName}\n📝 MR: !${mr.object_attributes.iid} - ${mr.object_attributes.title}\n🌿 ${mr.object_attributes.source_branch} → ${mr.object_attributes.target_branch}\n📊 State: ${mr.object_attributes.state}\n👤 By: ${userName}`,
+        title: `${actionEmoji} MR ${mr.object_attributes.action.toUpperCase()}`,
+        message: `📦 *Project:* ${projectName}\n📝 *MR:* !${mr.object_attributes.iid} - ${mr.object_attributes.title}\n🌿 *Branch:* \`${mr.object_attributes.source_branch}\` → \`${mr.object_attributes.target_branch}\`\n📊 *State:* ${mr.object_attributes.state}\n👤 *By:* ${userName}`,
         url: mr.object_attributes.url,
         status: mr.object_attributes.state,
       };
@@ -325,10 +340,16 @@ function formatEventMessage(payload: WebhookPayload): {
 
     case 'build': {
       const job = payload as JobPayload;
+      const jobUrl = payload.project?.web_url
+        ? `${payload.project.web_url}/-/jobs/${job.build_id}`
+        : '';
+      const duration = job.build_duration
+        ? `\n⏱️ *Duration:* ${Math.floor(job.build_duration / 60)}m ${job.build_duration % 60}s`
+        : '';
       return {
-        title: `Job ${job.build_status.toUpperCase()}`,
-        message: `📦 Project: ${projectName}\n🔨 Job: ${job.build_name}\n📊 Stage: ${job.build_stage}\n📊 Status: ${job.build_status}\n🌿 Branch: ${job.ref}\n👤 By: ${userName}`,
-        url: payload.project?.web_url || '',
+        title: `🔨 Job ${job.build_status.toUpperCase()}`,
+        message: `📦 *Project:* ${projectName}\n🔨 *Job:* ${job.build_name}\n📊 *Stage:* ${job.build_stage}\n📊 *Status:* ${job.build_status.toUpperCase()}\n🌿 *Branch:* \`${job.ref}\`${duration}\n👤 *By:* ${userName}`,
+        url: jobUrl,
         status: job.build_status,
       };
     }
