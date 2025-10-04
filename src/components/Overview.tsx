@@ -187,9 +187,12 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Essential Statistics */}
+      {/* Essential Statistics - All Clickable */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div onClick={() => setShowPipelineList({ title: 'Running Pipelines', status: 'running' })} className="cursor-pointer">
+        <div
+          onClick={() => setShowPipelineList({ title: 'Running Pipelines', status: 'running' })}
+          className="cursor-pointer transition-transform hover:scale-105"
+        >
           <StatsCard
             title="Running"
             value={stats?.running || 0}
@@ -197,7 +200,10 @@ export default function Overview() {
             color="blue"
           />
         </div>
-        <div onClick={() => setShowPipelineList({ title: 'Successful Pipelines', status: 'success' })} className="cursor-pointer">
+        <div
+          onClick={() => setShowPipelineList({ title: 'Successful Pipelines', status: 'success' })}
+          className="cursor-pointer transition-transform hover:scale-105"
+        >
           <StatsCard
             title="Success"
             value={stats?.success || 0}
@@ -205,7 +211,10 @@ export default function Overview() {
             color="green"
           />
         </div>
-        <div onClick={() => setShowPipelineList({ title: 'Failed Pipelines', status: 'failed' })} className="cursor-pointer">
+        <div
+          onClick={() => setShowPipelineList({ title: 'Failed Pipelines', status: 'failed' })}
+          className="cursor-pointer transition-transform hover:scale-105"
+        >
           <StatsCard
             title="Failed"
             value={stats?.failed || 0}
@@ -213,7 +222,10 @@ export default function Overview() {
             color="red"
           />
         </div>
-        <div onClick={() => setShowPipelineList({ title: 'Pending Pipelines', status: 'pending' })} className="cursor-pointer">
+        <div
+          onClick={() => setShowPipelineList({ title: 'Pending Pipelines', status: 'pending' })}
+          className="cursor-pointer transition-transform hover:scale-105"
+        >
           <StatsCard
             title="Pending"
             value={stats?.pending || 0}
@@ -221,7 +233,10 @@ export default function Overview() {
             color="yellow"
           />
         </div>
-        <div className="cursor-pointer">
+        <div
+          onClick={() => setShowPipelineList({ title: 'All Pipelines' })}
+          className="cursor-pointer transition-transform hover:scale-105"
+        >
           <StatsCard
             title="Total"
             value={stats?.total || 0}
@@ -229,7 +244,10 @@ export default function Overview() {
             color="purple"
           />
         </div>
-        <div className="cursor-pointer">
+        <div
+          onClick={() => window.location.href = '#projects'}
+          className="cursor-pointer transition-transform hover:scale-105"
+        >
           <StatsCard
             title="Projects"
             value={projects.length}
