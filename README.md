@@ -23,14 +23,19 @@ Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines w
 git clone https://github.com/ismoilovdevml/gitlab-ci-dashboard.git
 cd gitlab-ci-dashboard
 
-# 2. Setup environment variables
-cp .env.example .env
+# 2. Generate secure environment variables (auto-creates random passwords)
+bash scripts/generate-env.sh production
 
-# 3. Review and edit .env file if needed
-nano .env
+# OR manually:
+# cp .env.example .env
+# nano .env  # Edit with your values
 
-# 6. Start all services (PostgreSQL + Redis + App)
+# 3. Start all services (PostgreSQL + Redis + App)
 docker-compose up -d
+
+# 4. View admin credentials (save them!)
+# Username and password were shown after running generate-env.sh
+# Or view .env file: cat .env | grep ADMIN
 
 # 7. View logs
 docker-compose logs -f app
