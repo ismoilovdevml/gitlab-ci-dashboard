@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { Bell, Send, TestTube, Settings, History, Plus, Trash2, Check, X, MessageSquare, Mail, Hash, Webhook } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useTheme } from '@/hooks/useTheme';
-import { channelsApi, rulesApi, historyApi } from '@/lib/api/alerts';
+import { channelsApi, historyApi } from '@/lib/api/alerts';
 import WebhookSetup from './WebhookSetup';
+import EnterpriseHistory from './EnterpriseHistory';
 
 type AlertChannel = 'telegram' | 'slack' | 'discord' | 'email' | 'webhook';
 
@@ -40,21 +41,6 @@ interface ChannelConfig {
   };
 }
 
-interface AlertRule {
-  id: string;
-  name: string;
-  projectId: number | 'all';
-  projectName: string;
-  channels: AlertChannel[];
-  events: {
-    success: boolean;
-    failed: boolean;
-    running: boolean;
-    canceled: boolean;
-  };
-  enabled: boolean;
-  createdAt: string;
-}
 
 interface AlertHistory {
   id: string;
@@ -82,7 +68,6 @@ export default function AlertingTab() {
     webhook: { enabled: false, url: '', headers: {} },
   });
 
-  const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
   const [alertHistory, setAlertHistory] = useState<AlertHistory[]>([]);
   const [testing, setTesting] = useState(false);
 
@@ -113,10 +98,6 @@ export default function AlertingTab() {
         }
       });
       setChannelConfig(config);
-
-      // Load rules
-      const rules = await rulesApi.getAll();
-      setAlertRules(rules.map(r => ({ ...r, id: r.id || '', createdAt: r.createdAt || new Date().toISOString() })));
 
       // Load history (first 50 with pagination support)
       const historyResponse = await historyApi.getAll(50);
@@ -309,103 +290,6 @@ export default function AlertingTab() {
     }
   };
 
-  const addAlertRule = async () => {
-    try {
-      const newRule = await rulesApi.create({
-        name: 'New Alert Rule',
-        projectId: 'all',
-        projectName: 'All Projects',
-        channels: ['telegram'],
-        events: {
-          success: false,
-          failed: true,
-          running: false,
-          canceled: false,
-        },
-        enabled: true,
-      });
-      setAlertRules([...alertRules, newRule]);
-    } catch (error) {
-      console.error('Failed to create rule:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to create alert rule',
-        timestamp: Date.now()
-      });
-    }
-  };
-
-  const deleteAlertRule = async (id: string) => {
-    try {
-      await rulesApi.delete(id);
-      setAlertRules(alertRules.filter(rule => rule.id !== id));
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Deleted',
-        message: 'Alert rule deleted successfully',
-        timestamp: Date.now()
-      });
-    } catch (error) {
-      console.error('Failed to delete rule:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to delete alert rule',
-        timestamp: Date.now()
-      });
-    }
-  };
-
-  const toggleRule = async (id: string) => {
-    const rule = alertRules.find(r => r.id === id);
-    if (!rule) return;
-
-    try {
-      await rulesApi.update(id, { enabled: !rule.enabled });
-      setAlertRules(alertRules.map(r =>
-        r.id === id ? { ...r, enabled: !r.enabled } : r
-      ));
-    } catch (error) {
-      console.error('Failed to toggle rule:', error);
-    }
-  };
-
-  const toggleRuleEvent = async (id: string, event: keyof AlertRule['events']) => {
-    const rule = alertRules.find(r => r.id === id);
-    if (!rule) return;
-
-    try {
-      const newEvents = { ...rule.events, [event]: !rule.events[event] };
-      await rulesApi.update(id, { events: newEvents });
-      setAlertRules(alertRules.map(r =>
-        r.id === id ? { ...r, events: newEvents } : r
-      ));
-    } catch (error) {
-      console.error('Failed to toggle event:', error);
-    }
-  };
-
-  const toggleRuleChannel = async (id: string, channel: AlertChannel) => {
-    const rule = alertRules.find(r => r.id === id);
-    if (!rule) return;
-
-    try {
-      const newChannels = rule.channels.includes(channel)
-        ? rule.channels.filter(c => c !== channel)
-        : [...rule.channels, channel];
-
-      await rulesApi.update(id, { channels: newChannels });
-      setAlertRules(alertRules.map(r =>
-        r.id === id ? { ...r, channels: newChannels } : r
-      ));
-    } catch (error) {
-      console.error('Failed to toggle channel:', error);
-    }
-  };
 
   const getChannelIcon = (channel: AlertChannel) => {
     switch (channel) {
@@ -467,17 +351,6 @@ export default function AlertingTab() {
         >
           <Settings className="w-4 h-4 inline mr-2" />
           Channels ({enabledChannelsCount})
-        </button>
-        <button
-          onClick={() => setActiveTab('rules')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'rules'
-              ? 'border-b-2 border-orange-500 text-orange-500'
-              : `${textSecondary} hover:text-gray-300`
-          }`}
-        >
-          <Bell className="w-4 h-4 inline mr-2" />
-          Alert Rules ({alertRules.length})
         </button>
         <button
           onClick={() => setActiveTab('history')}
@@ -820,170 +693,8 @@ export default function AlertingTab() {
         </div>
       )}
 
-      {/* Alert Rules Tab */}
-      {activeTab === 'rules' && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button
-              onClick={addAlertRule}
-              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Alert Rule
-            </button>
-          </div>
-
-          {alertRules.length === 0 ? (
-            <div className={`${card} p-12 text-center`}>
-              <Bell className={`w-16 h-16 mx-auto ${textSecondary} mb-4`} />
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>No Alert Rules</h3>
-              <p className={`${textSecondary} mb-4`}>
-                Create alert rules to get notified about pipeline events
-              </p>
-              <button
-                onClick={addAlertRule}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-              >
-                Add Alert Rule
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {alertRules.map((rule) => (
-                <div key={rule.id} className={`${card} p-4`}>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className={`font-semibold ${textPrimary}`}>{rule.name}</h3>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          rule.enabled ? 'bg-green-500/20 text-green-500' : 'bg-gray-500/20 text-gray-500'
-                        }`}>
-                          {rule.enabled ? 'Active' : 'Disabled'}
-                        </span>
-                      </div>
-                      <p className={`text-sm ${textSecondary}`}>
-                        Project: {rule.projectName}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => toggleRule(rule.id)}
-                        className={`p-2 rounded hover:bg-gray-700 transition-colors ${textSecondary}`}
-                      >
-                        {rule.enabled ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => deleteAlertRule(rule.id)}
-                        className={`p-2 rounded hover:bg-gray-700 transition-colors ${textSecondary}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Events */}
-                  <div className="mb-3">
-                    <label className={`text-sm font-medium ${textPrimary} mb-2 block`}>Events</label>
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => toggleRuleEvent(rule.id, 'success')}
-                        className={`px-3 py-1 text-sm rounded transition-colors ${
-                          rule.events.success ? 'bg-green-500 text-white' : 'bg-gray-600 text-gray-300'
-                        }`}
-                      >
-                        ✅ Success
-                      </button>
-                      <button
-                        onClick={() => toggleRuleEvent(rule.id, 'failed')}
-                        className={`px-3 py-1 text-sm rounded transition-colors ${
-                          rule.events.failed ? 'bg-red-500 text-white' : 'bg-gray-600 text-gray-300'
-                        }`}
-                      >
-                        ❌ Failed
-                      </button>
-                      <button
-                        onClick={() => toggleRuleEvent(rule.id, 'running')}
-                        className={`px-3 py-1 text-sm rounded transition-colors ${
-                          rule.events.running ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-300'
-                        }`}
-                      >
-                        🏃 Running
-                      </button>
-                      <button
-                        onClick={() => toggleRuleEvent(rule.id, 'canceled')}
-                        className={`px-3 py-1 text-sm rounded transition-colors ${
-                          rule.events.canceled ? 'bg-gray-500 text-white' : 'bg-gray-600 text-gray-300'
-                        }`}
-                      >
-                        🚫 Canceled
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Channels */}
-                  <div>
-                    <label className={`text-sm font-medium ${textPrimary} mb-2 block`}>Notification Channels</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {(['telegram', 'slack', 'discord', 'email', 'webhook'] as AlertChannel[]).map((channel) => (
-                        <button
-                          key={channel}
-                          onClick={() => toggleRuleChannel(rule.id, channel)}
-                          disabled={!channelConfig[channel].enabled}
-                          className={`px-3 py-1 text-sm rounded transition-colors flex items-center gap-1 ${
-                            rule.channels.includes(channel)
-                              ? `${getChannelColor(channel)} text-white`
-                              : 'bg-gray-600 text-gray-300'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {getChannelIcon(channel)}
-                          <span className="capitalize">{channel}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* History Tab */}
-      {activeTab === 'history' && (
-        <div className={`${card} p-6`}>
-          {alertHistory.length === 0 ? (
-            <div className="text-center py-12">
-              <History className={`w-16 h-16 mx-auto ${textSecondary} mb-4`} />
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>No Alert History</h3>
-              <p className={`${textSecondary}`}>
-                Alert history will appear here once notifications are sent
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {alertHistory.map((alert) => (
-                <div key={alert.id} className="p-3 bg-gray-700/50 rounded-lg flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`font-medium ${textPrimary}`}>{alert.projectName}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${getChannelColor(alert.channel)} text-white`}>
-                        {alert.channel}
-                      </span>
-                      <span className={`text-xs ${textSecondary}`}>
-                        #{alert.pipelineId}
-                      </span>
-                    </div>
-                    <p className={`text-sm ${textSecondary}`}>{alert.message}</p>
-                  </div>
-                  <span className={`text-xs ${textSecondary} ml-4`}>
-                    {new Date(alert.timestamp).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {activeTab === 'history' && <EnterpriseHistory />}
     </div>
   );
 }

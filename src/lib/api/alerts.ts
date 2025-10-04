@@ -118,6 +118,50 @@ export const historyApi = {
     return res.json();
   },
 
+  async getFiltered(params: {
+    limit?: number;
+    cursor?: string;
+    search?: string;
+    status?: string;
+    channel?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) queryParams.append(key, value.toString());
+    });
+
+    const res = await fetch(`/api/history?${queryParams.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch history');
+    return res.json();
+  },
+
+  async getAnalytics(days = 30) {
+    const res = await fetch(`/api/history/analytics?days=${days}`);
+    if (!res.ok) throw new Error('Failed to fetch analytics');
+    return res.json();
+  },
+
+  async export(format: 'csv' | 'json', params?: {
+    search?: string;
+    status?: string;
+    channel?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const queryParams = new URLSearchParams({ format });
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) queryParams.append(key, value);
+      });
+    }
+
+    const res = await fetch(`/api/history/export?${queryParams.toString()}`);
+    if (!res.ok) throw new Error('Failed to export history');
+    return res.blob();
+  },
+
   async add(entry: Omit<AlertHistory, 'id' | 'timestamp'>) {
     const res = await fetch('/api/history', {
       method: 'POST',
