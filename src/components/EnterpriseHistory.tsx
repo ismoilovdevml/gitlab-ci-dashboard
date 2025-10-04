@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
+import { TelegramIcon, SlackIcon, DiscordIcon, EmailIcon } from './icons/BrandIcons';
 
 interface AlertHistory {
   id: string;
@@ -223,6 +224,16 @@ export default function EnterpriseHistory() {
     return colors[channel] || 'bg-gray-500';
   };
 
+  const getChannelIcon = (channel: string) => {
+    switch (channel) {
+      case 'telegram': return <TelegramIcon className="w-3 h-3" />;
+      case 'slack': return <SlackIcon className="w-3 h-3" />;
+      case 'discord': return <DiscordIcon className="w-3 h-3" />;
+      case 'email': return <EmailIcon className="w-3 h-3" />;
+      default: return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Analytics Cards */}
@@ -286,7 +297,9 @@ export default function EnterpriseHistory() {
             {Object.entries(analytics.channelStats).map(([channel, stats]) => (
               <div key={channel} className="bg-gray-700/30 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${getChannelColor(channel)}`} />
+                  <div className={`p-1.5 rounded ${getChannelColor(channel)}`}>
+                    {getChannelIcon(channel)}
+                  </div>
                   <span className={`font-medium ${textPrimary} capitalize`}>{channel}</span>
                 </div>
                 <p className={`text-sm ${textSecondary}`}>Total: {stats.total}</p>
@@ -469,8 +482,9 @@ export default function EnterpriseHistory() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`font-medium ${textPrimary}`}>{alert.projectName}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${getChannelColor(alert.channel)} text-white`}>
-                        {alert.channel}
+                      <span className={`text-xs px-2 py-0.5 rounded ${getChannelColor(alert.channel)} text-white flex items-center gap-1`}>
+                        {getChannelIcon(alert.channel)}
+                        <span className="capitalize">{alert.channel}</span>
                       </span>
                       <span className={`text-xs ${textSecondary}`}>
                         #{alert.pipelineId}

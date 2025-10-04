@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Send, TestTube, Settings, History, Plus, Trash2, Check, X, MessageSquare, Mail, Hash, Webhook } from 'lucide-react';
+import { Bell, TestTube, Settings, History, Check, Webhook } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useTheme } from '@/hooks/useTheme';
 import { channelsApi, historyApi } from '@/lib/api/alerts';
 import WebhookSetup from './WebhookSetup';
 import EnterpriseHistory from './EnterpriseHistory';
+import { TelegramIcon, SlackIcon, DiscordIcon, EmailIcon, WebhookIcon } from './icons/BrandIcons';
 
 type AlertChannel = 'telegram' | 'slack' | 'discord' | 'email' | 'webhook';
 
@@ -57,7 +58,7 @@ export default function AlertingTab() {
   const { card, textPrimary, textSecondary, input } = useTheme();
   const { addNotification } = useDashboardStore();
 
-  const [activeTab, setActiveTab] = useState<'webhook' | 'channels' | 'rules' | 'history'>('webhook');
+  const [activeTab, setActiveTab] = useState<'webhook' | 'channels' | 'history'>('webhook');
   const [activeChannel, setActiveChannel] = useState<AlertChannel>('telegram');
 
   const [channelConfig, setChannelConfig] = useState<ChannelConfig>({
@@ -291,13 +292,14 @@ export default function AlertingTab() {
   };
 
 
-  const getChannelIcon = (channel: AlertChannel) => {
+  const getChannelIcon = (channel: AlertChannel, size: 'sm' | 'md' = 'md') => {
+    const sizeClass = size === 'sm' ? 'w-4 h-4' : 'w-6 h-6';
     switch (channel) {
-      case 'telegram': return <Send className="w-4 h-4" />;
-      case 'slack': return <Hash className="w-4 h-4" />;
-      case 'discord': return <MessageSquare className="w-4 h-4" />;
-      case 'email': return <Mail className="w-4 h-4" />;
-      case 'webhook': return <Settings className="w-4 h-4" />;
+      case 'telegram': return <TelegramIcon className={sizeClass} />;
+      case 'slack': return <SlackIcon className={sizeClass} />;
+      case 'discord': return <DiscordIcon className={sizeClass} />;
+      case 'email': return <EmailIcon className={sizeClass} />;
+      case 'webhook': return <WebhookIcon className={sizeClass} />;
     }
   };
 
@@ -401,7 +403,7 @@ export default function AlertingTab() {
             <div className={`${card} p-6 space-y-6`}>
               <div className="flex items-center justify-between">
                 <h3 className={`text-lg font-semibold ${textPrimary} capitalize flex items-center gap-2`}>
-                  {getChannelIcon(activeChannel)}
+                  {getChannelIcon(activeChannel, 'sm')}
                   {activeChannel} Configuration
                 </h3>
                 <button
