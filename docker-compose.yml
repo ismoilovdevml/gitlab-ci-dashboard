@@ -50,9 +50,7 @@ services:
 
   # Next.js Application
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ismoilovdevml/gitlab-ci-dashboard:latest
     container_name: gitlab-dashboard-app
     restart: unless-stopped
     depends_on:
