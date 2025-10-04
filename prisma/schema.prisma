@@ -22,23 +22,6 @@ model AlertChannel {
   @@map("alert_channels")
 }
 
-// Alert Rules (When to send alerts)
-model AlertRule {
-  id          String   @id @default(cuid())
-  name        String
-  projectId   String   // "all" or specific project ID
-  projectName String
-  channels    String[] // Array of channel types ["telegram", "slack"]
-  events      Json     // {success: bool, failed: bool, running: bool, canceled: bool}
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("alert_rules")
-  @@index([enabled])
-  @@index([projectId])
-}
-
 // Alert History (Log of sent alerts)
 model AlertHistory {
   id          String   @id @default(cuid())
