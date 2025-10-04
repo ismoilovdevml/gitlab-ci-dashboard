@@ -86,15 +86,11 @@ export default function ProjectsTab() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const totalStars = projects.reduce((sum, p) => sum + (p.star_count || 0), 0);
-    const totalForks = projects.reduce((sum, p) => sum + (p.forks_count || 0), 0);
     const privateProjects = projects.filter(p => p.visibility === 'private').length;
     const publicProjects = projects.filter(p => p.visibility === 'public').length;
 
     return {
       total: projects.length,
-      stars: totalStars,
-      forks: totalForks,
       private: privateProjects,
       public: publicProjects,
     };
@@ -107,8 +103,8 @@ export default function ProjectsTab() {
         <p className={textSecondary}>All your GitLab projects</p>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* Statistics Cards - Only Essential */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => {
             setVisibilityFilter('all');
@@ -174,42 +170,6 @@ export default function ProjectsTab() {
             </div>
           </div>
         </button>
-
-        <div className={`rounded-xl p-4 border ${
-          theme === 'light'
-            ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
-            : 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/20 border-yellow-500/30'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              theme === 'light' ? 'bg-yellow-500/20' : 'bg-yellow-500/10'
-            }`}>
-              <Star className="w-5 h-5 text-yellow-500" />
-            </div>
-            <div>
-              <p className={`text-xs ${theme === 'light' ? 'text-yellow-700' : 'text-yellow-400'}`}>Stars</p>
-              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-yellow-600' : textPrimary}`}>{stats.stars}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={`rounded-xl p-4 border ${
-          theme === 'light'
-            ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
-            : 'bg-gradient-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              theme === 'light' ? 'bg-purple-500/20' : 'bg-purple-500/10'
-            }`}>
-              <GitFork className="w-5 h-5 text-purple-500" />
-            </div>
-            <div>
-              <p className={`text-xs ${theme === 'light' ? 'text-purple-700' : 'text-purple-400'}`}>Forks</p>
-              <p className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : textPrimary}`}>{stats.forks}</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Filters */}

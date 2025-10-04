@@ -135,7 +135,7 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredPipelines.map((pipeline) => {
+                {filteredPipelines.map((pipeline, index) => {
                   const project = projects.find(p => p.id === pipeline.project_id);
                   return (
                     <PipelineCard
@@ -143,6 +143,7 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
                       pipeline={pipeline}
                       projectName={project?.name}
                       onClick={() => handlePipelineClick(pipeline)}
+                      index={index}
                     />
                   );
                 })}

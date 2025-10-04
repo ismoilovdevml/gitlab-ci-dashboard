@@ -16,6 +16,7 @@ interface DashboardStore {
   theme: 'dark' | 'light';
   notifyPipelineFailures: boolean;
   notifyPipelineSuccess: boolean;
+  activeTab: string;
 
   setProjects: (projects: Project[]) => void;
   setActivePipelines: (pipelines: Pipeline[]) => void;
@@ -30,6 +31,7 @@ interface DashboardStore {
   setTheme: (theme: 'dark' | 'light') => void;
   setNotifyPipelineFailures: (notify: boolean) => void;
   setNotifyPipelineSuccess: (notify: boolean) => void;
+  setActiveTab: (tab: string) => void;
   addNotification: (notification: Notification) => void;
   removeNotification: (id: string) => void;
   notifications: Notification[];
@@ -59,6 +61,7 @@ export const useDashboardStore = create<DashboardStore>()(
       theme: 'dark',
       notifyPipelineFailures: true,
       notifyPipelineSuccess: false,
+      activeTab: 'overview',
       notifications: [],
 
       setProjects: (projects) => set({ projects }),
@@ -74,6 +77,7 @@ export const useDashboardStore = create<DashboardStore>()(
       setTheme: (theme) => set({ theme }),
       setNotifyPipelineFailures: (notifyPipelineFailures) => set({ notifyPipelineFailures }),
       setNotifyPipelineSuccess: (notifyPipelineSuccess) => set({ notifyPipelineSuccess }),
+      setActiveTab: (activeTab) => set({ activeTab }),
       addNotification: (notification) => set((state) => ({
         notifications: [...state.notifications, notification],
       })),
@@ -83,9 +87,10 @@ export const useDashboardStore = create<DashboardStore>()(
     }),
     {
       name: 'gitlab-dashboard-storage',
-      // Only persist theme preference - NO sensitive data!
+      // Only persist theme and activeTab - NO sensitive data!
       partialize: (state) => ({
         theme: state.theme,
+        activeTab: state.activeTab,
       }),
     }
   )

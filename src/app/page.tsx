@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Overview from '@/components/Overview';
 import NotificationToast from '@/components/NotificationToast';
@@ -20,8 +20,7 @@ const AlertingTab = lazy(() => import('@/components/AlertingTab'));
 const SettingsTab = lazy(() => import('@/components/SettingsTab'));
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const { theme } = useDashboardStore();
+  const { theme, activeTab, setActiveTab } = useDashboardStore();
 
   // Load config from database on mount (ALL PAGES)
   useConfigLoader();

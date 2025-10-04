@@ -188,10 +188,10 @@ export default function Overview() {
       </div>
 
       {/* Essential Statistics - All Clickable */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div
           onClick={() => setShowPipelineList({ title: 'Running Pipelines', status: 'running' })}
-          className="cursor-pointer transition-transform hover:scale-105"
+          className="cursor-pointer"
         >
           <StatsCard
             title="Running"
@@ -202,7 +202,7 @@ export default function Overview() {
         </div>
         <div
           onClick={() => setShowPipelineList({ title: 'Successful Pipelines', status: 'success' })}
-          className="cursor-pointer transition-transform hover:scale-105"
+          className="cursor-pointer"
         >
           <StatsCard
             title="Success"
@@ -213,7 +213,7 @@ export default function Overview() {
         </div>
         <div
           onClick={() => setShowPipelineList({ title: 'Failed Pipelines', status: 'failed' })}
-          className="cursor-pointer transition-transform hover:scale-105"
+          className="cursor-pointer"
         >
           <StatsCard
             title="Failed"
@@ -224,7 +224,7 @@ export default function Overview() {
         </div>
         <div
           onClick={() => setShowPipelineList({ title: 'Pending Pipelines', status: 'pending' })}
-          className="cursor-pointer transition-transform hover:scale-105"
+          className="cursor-pointer"
         >
           <StatsCard
             title="Pending"
@@ -235,24 +235,13 @@ export default function Overview() {
         </div>
         <div
           onClick={() => setShowPipelineList({ title: 'All Pipelines' })}
-          className="cursor-pointer transition-transform hover:scale-105"
+          className="cursor-pointer"
         >
           <StatsCard
             title="Total"
             value={stats?.total || 0}
             icon={GitBranch}
             color="purple"
-          />
-        </div>
-        <div
-          onClick={() => window.location.href = '#projects'}
-          className="cursor-pointer transition-transform hover:scale-105"
-        >
-          <StatsCard
-            title="Projects"
-            value={projects.length}
-            icon={GitBranch}
-            color="orange"
           />
         </div>
       </div>
@@ -335,7 +324,7 @@ export default function Overview() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {filteredPipelines.slice(0, 9).map((pipeline) => {
+            {filteredPipelines.slice(0, 9).map((pipeline, index) => {
               const project = projects.find(p => p.id === pipeline.project_id);
               return (
                 <div
@@ -350,8 +339,18 @@ export default function Overview() {
                       : 'hover:border-zinc-700'
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${
+                  <div className="flex items-center gap-2 mb-2">
+                    {/* Build Number Badge - Smaller */}
+                    <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                      index === 0 ? 'bg-orange-500/20 text-orange-500' :
+                      index === 1 ? 'bg-orange-500/15 text-orange-400' :
+                      index === 2 ? 'bg-orange-500/10 text-orange-300' :
+                      theme === 'light' ? 'bg-gray-100 text-gray-500' : 'bg-zinc-800 text-zinc-500'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    {/* Status Icon */}
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${
                       pipeline.status === 'success' ? 'bg-green-500/10 text-green-500' :
                       pipeline.status === 'failed' ? 'bg-red-500/10 text-red-500' :
                       pipeline.status === 'running' ? 'bg-blue-500/10 text-blue-500' :
@@ -363,12 +362,13 @@ export default function Overview() {
                       <h3 className={`font-medium text-sm truncate group-hover:text-orange-500 transition-colors ${textPrimary}`}>
                         {project?.name || 'Unknown'}
                       </h3>
-                      <p className={`text-xs ${textSecondary}`}>#{pipeline.id}</p>
+                      <p className={`text-xs ${textSecondary}`}>Pipeline #{pipeline.id}</p>
                     </div>
                   </div>
-                  <div className={`flex items-center justify-between text-xs ${textSecondary}`}>
+                  <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
+                    <GitBranch className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{pipeline.ref}</span>
-                    <span className="whitespace-nowrap ml-2">{formatRelativeTime(pipeline.updated_at)}</span>
+                    <span className="whitespace-nowrap ml-auto">{formatRelativeTime(pipeline.updated_at)}</span>
                   </div>
                 </div>
               );

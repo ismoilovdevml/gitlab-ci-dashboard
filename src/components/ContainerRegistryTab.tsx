@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2, Package, Clock, HardDrive, Tag, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, Package, Clock, HardDrive, Tag, ChevronDown, ChevronRight, Copy, CheckCircle, Terminal, ExternalLink } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync, ContainerRepository, ContainerTag } from '@/lib/gitlab-api';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
@@ -17,6 +17,7 @@ export default function ContainerRegistryTab() {
   const [loadingTags, setLoadingTags] = useState<Set<number>>(new Set());
   const [deletingRepoIds, setDeletingRepoIds] = useState<Set<number>>(new Set());
   const [deletingTags, setDeletingTags] = useState<Set<string>>(new Set());
+  const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -29,9 +30,23 @@ export default function ContainerRegistryTab() {
     onConfirm: () => {},
   });
 
+  const copyToClipboard = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCommand(text);
+    setTimeout(() => setCopiedCommand(null), 2000);
+
+    addNotification({
+      id: Date.now().toString(),
+      type: 'success',
+      title: 'Copied!',
+      message: `${type} command copied to clipboard`,
+      timestamp: Date.now(),
+    });
+  };
+
   useEffect(() => {
     loadRepositories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const loadRepositories = async () => {
@@ -184,12 +199,6 @@ export default function ContainerRegistryTab() {
     }
   };
 
-  const totalSize = repositories.reduce((acc, repo) => {
-    const repoSize = repo.tags?.reduce((sum, tag) => sum + (tag.total_size || 0), 0) || 0;
-    return acc + repoSize;
-  }, 0);
-
-  const totalTags = repositories.reduce((acc, repo) => acc + (repo.tags_count || 0), 0);
 
   if (loading) {
     return (
@@ -207,7 +216,7 @@ export default function ContainerRegistryTab() {
       </div>
 
       {repositories.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className={`rounded-xl p-4 ${
             theme === 'light'
               ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 shadow-sm'
@@ -222,42 +231,6 @@ export default function ContainerRegistryTab() {
               <div>
                 <p className={`text-sm ${textSecondary}`}>Repositories</p>
                 <p className={`text-2xl font-bold ${textPrimary}`}>{repositories.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`rounded-xl p-4 ${
-            theme === 'light'
-              ? 'bg-gradient-to-br from-green-50 to-green-100/50 border border-green-200 shadow-sm'
-              : 'bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20'
-          }`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                theme === 'light' ? 'bg-green-100' : 'bg-green-500/20'
-              }`}>
-                <Tag className="w-5 h-5 text-green-500" />
-              </div>
-              <div>
-                <p className={`text-sm ${textSecondary}`}>Total Tags</p>
-                <p className={`text-2xl font-bold ${textPrimary}`}>{totalTags}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`rounded-xl p-4 ${
-            theme === 'light'
-              ? 'bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-200 shadow-sm'
-              : 'bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20'
-          }`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                theme === 'light' ? 'bg-purple-100' : 'bg-purple-500/20'
-              }`}>
-                <HardDrive className="w-5 h-5 text-purple-500" />
-              </div>
-              <div>
-                <p className={`text-sm ${textSecondary}`}>Total Size</p>
-                <p className={`text-2xl font-bold ${textPrimary}`}>{formatBytes(totalSize)}</p>
               </div>
             </div>
           </div>
@@ -314,18 +287,58 @@ export default function ContainerRegistryTab() {
                         <span>{formatRelativeTime(repo.created_at)}</span>
                       </div>
                     </div>
+
+                    {/* Docker Commands */}
+                    <div className="ml-6 mt-2 space-y-1">
+                      <div className={`flex items-center gap-2 text-xs font-mono p-2 rounded ${
+                        theme === 'light' ? 'bg-[#f5f5f7] border border-[#d2d2d7]' : 'bg-zinc-900 border border-zinc-800'
+                      }`}>
+                        <Terminal className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                        <span className={`flex-1 truncate ${textSecondary}`}>docker pull {repo.location}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(`docker pull ${repo.location}`, 'Pull');
+                          }}
+                          className={`p-1 rounded transition-colors ${
+                            theme === 'light' ? 'hover:bg-blue-100 text-blue-500' : 'hover:bg-blue-500/20 text-blue-400'
+                          }`}
+                          title="Copy pull command"
+                        >
+                          {copiedCommand === `docker pull ${repo.location}` ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  <button
-                    onClick={() => handleDeleteRepository(repo)}
-                    disabled={deletingRepoIds.has(repo.id)}
-                    className={`p-1.5 text-red-500 rounded transition-colors disabled:opacity-50 ${
-                      theme === 'light' ? 'hover:bg-red-50' : 'hover:bg-red-500/10'
-                    }`}
-                    title="Delete repository"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`${repo.location.split('/')[0]}//${repo.location.split('/').slice(1).join('/')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`p-1.5 rounded transition-colors ${
+                        theme === 'light' ? 'hover:bg-blue-50 text-blue-500' : 'hover:bg-blue-500/10 text-blue-400'
+                      }`}
+                      title="View in GitLab"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                    <button
+                      onClick={() => handleDeleteRepository(repo)}
+                      disabled={deletingRepoIds.has(repo.id)}
+                      className={`p-1.5 text-red-500 rounded transition-colors disabled:opacity-50 ${
+                        theme === 'light' ? 'hover:bg-red-50' : 'hover:bg-red-500/10'
+                      }`}
+                      title="Delete repository"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -342,42 +355,70 @@ export default function ContainerRegistryTab() {
                       {repo.tags.map((tag) => (
                         <div
                           key={tag.name}
-                          className={`p-3 flex items-center justify-between transition-colors ${
+                          className={`p-3 transition-colors ${
                             theme === 'light' ? 'hover:bg-white/50' : 'hover:bg-zinc-900/50'
                           }`}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Tag className="w-3.5 h-3.5 text-green-500" />
-                              <span className={`text-sm font-mono ${textPrimary}`}>{tag.name}</span>
-                            </div>
-                            <div className={`flex items-center gap-3 text-xs ml-5 ${textSecondary}`}>
-                              <div className="flex items-center gap-1">
-                                <HardDrive className="w-3 h-3" />
-                                <span>{formatBytes(tag.total_size)}</span>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Tag className="w-3.5 h-3.5 text-green-500" />
+                                <span className={`text-sm font-mono ${textPrimary}`}>{tag.name}</span>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{formatRelativeTime(tag.created_at)}</span>
+                              <div className={`flex items-center gap-3 text-xs ml-5 ${textSecondary}`}>
+                                <div className="flex items-center gap-1">
+                                  <HardDrive className="w-3 h-3" />
+                                  <span>{formatBytes(tag.total_size)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{formatRelativeTime(tag.created_at)}</span>
+                                </div>
+                                <span className={`font-mono ${
+                                  theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'
+                                }`}>
+                                  {tag.short_revision}
+                                </span>
                               </div>
-                              <span className={`font-mono ${
-                                theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'
-                              }`}>
-                                {tag.short_revision}
-                              </span>
                             </div>
+
+                            <button
+                              onClick={() => handleDeleteTag(repo, tag)}
+                              disabled={deletingTags.has(`${repo.id}-${tag.name}`)}
+                              className={`p-1.5 text-red-500 rounded transition-colors disabled:opacity-50 ${
+                                theme === 'light' ? 'hover:bg-red-50' : 'hover:bg-red-500/10'
+                              }`}
+                              title="Delete tag"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
 
-                          <button
-                            onClick={() => handleDeleteTag(repo, tag)}
-                            disabled={deletingTags.has(`${repo.id}-${tag.name}`)}
-                            className={`p-1.5 text-red-500 rounded transition-colors disabled:opacity-50 ${
-                              theme === 'light' ? 'hover:bg-red-50' : 'hover:bg-red-500/10'
-                            }`}
-                            title="Delete tag"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Tag Pull Command */}
+                          <div className="ml-5">
+                            <div className={`flex items-center gap-2 text-xs font-mono p-2 rounded ${
+                              theme === 'light' ? 'bg-white border border-[#d2d2d7]' : 'bg-zinc-900 border border-zinc-800'
+                            }`}>
+                              <Terminal className="w-3 h-3 text-green-500 flex-shrink-0" />
+                              <span className={`flex-1 truncate ${textSecondary}`}>docker pull {repo.location}:{tag.name}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(`docker pull ${repo.location}:${tag.name}`, 'Tag pull');
+                                }}
+                                className={`p-1 rounded transition-colors ${
+                                  theme === 'light' ? 'hover:bg-green-100 text-green-500' : 'hover:bg-green-500/20 text-green-400'
+                                }`}
+                                title="Copy pull command"
+                              >
+                                {copiedCommand === `docker pull ${repo.location}:${tag.name}` ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>

@@ -2,7 +2,7 @@
 
 import { Pipeline } from '@/lib/gitlab-api';
 import { getStatusColor, getStatusIcon, formatRelativeTime, formatDuration } from '@/lib/utils';
-import { ExternalLink, RotateCw, X } from 'lucide-react';
+import { ExternalLink, RotateCw, X, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -12,9 +12,10 @@ interface PipelineCardProps {
   onClick?: () => void;
   onRetry?: () => void;
   onCancel?: () => void;
+  index?: number;
 }
 
-export default function PipelineCard({ pipeline, projectName, onClick, onRetry, onCancel }: PipelineCardProps) {
+export default function PipelineCard({ pipeline, projectName, onClick, onRetry, onCancel, index }: PipelineCardProps) {
   const { theme, textPrimary, textSecondary, card } = useTheme();
 
   return (
@@ -27,7 +28,18 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
       }`}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-2 flex-1">
+          {/* Build Number Badge */}
+          {index !== undefined && (
+            <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+              index === 0 ? 'bg-orange-500/20 text-orange-500' :
+              index === 1 ? 'bg-orange-500/15 text-orange-400' :
+              index === 2 ? 'bg-orange-500/10 text-orange-300' :
+              theme === 'light' ? 'bg-gray-100 text-gray-500' : 'bg-zinc-800 text-zinc-500'
+            }`}>
+              {index + 1}
+            </div>
+          )}
           <div className={cn(
             'px-3 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-1',
             getStatusColor(pipeline.status)
@@ -57,7 +69,7 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
 
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2">
-          <span className={`text-sm ${textSecondary}`}>Branch:</span>
+          <GitBranch className={`w-3.5 h-3.5 ${textSecondary}`} />
           <span className={`text-sm font-mono px-2 py-0.5 rounded ${
             theme === 'light' ? 'bg-[#f5f5f7] text-[#1d1d1f] border border-[#d2d2d7]' : 'bg-zinc-800 text-white'
           }`}>

@@ -14,9 +14,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
-import { useDashboardStore } from '@/store/dashboard-store';
 import {
-  getGitLabAPIAsync,
   InsightsSummary,
   FailureAnalysis,
   FlakyTest,
@@ -38,28 +36,22 @@ export default function InsightsTab() {
 
   useEffect(() => {
     loadInsights();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const loadInsights = async () => {
     setLoading(true);
     try {
-      const api = await getGitLabAPIAsync();
+      const response = await fetch('/api/insights');
+      const result = await response.json();
 
-      const [summaryData, failuresData, flakyData, bottlenecksData, deploymentsData] =
-        await Promise.all([
-          api.getInsightsSummary(30),
-          api.getFailureAnalysis(7),
-          api.getFlakyTests(30),
-          api.getPerformanceBottlenecks(30),
-          api.getDeploymentFrequency(30),
-        ]);
-
-      setSummary(summaryData);
-      setFailures(failuresData);
-      setFlakyTests(flakyData);
-      setBottlenecks(bottlenecksData);
-      setDeployments(deploymentsData);
+      if (result.data) {
+        setSummary(result.data.summary);
+        setFailures(result.data.failures);
+        setFlakyTests(result.data.flakyTests);
+        setBottlenecks(result.data.bottlenecks);
+        setDeployments(result.data.deployments);
+      }
     } catch (error) {
       console.error('Failed to load insights:', error);
     } finally {
@@ -93,11 +85,64 @@ export default function InsightsTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Activity className="w-12 h-12 text-orange-500 mx-auto mb-4 animate-pulse" />
-          <p className={textSecondary}>Analyzing CI/CD pipelines...</p>
-          <p className={`text-xs mt-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'}`}>This may take a moment</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div>
+          <div className={`h-9 w-56 rounded-lg mb-2 animate-pulse ${
+            theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+          }`} />
+          <div className={`h-4 w-96 rounded animate-pulse ${
+            theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+          }`} />
+        </div>
+
+        {/* Summary Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className={`rounded-xl p-4 animate-pulse ${card}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className={`h-4 w-24 rounded ${
+                  theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+                }`} />
+                <div className={`w-5 h-5 rounded ${
+                  theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+                }`} />
+              </div>
+              <div className={`h-9 w-20 rounded mb-1 ${
+                theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+              }`} />
+              <div className={`h-3 w-32 rounded ${
+                theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+              }`} />
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs Skeleton */}
+        <div className={`flex gap-4 border-b pb-3 ${theme === 'light' ? 'border-[#d2d2d7]' : 'border-zinc-800'}`}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className={`h-6 w-24 rounded animate-pulse ${
+              theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+            }`} />
+          ))}
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <div key={i} className={`rounded-xl p-6 ${card}`}>
+              <div className={`h-6 w-40 rounded mb-4 animate-pulse ${
+                theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+              }`} />
+              <div className="space-y-3">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className={`h-20 rounded animate-pulse ${
+                    theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'
+                  }`} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

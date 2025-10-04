@@ -17,7 +17,7 @@ export default function ArtifactsTab() {
 
   useEffect(() => {
     loadArtifacts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const loadArtifacts = async () => {
