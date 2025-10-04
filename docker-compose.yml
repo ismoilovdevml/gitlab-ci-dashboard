@@ -50,9 +50,7 @@ services:
 
   # Next.js Application
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ismoilovdevml/gitlab-ci-dashboard:latest
     container_name: gitlab-dashboard-app
     restart: unless-stopped
     depends_on:
@@ -68,8 +66,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
 
       # App Config
-      NODE_ENV: production
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NODE_ENV: ${NODE_ENV:-production}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       NEXT_PUBLIC_GITLAB_URL: ${NEXT_PUBLIC_GITLAB_URL:-https://gitlab.com}
 
       # Admin User (Auto-created on first run)
