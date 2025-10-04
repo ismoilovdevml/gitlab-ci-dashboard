@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Bell } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Bell, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
+import axios from 'axios';
 
 interface SidebarProps {
   activeTab: string;
@@ -13,10 +15,30 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+  const router = useRouter();
   const { theme, sidebar, sidebarItem, textPrimary, textMuted } = useTheme();
   const {  } = useDashboardStore();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [username, setUsername] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('');
+
+  // Get user info on mount
+  useEffect(() => {
+    const getUserInfo = async () => {
+      try {
+        const response = await axios.get('/api/auth/session');
+        if (response.data.authenticated && response.data.user) {
+          setUsername(response.data.user.username);
+          setUserRole(response.data.user.role);
+        }
+      } catch (error) {
+        console.error('Failed to get user info:', error);
+      }
+    };
+
+    getUserInfo();
+  }, []);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -39,6 +61,15 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     const interval = setInterval(checkConnection, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/auth/logout');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   const menuItems = [
     { id: 'overview', icon: Activity, label: 'Overview' },
@@ -92,7 +123,36 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </ul>
       </nav>
 
-      <div className={`p-4 ${theme === 'light' ? 'border-t border-gray-200' : 'border-t border-zinc-800'}`}>
+      <div className={`p-4 space-y-3 ${theme === 'light' ? 'border-t border-gray-200' : 'border-t border-zinc-800'}`}>
+        {/* User Info */}
+        {username && (
+          <div className={`flex items-center justify-between p-3 rounded-lg ${
+            theme === 'light' ? 'bg-gray-50' : 'bg-zinc-800/50'
+          }`}>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                theme === 'light' ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/10 text-orange-500'
+              }`}>
+                <User className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium truncate ${textPrimary}`}>{username}</p>
+                <p className={`text-xs ${textMuted}`}>{userRole}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className={`p-2 rounded-lg transition-all ${
+                theme === 'light' ? 'hover:bg-red-50 text-red-600' : 'hover:bg-red-950 text-red-400'
+              }`}
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Connection Status */}
         <div className="flex items-center justify-between">
           <div className={`flex items-center gap-2 text-xs ${
             isConnected === null ? textMuted :

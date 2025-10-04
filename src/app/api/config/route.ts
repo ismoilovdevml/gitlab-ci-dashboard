@@ -1,35 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { cacheHelpers } from '@/lib/db/redis';
+import { getCurrentUser } from '@/lib/auth';
 
-// GET /api/config - Get GitLab configuration
+// GET /api/config - Get user's GitLab configuration
 export async function GET() {
   try {
-    const config = await cacheHelpers.getOrSet(
-      'gitlab:config',
-      async () => {
-        let config = await prisma.gitLabConfig.findFirst();
+    const user = await getCurrentUser();
 
-        if (!config) {
-          config = await prisma.gitLabConfig.create({
-            data: {
-              url: process.env.NEXT_PUBLIC_GITLAB_URL || 'https://gitlab.com',
-              token: '',
-              autoRefresh: true,
-              refreshInterval: 10000,
-              theme: 'dark',
-              notifyPipelineFailures: true,
-              notifyPipelineSuccess: false,
-            },
-          });
-        }
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-        return config;
-      },
-      60
-    );
-
-    return NextResponse.json(config);
+    // Return user's config
+    return NextResponse.json({
+      url: user.gitlabUrl,
+      token: user.gitlabToken,
+      autoRefresh: user.autoRefresh,
+      refreshInterval: user.refreshInterval,
+      theme: user.theme,
+      notifyPipelineFailures: user.notifyPipelineFailures,
+      notifyPipelineSuccess: user.notifyPipelineSuccess,
+    });
   } catch (error) {
     console.error('Failed to fetch config:', error);
     return NextResponse.json(
@@ -39,31 +34,47 @@ export async function GET() {
   }
 }
 
-// POST /api/config - Update GitLab configuration
+// POST /api/config - Update user's GitLab configuration
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const user = await getCurrentUser();
 
-    const existing = await prisma.gitLabConfig.findFirst();
-
-    let config;
-    if (existing) {
-      config = await prisma.gitLabConfig.update({
-        where: { id: existing.id },
-        data: {
-          ...body,
-          updatedAt: new Date(),
-        },
-      });
-    } else {
-      config = await prisma.gitLabConfig.create({
-        data: body,
-      });
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    await cacheHelpers.invalidate('gitlab:config');
+    const body = await request.json();
 
-    return NextResponse.json(config);
+    // Update user's config
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        gitlabUrl: body.url,
+        gitlabToken: body.token,
+        autoRefresh: body.autoRefresh,
+        refreshInterval: body.refreshInterval,
+        theme: body.theme,
+        notifyPipelineFailures: body.notifyPipelineFailures,
+        notifyPipelineSuccess: body.notifyPipelineSuccess,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Invalidate user cache
+    await cacheHelpers.invalidate(`user:${user.id}:config`);
+
+    return NextResponse.json({
+      url: updatedUser.gitlabUrl,
+      token: updatedUser.gitlabToken,
+      autoRefresh: updatedUser.autoRefresh,
+      refreshInterval: updatedUser.refreshInterval,
+      theme: updatedUser.theme,
+      notifyPipelineFailures: updatedUser.notifyPipelineFailures,
+      notifyPipelineSuccess: updatedUser.notifyPipelineSuccess,
+    });
   } catch (error) {
     console.error('Failed to save config:', error);
     return NextResponse.json(

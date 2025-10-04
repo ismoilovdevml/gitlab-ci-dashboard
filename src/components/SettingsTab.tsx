@@ -36,37 +36,40 @@ export default function SettingsTab() {
   const [testing, setTesting] = useState(false);
   const [cacheStats, setCacheStats] = useState({ size: 0, entries: 0 });
 
-  // Load config from database on mount
+  // Load user config from session on mount
   useEffect(() => {
-    const loadConfig = async () => {
+    const loadUserConfig = async () => {
       try {
-        const response = await axios.get('/api/config');
-        const config = response.data;
+        // Get current user session (includes their GitLab config)
+        const response = await axios.get('/api/auth/session');
+        if (response.data.authenticated && response.data.user) {
+          const user = response.data.user;
 
-        // Update local state
-        const url = config.url || 'https://gitlab.com';
-        const token = config.token || '';
+          // Update local state with user's config
+          const url = user.gitlabUrl || 'https://gitlab.com';
+          const token = user.gitlabToken === '***' ? '' : user.gitlabToken || '';
 
-        setGitlabUrl(url);
-        setGitlabToken(token);
-        setLocalUrl(url);  // Also update input field state
-        setLocalToken(token);  // Also update input field state
-        setAutoRefresh(config.autoRefresh ?? true);
-        setRefreshInterval(config.refreshInterval ?? 10000);
-        setNotifyPipelineFailures(config.notifyPipelineFailures ?? true);
-        setNotifyPipelineSuccess(config.notifyPipelineSuccess ?? false);
+          setGitlabUrl(url);
+          setGitlabToken(token);
+          setLocalUrl(url);
+          setLocalToken(token);
+          setAutoRefresh(user.autoRefresh ?? true);
+          setRefreshInterval(user.refreshInterval ?? 10000);
+          setNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
+          setNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
 
-        // Update Zustand store (only UI preferences, not credentials)
-        setStoreAutoRefresh(config.autoRefresh ?? true);
-        setStoreRefreshInterval(config.refreshInterval ?? 10000);
-        setStoreNotifyPipelineFailures(config.notifyPipelineFailures ?? true);
-        setStoreNotifyPipelineSuccess(config.notifyPipelineSuccess ?? false);
+          // Update Zustand store
+          setStoreAutoRefresh(user.autoRefresh ?? true);
+          setStoreRefreshInterval(user.refreshInterval ?? 10000);
+          setStoreNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
+          setStoreNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
+        }
       } catch (error) {
-        console.error('❌ Failed to load config from database:', error);
+        console.error('❌ Failed to load user config:', error);
       }
     };
 
-    loadConfig();
+    loadUserConfig();
   }, [setStoreAutoRefresh, setStoreRefreshInterval, setStoreNotifyPipelineFailures, setStoreNotifyPipelineSuccess]);
 
   // Sync input fields when gitlabUrl/gitlabToken change

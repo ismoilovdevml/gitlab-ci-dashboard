@@ -14,18 +14,6 @@ Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines w
 - 🌓 **Dark & Light Themes** - Comfortable viewing in any environment
 - 📱 **Responsive Design** - Works on desktop, tablet, and mobile
 
-### Alerting System ⚡
-- 🎯 **Instant Webhook Alerts** - GitLab webhooks for real-time notifications (0-2 seconds)
-- 📢 **Multi-Channel Support** - Telegram, Slack, Discord, Email, Custom Webhooks
-- 🎛️ **Flexible Alert Rules** - Configure alerts per project or globally
-- 📊 **Alert History** - Track all sent notifications
-- 🔔 **Smart Filtering** - Alert only on specific events (success, failed, running, canceled)
-
-### Infrastructure
-- 🗄️ **PostgreSQL Database** - Persistent storage for configurations and history
-- ⚡ **Redis Cache** - Fast data access and reduced API calls
-- 🐳 **Docker Compose** - One-command deployment with all services
-
 ## 🚀 Quick Start
 
 ### Using Docker Compose (Recommended)
@@ -46,8 +34,8 @@ Open `http://localhost:3000` in your browser.
 
 **Services:**
 - Dashboard UI: `http://localhost:3000`
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
+- PostgreSQL: `localhost:5432` (exposed for development)
+- Redis: `localhost:6379` (exposed for development)
 
 ### Stop Services
 
@@ -75,53 +63,7 @@ docker-compose down -v
 - Create token with `api` scope
 - Copy and paste in dashboard
 
-### 2. Setup Webhook Alerts (Instant Notifications)
 
-1. Go to **Alerting** tab → **Webhook Setup ⚡**
-2. Copy the webhook URL: `http://localhost:3000/api/webhook/gitlab`
-3. **For local development**, expose your localhost using:
-   ```bash
-   # Option 1: ngrok
-   ngrok http 3000
-   # You'll get: https://abc123.ngrok.io
-
-   # Option 2: Cloudflare Tunnel
-   cloudflared tunnel --url http://localhost:3000
-   ```
-4. Add webhook in GitLab:
-   - Project → Settings → Webhooks
-   - URL: `https://your-tunnel-url.ngrok.io/api/webhook/gitlab`
-   - Trigger: ✅ Pipeline events
-   - Click "Add webhook"
-
-### 3. Configure Alert Channels
-
-1. Go to **Alerting** tab → **Channels** tab
-2. Enable and configure your preferred channel:
-
-**Telegram Setup:**
-```bash
-# 1. Create bot with @BotFather
-# 2. Get bot token: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-# 3. Get chat ID (send message to bot, then check):
-curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
-```
-
-3. Add bot token and chat ID in dashboard
-4. Click "Test Connection" to verify
-
-### 4. Create Alert Rules
-
-1. Go to **Alerting** tab → **Alert Rules** tab
-2. Click "Add Alert Rule"
-3. Configure:
-   - **Name**: Custom rule name
-   - **Project**: Select project or "All Projects"
-   - **Events**: Choose when to alert (Success, Failed, Running, Canceled)
-   - **Channels**: Select notification channels (Telegram, Slack, etc)
-4. Enable the rule
-
-**Done!** You'll now receive instant alerts when pipelines change status ⚡
 
 ## 🏗️ Tech Stack
 
@@ -139,12 +81,6 @@ curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
 - **Cache**: Redis (latest)
 - **ORM**: Prisma
 - **API**: Next.js API Routes
-
-### DevOps
-- **Containerization**: Docker + Docker Compose
-- **CI/CD**: GitHub Actions
-- **Registry**: Docker Hub
-- **Multi-arch**: AMD64 + ARM64
 
 ## 🛠️ Development
 
@@ -205,7 +141,3 @@ docker-compose up -d
 
 
 If you have any questions or issues, please open an issue on GitHub.
-
----
-
-**Built with ❤️ using Next.js & TypeScript**

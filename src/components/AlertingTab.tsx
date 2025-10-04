@@ -69,7 +69,7 @@ export default function AlertingTab() {
     webhook: { enabled: false, url: '', headers: {} },
   });
 
-  const [alertHistory, setAlertHistory] = useState<AlertHistory[]>([]);
+  const [, setAlertHistory] = useState<AlertHistory[]>([]);
   const [testing, setTesting] = useState(false);
 
   // Load config from API

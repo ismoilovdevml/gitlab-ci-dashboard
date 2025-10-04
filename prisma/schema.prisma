@@ -40,7 +40,54 @@ model AlertHistory {
   @@index([createdAt])
 }
 
-// GitLab Configuration
+// User Management (Multi-user support with authentication)
+model User {
+  id              String   @id @default(cuid())
+  username        String   @unique
+  password        String   // bcrypt hashed password
+  email           String?
+  role            String   @default("user") // admin, user, viewer
+  isActive        Boolean  @default(true)
+
+  // GitLab Configuration per user
+  gitlabUrl       String   @default("https://gitlab.com")
+  gitlabToken     String   @default("")
+
+  // User preferences
+  theme           String   @default("dark")
+  autoRefresh     Boolean  @default(true)
+  refreshInterval Int      @default(10000)
+  notifyPipelineFailures Boolean @default(true)
+  notifyPipelineSuccess  Boolean @default(false)
+
+  // Session tracking
+  lastLoginAt     DateTime?
+  lastActivityAt  DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sessions        Session[]
+
+  @@map("users")
+}
+
+// Session Management (for authentication)
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+  @@index([userId])
+  @@index([token])
+}
+
+// GitLab Configuration (Global settings - kept for backward compatibility)
 model GitLabConfig {
   id              String   @id @default(cuid())
   url             String   @default("https://gitlab.com")
