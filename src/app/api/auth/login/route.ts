@@ -51,9 +51,13 @@ export async function POST(request: NextRequest) {
     const session = await createSession(user.id);
 
     // Set session cookie
+    // Only use secure cookies when explicitly using HTTPS
+    const isHttps = request.headers.get('x-forwarded-proto') === 'https' ||
+                    request.url.startsWith('https://');
+
     const cookie = serialize(SESSION_COOKIE_NAME, session.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isHttps,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: '/',
