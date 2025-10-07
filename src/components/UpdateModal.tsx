@@ -20,10 +20,6 @@ export default function UpdateModal({
 }: UpdateModalProps) {
   const { theme, card, textPrimary, textSecondary } = useTheme();
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'long',
@@ -185,7 +181,7 @@ export default function UpdateModal({
                 <p className={`text-sm ${
                   theme === 'light' ? 'text-yellow-800' : 'text-yellow-300/90'
                 }`}>
-                  It's recommended to backup your database before updating. All data will be preserved, but it's always safer to have a backup.
+                  It&apos;s recommended to backup your database before updating. All data will be preserved, but it&apos;s always safer to have a backup.
                 </p>
               </div>
             </div>
