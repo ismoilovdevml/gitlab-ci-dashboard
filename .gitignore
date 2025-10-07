@@ -41,3 +41,9 @@ next-env.d.ts
 /public/sw.js
 /public/swe-worker-*.js
 /public/workbox-*.js
+
+# Local development files
+docker-compose.local.yml
+test-security.sh
+*.backup
+*.bak*
