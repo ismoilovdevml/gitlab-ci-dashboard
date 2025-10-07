@@ -49,6 +49,7 @@ export default function SettingsTab() {
   useEffect(() => {
     loadUserConfig();
     loadVersionInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadUserConfig = async () => {
@@ -137,7 +138,7 @@ export default function SettingsTab() {
 
     if (isConnected) {
       try {
-        const response = await axios.post('/api/config', {
+        await axios.post('/api/config', {
           url: localUrl,
           token: localToken,
           autoRefresh,
