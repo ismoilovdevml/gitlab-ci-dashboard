@@ -31,14 +31,14 @@ bash scripts/generate-env.sh production
 # nano .env  # Edit with your values
 
 # 3. Start all services (PostgreSQL + Redis + App)
-docker-compose up -d
+docker compose up -d
 
 # 4. View admin credentials (save them!)
 # Username and password were shown after running generate-env.sh
 # Or view .env file: cat .env | grep ADMIN
 
-# 7. View logs
-docker-compose logs -f app
+# 5. View logs
+docker compose logs -f app
 ```
 
 Open `http://localhost:3000` in your browser.
@@ -57,10 +57,41 @@ Open `http://localhost:3000` in your browser.
 
 ```bash
 # Stop all services
-docker-compose down
+docker compose down
 
 # Stop and remove volumes (reset database)
-docker-compose down -v
+docker compose down -v
+```
+
+### Update to Latest Version
+
+The dashboard automatically checks for updates every 6 hours. When a new version is available, you'll see an update notification in the sidebar.
+
+**To update:**
+
+```bash
+# 1. Stop current containers
+docker compose down
+
+# 2. Pull latest image
+docker compose pull app
+
+# 3. Start with new version
+docker compose up -d
+
+# 4. Verify version (check sidebar)
+```
+
+**Alternative - Pull from Git:**
+
+```bash
+# 1. Pull latest code
+git pull origin main
+
+# 2. Rebuild containers
+docker compose up -d --build
+
+# 3. Verify version
 ```
 
 ## ⚙️ Configuration
@@ -115,7 +146,7 @@ cp .env.example .env
 # Edit .env with your database credentials
 
 # Start database services
-docker-compose up -d postgres redis
+docker compose up -d postgres redis
 
 # Run database migrations
 npx prisma migrate dev
@@ -146,13 +177,13 @@ npm start
 
 ```bash
 # Build image
-docker-compose build
+docker compose build
 
 # Build without cache
-docker-compose build --no-cache
+docker compose build --no-cache
 
 # Run all services
-docker-compose up -d
+docker compose up -d
 ```
 
 

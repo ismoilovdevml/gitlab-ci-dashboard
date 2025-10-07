@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Bell, LogOut, User } from 'lucide-react';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Bell, LogOut, User, Download, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import axios from 'axios';
+import UpdateModal from './UpdateModal';
 
 interface SidebarProps {
   activeTab: string;
@@ -22,6 +23,14 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [username, setUsername] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
+  const [versionInfo, setVersionInfo] = useState<{
+    currentVersion: string;
+    latestVersion: string;
+    updateAvailable: boolean;
+    releaseUrl: string;
+    releaseDate: string;
+  } | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   // Get user info on mount
   useEffect(() => {
@@ -38,6 +47,24 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     };
 
     getUserInfo();
+  }, []);
+
+  // Check for updates
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const response = await fetch('/api/version');
+        const data = await response.json();
+        setVersionInfo(data);
+      } catch (error) {
+        console.error('Failed to check version:', error);
+      }
+    };
+
+    checkVersion();
+    // Check every 6 hours
+    const interval = setInterval(checkVersion, 6 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -87,12 +114,17 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     <div className={`w-64 h-screen flex flex-col transition-colors ${sidebar}`}>
       <div className={`p-6 ${theme === 'light' ? 'border-b border-gray-200' : 'border-b border-zinc-800'}`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg">
-            <GitBranch className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+            <GitBranch className="w-7 h-7 text-white" />
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className={`text-xl font-bold ${textPrimary}`}>GitLab CI/CD</h1>
-            <p className={`text-xs ${textMuted}`}>Enterprise Dashboard</p>
+            {versionInfo && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className={`text-xs ${textMuted}`}>v{versionInfo.currentVersion}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -124,6 +156,45 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       </nav>
 
       <div className={`p-4 space-y-3 ${theme === 'light' ? 'border-t border-gray-200' : 'border-t border-zinc-800'}`}>
+        {/* Version Info */}
+        {versionInfo && (
+          <button
+            onClick={() => versionInfo.updateAvailable && setShowUpdateModal(true)}
+            disabled={!versionInfo.updateAvailable}
+            className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
+              versionInfo.updateAvailable
+                ? theme === 'light'
+                  ? 'bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer'
+                  : 'bg-blue-950/30 hover:bg-blue-950/50 border border-blue-800/30 cursor-pointer'
+                : theme === 'light'
+                  ? 'bg-gray-50 border border-gray-200 cursor-default'
+                  : 'bg-zinc-800/50 border border-zinc-800 cursor-default'
+            }`}
+          >
+            <div className={`p-2 rounded-lg ${
+              versionInfo.updateAvailable
+                ? theme === 'light' ? 'bg-blue-500' : 'bg-blue-600'
+                : theme === 'light' ? 'bg-gray-400' : 'bg-zinc-700'
+            }`}>
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className={`text-xs font-semibold ${
+                versionInfo.updateAvailable
+                  ? theme === 'light' ? 'text-blue-700' : 'text-blue-300'
+                  : textPrimary
+              }`}>
+                {versionInfo.updateAvailable ? `v${versionInfo.latestVersion} ready` : `v${versionInfo.currentVersion}`}
+              </p>
+            </div>
+            {versionInfo.updateAvailable && (
+              <Download className={`w-4 h-4 ${
+                theme === 'light' ? 'text-blue-600' : 'text-blue-400'
+              }`} />
+            )}
+          </button>
+        )}
+
         {/* User Info */}
         {username && (
           <div className={`flex items-center justify-between p-3 rounded-lg ${
@@ -176,6 +247,17 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </p>
         )}
       </div>
+
+      {/* Update Modal */}
+      {showUpdateModal && versionInfo && (
+        <UpdateModal
+          currentVersion={versionInfo.currentVersion}
+          latestVersion={versionInfo.latestVersion}
+          releaseUrl={versionInfo.releaseUrl}
+          releaseDate={versionInfo.releaseDate}
+          onClose={() => setShowUpdateModal(false)}
+        />
+      )}
     </div>
   );
 }

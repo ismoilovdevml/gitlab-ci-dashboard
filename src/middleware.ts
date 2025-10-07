@@ -7,7 +7,7 @@ const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
 const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
 
 // API routes that don't require authentication
-const PUBLIC_API_ROUTES = ['/api/auth/login', '/api/webhook/gitlab', '/api/setup'];
+const PUBLIC_API_ROUTES = ['/api/auth/login', '/api/webhook/gitlab', '/api/setup', '/api/version'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
