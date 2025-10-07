@@ -128,19 +128,19 @@ export async function calculateDoraMetrics(
       },
     });
 
-    const successfulDeployments = deployments.filter(d => d.status === 'success');
-    const failedDeployments = deployments.filter(d => d.status === 'failed');
+    const successfulDeployments = deployments.filter((d) => d.status === 'success');
+    const failedDeployments = deployments.filter((d) => d.status === 'failed');
 
     const daysDiff = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const deploymentsPerDay = deployments.length / daysDiff;
 
     // Calculate lead time for changes (commit to deployment time)
     const leadTimes = successfulDeployments
-      .filter(d => d.duration)
-      .map(d => d.duration!);
+      .filter((d) => d.duration)
+      .map((d) => d.duration!);
 
     const avgLeadTime = leadTimes.length > 0
-      ? leadTimes.reduce((sum, val) => sum + val, 0) / leadTimes.length
+      ? leadTimes.reduce((sum: number, val: number) => sum + val, 0) / leadTimes.length
       : 0;
 
     const medianLeadTime = calculateMedian(leadTimes);
@@ -161,11 +161,11 @@ export async function calculateDoraMetrics(
     });
 
     const recoveryTimes = incidents
-      .filter(i => i.duration)
-      .map(i => i.duration!);
+      .filter((i) => i.duration)
+      .map((i) => i.duration!);
 
     const avgMttr = recoveryTimes.length > 0
-      ? recoveryTimes.reduce((sum, val) => sum + val, 0) / recoveryTimes.length
+      ? recoveryTimes.reduce((sum: number, val: number) => sum + val, 0) / recoveryTimes.length
       : 0;
 
     // Calculate change failure rate

@@ -110,7 +110,7 @@ export async function getTrendAnalysis(
       take: limit,
     });
 
-    const points: TrendPoint[] = data.map((d) => ({
+    const points: TrendPoint[] = data.map((d): TrendPoint => ({
       timestamp: d.timestamp,
       value: d.value,
       metadata: d.metadata as Record<string, unknown>,
