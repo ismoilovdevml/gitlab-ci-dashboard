@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Bell, LogOut, User, Download, Sparkles } from 'lucide-react';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, Bell, LogOut, User, Download, Sparkles, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
@@ -103,7 +103,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'pipelines', icon: GitBranch, label: 'Pipelines' },
     { id: 'projects', icon: Boxes, label: 'Projects' },
     { id: 'runners', icon: PlayCircle, label: 'Runners' },
-    { id: 'insights', icon: BarChart3, label: 'Insights' },
+    { id: 'analytics', icon: TrendingUp, label: 'Analytics' },
     { id: 'artifacts', icon: FileArchive, label: 'Artifacts' },
     { id: 'registry', icon: Package, label: 'Registry' },
     { id: 'alerting', icon: Bell, label: 'Alerting' },

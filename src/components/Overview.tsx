@@ -5,7 +5,6 @@ import { Activity, GitBranch, CheckCircle, XCircle, Clock, Search, Award, Zap, T
 import StatsCard from './StatsCard';
 import PipelineDetailsModal from './PipelineDetailsModal';
 import PipelineListModal from './PipelineListModal';
-import DashboardAnalytics from './DashboardAnalytics';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { Pipeline, Job } from '@/lib/gitlab-api';
@@ -430,9 +429,6 @@ export default function Overview() {
           </div>
         )}
       </div>
-
-      {/* Dashboard Analytics */}
-      <DashboardAnalytics />
 
       {/* Modals */}
       {showPipelineList && (
