@@ -37,6 +37,8 @@ export default function LogViewer({
 
       return () => clearInterval(interval);
     }
+
+    return undefined;
   }, [isLive, onRefreshLogs]);
 
   // Auto-scroll to bottom when logs update
