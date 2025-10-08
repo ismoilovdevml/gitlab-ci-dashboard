@@ -27,14 +27,13 @@ export async function GET() {
 
     const user = session.user;
 
-    // Return user preferences
+    // Return user preferences (excluding activeTab to prevent redirect issues)
     return NextResponse.json({
       theme: user.theme,
       autoRefresh: user.autoRefresh,
       refreshInterval: user.refreshInterval,
       notifyPipelineFailures: user.notifyPipelineFailures,
       notifyPipelineSuccess: user.notifyPipelineSuccess,
-      activeTab: user.activeTab || 'overview',
     });
   } catch (error) {
     console.error('Failed to get user preferences:', error);
@@ -72,10 +71,9 @@ export async function PUT(request: NextRequest) {
       refreshInterval,
       notifyPipelineFailures,
       notifyPipelineSuccess,
-      activeTab,
     } = body;
 
-    // Update user preferences
+    // Update user preferences (EXCLUDING activeTab to prevent infinite redirect)
     const updatedUser = await prisma.user.update({
       where: { id: session.userId },
       data: {
@@ -84,10 +82,11 @@ export async function PUT(request: NextRequest) {
         ...(refreshInterval !== undefined && { refreshInterval }),
         ...(notifyPipelineFailures !== undefined && { notifyPipelineFailures }),
         ...(notifyPipelineSuccess !== undefined && { notifyPipelineSuccess }),
-        ...(activeTab !== undefined && { activeTab }),
         lastActivityAt: new Date(),
       },
     });
+
+    console.log('[Preferences API] Updated preferences for user:', session.userId);
 
     return NextResponse.json({
       success: true,
@@ -97,7 +96,6 @@ export async function PUT(request: NextRequest) {
         refreshInterval: updatedUser.refreshInterval,
         notifyPipelineFailures: updatedUser.notifyPipelineFailures,
         notifyPipelineSuccess: updatedUser.notifyPipelineSuccess,
-        activeTab: updatedUser.activeTab,
       },
     });
   } catch (error) {

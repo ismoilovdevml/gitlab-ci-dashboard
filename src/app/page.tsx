@@ -7,6 +7,7 @@ import NotificationToast from '@/components/NotificationToast';
 import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useConfigLoader } from '@/hooks/useConfigLoader';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 // import { usePipelineAlerts } from '@/hooks/usePipelineAlerts'; // Disabled - using webhooks now
 
 // Lazy load heavy components
@@ -24,6 +25,9 @@ export default function Home() {
 
   // Load config from database on mount (ALL PAGES)
   useConfigLoader();
+
+  // Load and sync user preferences with database
+  useUserPreferences();
 
   // Enable pipeline alerts monitoring (DISABLED - using webhooks now for instant alerts)
   // usePipelineAlerts();

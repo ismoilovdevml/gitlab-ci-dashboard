@@ -16,60 +16,57 @@ export function useUserPreferences() {
     setNotifyPipelineSuccess,
   } = useDashboardStore();
 
-  const isInitialized = useRef(false);
-  const lastSavedPrefs = useRef<string>('');
+  const isLoadedFromDB = useRef(false);
+  const isSaving = useRef(false);
 
-  // Load preferences from database on mount
+  // STEP 1: Load from database on mount (overrides localStorage)
   useEffect(() => {
-    const loadPreferences = async () => {
-      if (isInitialized.current) return;
+    if (isLoadedFromDB.current) return;
 
+    const loadFromDatabase = async () => {
       try {
+        console.log('[UserPreferences] Fetching from database...');
         const response = await axios.get('/api/user/preferences', {
-          withCredentials: true, // Important for cookies
+          withCredentials: true,
         });
-        const prefs = response.data;
+        const dbPrefs = response.data;
 
-        console.log('[UserPreferences] Loading from database:', prefs);
+        console.log('[UserPreferences] Database values:', dbPrefs);
 
-        // IMPORTANT: Set these synchronously to avoid flash
-        setTheme(prefs.theme || 'dark');
-        setAutoRefresh(prefs.autoRefresh ?? true);
-        setRefreshInterval(prefs.refreshInterval || 10000);
-        setNotifyPipelineFailures(prefs.notifyPipelineFailures ?? true);
-        setNotifyPipelineSuccess(prefs.notifyPipelineSuccess ?? false);
+        // Override localStorage with database values (database is source of truth)
+        setTheme(dbPrefs.theme || 'dark');
+        setAutoRefresh(dbPrefs.autoRefresh ?? true);
+        setRefreshInterval(dbPrefs.refreshInterval || 10000);
+        setNotifyPipelineFailures(dbPrefs.notifyPipelineFailures ?? true);
+        setNotifyPipelineSuccess(dbPrefs.notifyPipelineSuccess ?? false);
 
-        lastSavedPrefs.current = JSON.stringify(prefs);
-        isInitialized.current = true;
-
-        console.log('[UserPreferences] Applied theme:', prefs.theme);
+        isLoadedFromDB.current = true;
+        console.log('[UserPreferences] ✅ Loaded from database');
       } catch (error) {
-        console.error('Failed to load user preferences:', error);
-        // Keep Zustand defaults if loading fails
-        isInitialized.current = true;
+        console.error('[UserPreferences] ❌ Failed to load from database:', error);
+        isLoadedFromDB.current = true; // Mark as loaded even on error to allow saves
       }
     };
 
-    loadPreferences();
+    loadFromDatabase();
   }, [setTheme, setAutoRefresh, setRefreshInterval, setNotifyPipelineFailures, setNotifyPipelineSuccess]);
 
-  // Save preferences to database when they change (NOT activeTab - causes infinite redirect)
+  // STEP 2: Save to database when values change
   useEffect(() => {
-    if (!isInitialized.current) return;
+    // Don't save until we've loaded from database first
+    if (!isLoadedFromDB.current || isSaving.current) return;
 
-    const currentPrefs = JSON.stringify({
-      theme,
-      autoRefresh,
-      refreshInterval,
-      notifyPipelineFailures,
-      notifyPipelineSuccess,
-    });
-
-    // Only save if preferences actually changed
-    if (currentPrefs === lastSavedPrefs.current) return;
-
-    const savePreferences = async () => {
+    const saveToDatabase = async () => {
+      isSaving.current = true;
       try {
+        console.log('[UserPreferences] Saving to database:', {
+          theme,
+          autoRefresh,
+          refreshInterval,
+          notifyPipelineFailures,
+          notifyPipelineSuccess,
+        });
+
         await axios.put('/api/user/preferences', {
           theme,
           autoRefresh,
@@ -77,23 +74,19 @@ export function useUserPreferences() {
           notifyPipelineFailures,
           notifyPipelineSuccess,
         }, {
-          withCredentials: true, // Important for cookies
+          withCredentials: true,
         });
-        lastSavedPrefs.current = currentPrefs;
-        console.log('[UserPreferences] Saved to database:', {
-          theme,
-          autoRefresh,
-          refreshInterval,
-          notifyPipelineFailures,
-          notifyPipelineSuccess,
-        });
+
+        console.log('[UserPreferences] ✅ Saved to database');
       } catch (error) {
-        console.error('Failed to save user preferences:', error);
+        console.error('[UserPreferences] ❌ Failed to save to database:', error);
+      } finally {
+        isSaving.current = false;
       }
     };
 
-    // Debounce saves
-    const timeoutId = setTimeout(savePreferences, 500);
+    // Debounce: wait 1 second after last change before saving
+    const timeoutId = setTimeout(saveToDatabase, 1000);
     return () => clearTimeout(timeoutId);
   }, [theme, autoRefresh, refreshInterval, notifyPipelineFailures, notifyPipelineSuccess]);
 }

@@ -231,6 +231,7 @@ export default function SettingsTab() {
   const handleAutoRefreshToggle = () => {
     const newValue = !autoRefresh;
     setAutoRefresh(newValue);
+    setStoreAutoRefresh(newValue); // Save to Zustand store (will trigger database save)
     if (newValue) {
       notifySuccess('Auto Refresh Enabled', 'Dashboard will refresh automatically');
     } else {
@@ -242,9 +243,11 @@ export default function SettingsTab() {
     if (type === 'failure') {
       const newValue = !notifyPipelineFailures;
       setNotifyPipelineFailures(newValue);
+      setStoreNotifyPipelineFailures(newValue); // Save to Zustand store (will trigger database save)
     } else {
       const newValue = !notifyPipelineSuccess;
       setNotifyPipelineSuccess(newValue);
+      setStoreNotifyPipelineSuccess(newValue); // Save to Zustand store (will trigger database save)
     }
   };
 
@@ -490,7 +493,11 @@ export default function SettingsTab() {
                 {autoRefresh && (
                   <select
                     value={refreshInterval}
-                    onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newValue = Number(e.target.value);
+                      setRefreshInterval(newValue);
+                      setStoreRefreshInterval(newValue); // Save to Zustand store (will trigger database save)
+                    }}
                     className={`w-full px-3 py-2 rounded-lg border text-sm ${
                       theme === 'light'
                         ? 'bg-white border-gray-200 text-gray-900'
