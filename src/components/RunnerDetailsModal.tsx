@@ -16,6 +16,7 @@ import {
   BarChart3 as ChartBarIcon,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { formatPercentage } from '@/lib/utils';
 
 interface RunnerDetailsModalProps {
   runner: Runner | null;
@@ -71,7 +72,7 @@ export default function RunnerDetailsModal({
     : 0;
 
   const successRate = jobStats.total > 0
-    ? ((jobStats.success / jobStats.total) * 100).toFixed(1)
+    ? formatPercentage((jobStats.success / jobStats.total) * 100)
     : '0';
 
   const getStatusColor = (status: string) => {
@@ -496,7 +497,7 @@ export default function RunnerDetailsModal({
                           <div key={item.label}>
                             <div className="flex items-center justify-between text-sm mb-1">
                               <span className={textSecondary}>{item.label}</span>
-                              <span className={`font-medium ${textPrimary}`}>{item.count} ({percentage.toFixed(1)}%)</span>
+                              <span className={`font-medium ${textPrimary}`}>{item.count} ({formatPercentage(percentage)}%)</span>
                             </div>
                             <div className={`w-full rounded-full h-2 ${
                               theme === 'light' ? 'bg-gray-200' : 'bg-gray-700'

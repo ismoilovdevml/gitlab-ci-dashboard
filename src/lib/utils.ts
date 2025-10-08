@@ -37,6 +37,12 @@ export function formatRelativeTime(date: string): string {
   return target.toLocaleDateString();
 }
 
+export function formatPercentage(value: number): string {
+  // Round to nearest integer to avoid decimals like 100.0%
+  const rounded = Math.round(value);
+  return `${rounded}`;
+}
+
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'success':

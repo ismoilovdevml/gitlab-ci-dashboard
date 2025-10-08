@@ -5,7 +5,7 @@ import { X, ExternalLink, Clock, GitCommit, PlayCircle, RotateCw, XCircle, GitBr
 import { Pipeline, Job } from '@/lib/gitlab-api';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime } from '@/lib/utils';
+import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime, formatPercentage } from '@/lib/utils';
 import LogViewer from './LogViewer';
 import PipelineVisualization from './PipelineVisualization';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -128,7 +128,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     return {
       total, success, failed, running, pending, canceled, skipped,
       totalDuration, avgDuration,
-      successRate: total > 0 ? ((success / total) * 100).toFixed(1) : '0'
+      successRate: total > 0 ? formatPercentage((success / total) * 100) : '0'
     };
   }, [jobs]);
 

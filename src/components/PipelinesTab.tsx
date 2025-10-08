@@ -10,7 +10,7 @@ import LogViewer from './LogViewer';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { Pipeline, Job } from '@/lib/gitlab-api';
-import { formatDuration } from '@/lib/utils';
+import { formatDuration, formatPercentage } from '@/lib/utils';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -190,8 +190,8 @@ export default function PipelinesTab() {
         ? pipelinesWithDuration.reduce((sum, p) => sum + (p.duration || 0), 0) / pipelinesWithDuration.length
         : 0,
       successRate: pipelines.length > 0
-        ? ((successCount / pipelines.length) * 100).toFixed(1)
-        : 0,
+        ? formatPercentage((successCount / pipelines.length) * 100)
+        : '0',
     };
   }, [pipelines]);
 

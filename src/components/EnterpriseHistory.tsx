@@ -18,6 +18,7 @@ import {
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { TelegramIcon, SlackIcon, DiscordIcon, EmailIcon } from './icons/BrandIcons';
+import { formatPercentage } from '@/lib/utils';
 
 interface AlertHistory {
   id: string;
@@ -256,7 +257,7 @@ export default function EnterpriseHistory() {
               <div>
                 <p className={`text-sm ${textSecondary}`}>Success Rate</p>
                 <p className={`text-2xl font-bold text-green-500`}>
-                  {analytics.summary.successRate.toFixed(1)}%
+                  {formatPercentage(analytics.summary.successRate)}%
                 </p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-500" />
