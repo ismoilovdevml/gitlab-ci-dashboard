@@ -53,9 +53,10 @@ export default function Overview() {
       setActivePipelines(pipelines);
       setStats(pipelineStats);
 
-      // Load recent pipelines and active jobs
-      const recentPromises = projects.slice(0, 10).map(project =>
-        api.getPipelines(project.id, 1, 5).catch(() => [])
+      // Load recent pipelines from ALL projects for accurate Top Active Projects
+      // Increase to get better pipeline count statistics
+      const recentPromises = projects.map(project =>
+        api.getPipelines(project.id, 1, 10).catch(() => [])
       );
       const allRecent = await Promise.all(recentPromises);
 
@@ -65,7 +66,7 @@ export default function Overview() {
       const recent = allRecent
         .flat()
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-        .slice(0, 15);
+        .slice(0, 50);  // Keep more pipelines for accurate counting
       setRecentPipelines(recent);
 
       // Load active jobs from running pipelines
@@ -132,28 +133,46 @@ export default function Overview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, refreshInterval]);
 
-  // Top projects by pipeline count
+  // Top projects by total pipeline run count (most active)
   const topProjects = useMemo(() => {
     interface ProjectCount {
       project: typeof projects[0];
       count: number;
+      lastActivity: string;
     }
     const projectPipelineCounts = new Map<number, ProjectCount>();
 
+    // Count all recent pipelines per project
     recentPipelines.forEach(pipeline => {
       const project = projects.find(p => p.id === pipeline.project_id);
       if (project) {
         const existing = projectPipelineCounts.get(project.id);
         if (existing) {
           existing.count++;
+          // Keep track of latest activity
+          if (new Date(pipeline.updated_at) > new Date(existing.lastActivity)) {
+            existing.lastActivity = pipeline.updated_at;
+          }
         } else {
-          projectPipelineCounts.set(project.id, { project, count: 1 });
+          projectPipelineCounts.set(project.id, {
+            project,
+            count: 1,
+            lastActivity: pipeline.updated_at
+          });
         }
       }
     });
 
+    // Sort by pipeline count (descending), then by last activity (most recent first)
     return Array.from(projectPipelineCounts.values())
-      .sort((a, b) => b.count - a.count)
+      .sort((a, b) => {
+        // Primary sort: by count (higher first)
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        // Secondary sort: by last activity (more recent first)
+        return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+      })
       .slice(0, 5);
   }, [recentPipelines, projects]);
 

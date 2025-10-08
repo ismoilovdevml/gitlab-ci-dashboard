@@ -133,6 +133,7 @@ export interface Project {
   star_count: number;
   forks_count: number;
   last_activity_at: string;
+  created_at: string;
   visibility: 'public' | 'private' | 'internal';
   namespace: {
     id: number;
@@ -141,6 +142,19 @@ export interface Project {
     kind: string;
     full_path: string;
   };
+  statistics?: {
+    commit_count: number;
+    storage_size: number;
+    repository_size: number;
+    wiki_size: number;
+    lfs_objects_size: number;
+    job_artifacts_size: number;
+    packages_size: number;
+    snippets_size: number;
+  };
+  // Additional fields for detailed view
+  open_issues_count?: number;
+  default_branch?: string;
 }
 
 export interface Runner {
@@ -359,8 +373,38 @@ class GitLabAPI {
   }
 
   async getProject(projectId: number): Promise<Project> {
-    const response = await this.api.get(`/projects/${projectId}`);
+    const response = await this.api.get(`/projects/${projectId}`, {
+      params: {
+        statistics: true,
+      },
+    });
     return response.data;
+  }
+
+  async getProjectBranchesCount(projectId: number): Promise<number> {
+    try {
+      const response = await this.api.get(`/projects/${projectId}/repository/branches`, {
+        params: { per_page: 1 },
+      });
+      // Get total count from pagination headers
+      const total = response.headers['x-total'];
+      return total ? parseInt(total, 10) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  async getProjectTagsCount(projectId: number): Promise<number> {
+    try {
+      const response = await this.api.get(`/projects/${projectId}/repository/tags`, {
+        params: { per_page: 1 },
+      });
+      // Get total count from pagination headers
+      const total = response.headers['x-total'];
+      return total ? parseInt(total, 10) : 0;
+    } catch {
+      return 0;
+    }
   }
 
   // Pipelines
