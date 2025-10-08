@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Server, Circle, Search, Filter, Activity, CheckCircle, XCircle, Pause, TrendingUp, Clock, Cpu, HardDrive } from 'lucide-react';
+import { Server, Circle, Search, Filter, Activity, CheckCircle, XCircle, Pause, TrendingUp, Clock, Cpu } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync, Runner } from '@/lib/gitlab-api';
 import { formatRelativeTime, cn } from '@/lib/utils';
@@ -394,7 +394,7 @@ export default function RunnersTab() {
                     <h3 className={`font-semibold text-sm truncate ${textPrimary}`}>
                       {runner.description || runner.name || `Runner #${runner.id}`}
                     </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className={`text-xs ${textSecondary}`}>
                         {runner.runner_type}
                       </span>
@@ -405,6 +405,14 @@ export default function RunnersTab() {
                           Shared
                         </span>
                       )}
+                      {/* Tags */}
+                      {runner.tag_list && runner.tag_list.length > 0 && runner.tag_list.map((tag) => (
+                        <span key={tag} className={`text-xs px-1.5 py-0.5 rounded ${
+                          theme === 'light' ? 'bg-orange-50 text-orange-600' : 'bg-orange-500/10 text-orange-400'
+                        }`}>
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -431,21 +439,21 @@ export default function RunnersTab() {
 
                 <div className={`rounded-lg p-2 ${theme === 'light' ? 'bg-[#f5f5f7]' : 'bg-zinc-800/50'}`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <HardDrive className={`w-3.5 h-3.5 ${textSecondary}`} />
-                    <span className={`text-xs ${textSecondary}`}>Arch</span>
+                    <Clock className={`w-3.5 h-3.5 ${textSecondary}`} />
+                    <span className={`text-xs ${textSecondary}`}>Created</span>
                   </div>
                   <p className={`text-sm font-medium truncate ${textPrimary}`}>
-                    {runner.architecture || 'N/A'}
+                    {runner.created_at ? formatRelativeTime(runner.created_at) : 'N/A'}
                   </p>
                 </div>
 
                 <div className={`rounded-lg p-2 ${theme === 'light' ? 'bg-[#f5f5f7]' : 'bg-zinc-800/50'}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <Activity className={`w-3.5 h-3.5 ${textSecondary}`} />
-                    <span className={`text-xs ${textSecondary}`}>IP Address</span>
+                    <span className={`text-xs ${textSecondary}`}>Version</span>
                   </div>
                   <p className={`text-sm font-mono truncate ${textPrimary}`}>
-                    {runner.ip_address || 'N/A'}
+                    {runner.version || 'N/A'}
                   </p>
                 </div>
 

@@ -148,14 +148,23 @@ export interface Runner {
   description: string;
   ip_address: string;
   active: boolean;
+  paused: boolean;
   is_shared: boolean;
   runner_type: string;
   name: string;
   online: boolean;
   status: 'online' | 'offline' | 'not_connected' | 'paused';
-  contacted_at: string;
-  architecture: string;
-  platform: string;
+  contacted_at: string | null;
+  architecture: string | null;
+  platform: string | null;
+  revision: string;
+  version: string;
+  access_level: string;
+  maximum_timeout: number | null;
+  tag_list: string[];
+  run_untagged: boolean;
+  locked: boolean;
+  created_at: string;
   projects: Array<{
     id: number;
     name: string;
@@ -445,7 +454,30 @@ class GitLabAPI {
               page,
             },
           });
-          return response.data;
+
+          // Fetch detailed information for each runner
+          const runners = response.data;
+          const detailedRunners = await Promise.all(
+            runners.map(async (runner: Runner) => {
+              try {
+                const detailResponse = await this.api.get(`/runners/${runner.id}`);
+                console.log(`[GitLab API] Runner ${runner.id} details:`, {
+                  id: detailResponse.data.id,
+                  description: detailResponse.data.description,
+                  ip_address: detailResponse.data.ip_address,
+                  platform: detailResponse.data.platform,
+                  architecture: detailResponse.data.architecture,
+                  contacted_at: detailResponse.data.contacted_at,
+                });
+                return detailResponse.data;
+              } catch (error) {
+                console.warn(`Failed to fetch details for runner ${runner.id}:`, error);
+                return runner; // Return basic info if detail fetch fails
+              }
+            })
+          );
+
+          return detailedRunners;
         } catch {
           console.log('Admin access not available, fetching project runners...');
 
@@ -468,7 +500,29 @@ class GitLabAPI {
               }
             });
 
-            return Array.from(runnersMap.values());
+            // Fetch detailed information for each unique runner
+            const uniqueRunners = Array.from(runnersMap.values());
+            const detailedRunners = await Promise.all(
+              uniqueRunners.map(async (runner) => {
+                try {
+                  const detailResponse = await this.api.get(`/runners/${runner.id}`);
+                  console.log(`[GitLab API] Runner ${runner.id} details (project fallback):`, {
+                    id: detailResponse.data.id,
+                    description: detailResponse.data.description,
+                    ip_address: detailResponse.data.ip_address,
+                    platform: detailResponse.data.platform,
+                    architecture: detailResponse.data.architecture,
+                    contacted_at: detailResponse.data.contacted_at,
+                  });
+                  return detailResponse.data;
+                } catch (error) {
+                  console.warn(`Failed to fetch details for runner ${runner.id}:`, error);
+                  return runner; // Return basic info if detail fetch fails
+                }
+              })
+            );
+
+            return detailedRunners;
           } catch (fallbackError) {
             console.error('Failed to fetch runners from projects:', fallbackError);
             return [];
