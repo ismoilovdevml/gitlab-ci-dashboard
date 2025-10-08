@@ -5,6 +5,7 @@ import { Activity, GitBranch, CheckCircle, XCircle, Clock, Search, Award, Zap, T
 import StatsCard from './StatsCard';
 import PipelineDetailsModal from './PipelineDetailsModal';
 import PipelineListModal from './PipelineListModal';
+import JobDetailsModal from './JobDetailsModal';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { Pipeline, Job } from '@/lib/gitlab-api';
@@ -30,6 +31,8 @@ export default function Overview() {
   const [recentPipelines, setRecentPipelines] = useState<Pipeline[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedJobProjectId, setSelectedJobProjectId] = useState<number | null>(null);
 
   const loadData = async (abortSignal?: AbortSignal) => {
     try {
@@ -78,7 +81,25 @@ export default function Overview() {
           .filter(job => job.status === 'running' || job.status === 'pending')
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 10);
-        setActiveJobs(jobs);
+
+        // Enrich jobs with project data from store
+        const enrichedJobs = jobs.map(job => {
+          const projectData = projects.find(p => p.id === job.pipeline.project_id);
+          if (projectData && !job.project) {
+            // Add project data to job if missing
+            return {
+              ...job,
+              project: {
+                id: projectData.id,
+                name: projectData.name,
+                name_with_namespace: projectData.name_with_namespace
+              }
+            };
+          }
+          return job;
+        });
+
+        setActiveJobs(enrichedJobs);
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -269,16 +290,28 @@ export default function Overview() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {filteredJobs.map((job) => {
+              // Multiple fallback strategies to get project name
+              const project = projects.find(p => p.id === job.pipeline.project_id);
+              const projectName = project?.name ||
+                                 job.project?.name ||
+                                 job.project?.name_with_namespace ||
+                                 'Loading...';
+
               return (
                 <div
                   key={job.id}
-                  className={`rounded-lg p-3 transition-all group ${card} ${
+                  onClick={() => {
+                    setSelectedJob(job);
+                    setSelectedJobProjectId(job.pipeline.project_id);
+                  }}
+                  className={`rounded-lg p-3 transition-all cursor-pointer group ${card} ${
                     theme === 'light'
                       ? 'shadow-sm hover:shadow-md hover:border-[#d2d2d7]'
                       : 'hover:border-zinc-700'
                   }`}
                 >
-                  <div className="flex items-start gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    {/* Status Icon */}
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0 ${
                       job.status === 'running' ? 'bg-blue-500/10 text-blue-500' :
                       'bg-yellow-500/10 text-yellow-500'
@@ -286,13 +319,16 @@ export default function Overview() {
                       {job.status === 'running' ? <Activity className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-medium text-sm truncate ${textPrimary}`}>{job.name}</h3>
-                      <p className={`text-xs truncate ${textSecondary}`}>{job.project?.name || 'Unknown'}</p>
+                      <h3 className={`font-medium text-sm truncate group-hover:text-blue-500 transition-colors ${textPrimary}`}>
+                        {job.name}
+                      </h3>
+                      <p className={`text-xs truncate ${textSecondary}`}>{projectName}</p>
                     </div>
                   </div>
-                  <div className={`flex items-center justify-between text-xs ${textSecondary}`}>
-                    <span className="truncate">{job.stage}</span>
-                    <span className="whitespace-nowrap ml-2">{formatRelativeTime(job.created_at)}</span>
+                  <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
+                    <GitBranch className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{job.ref}</span>
+                    <span className="whitespace-nowrap ml-auto">{formatRelativeTime(job.created_at)}</span>
                   </div>
                 </div>
               );
@@ -446,6 +482,18 @@ export default function Overview() {
           onClose={() => {
             setSelectedPipeline(null);
             setSelectedProjectId(null);
+          }}
+        />
+      )}
+
+      {/* Job Details Modal */}
+      {selectedJob && selectedJobProjectId && (
+        <JobDetailsModal
+          job={selectedJob}
+          projectId={selectedJobProjectId}
+          onClose={() => {
+            setSelectedJob(null);
+            setSelectedJobProjectId(null);
           }}
         />
       )}
