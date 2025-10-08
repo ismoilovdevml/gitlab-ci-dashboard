@@ -1,12 +1,19 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Download, Trash2, Package, Clock, HardDrive, FileArchive, ChevronDown, ChevronRight, File, ExternalLink, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Download, Trash2, Clock, HardDrive, FileArchive, ChevronDown, ChevronRight, File, ExternalLink, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync, JobArtifact } from '@/lib/gitlab-api';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useNotifications } from '@/hooks/useNotifications';
+import DeleteConfirmDialog from './DeleteConfirmDialog';
+
+interface CommitInfo {
+  short_id?: string;
+  title?: string;
+  author_name?: string;
+}
 
 interface GroupedArtifact {
   jobName: string;
@@ -16,7 +23,7 @@ interface GroupedArtifact {
   status: string;
   ref: string;
   createdAt: string;
-  commit: any;
+  commit: CommitInfo | null;
   artifacts: {
     filename: string;
     size: number;
@@ -33,9 +40,14 @@ export default function ArtifactsTab() {
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
   const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; group: GroupedArtifact | null }>({
+    isOpen: false,
+    group: null,
+  });
 
   useEffect(() => {
     loadArtifacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadArtifacts = async () => {
@@ -63,11 +75,15 @@ export default function ArtifactsTab() {
           size: artifact.artifacts_file.size || 0
         }] : [];
 
+        // Use pipeline.project_id as fallback if project.id is not available
+        const projectId = artifact.project?.id || artifact.pipeline?.project_id || 0;
+        const projectName = artifact.project?.name_with_namespace || 'Unknown Project';
+
         groups.set(artifact.id, {
           jobName: artifact.name,
           jobId: artifact.id,
-          projectName: artifact.project.name_with_namespace,
-          projectId: artifact.project.id,
+          projectName: projectName,
+          projectId: projectId,
           status: artifact.status,
           ref: artifact.ref,
           createdAt: artifact.created_at,
@@ -102,21 +118,42 @@ export default function ArtifactsTab() {
 
     try {
       const api = await getGitLabAPIAsync();
-      const blob = await api.downloadArtifact(group.projectId, group.jobId);
+      const config = api.getConfig();
 
+      // Use backend API to download artifact
+      const filename = group.artifacts[0]?.filename || `artifacts-${group.jobId}.zip`;
+      const response = await fetch(
+        `/api/artifacts/download?projectId=${group.projectId}&jobId=${group.jobId}&filename=${encodeURIComponent(filename)}`,
+        {
+          method: 'GET',
+          headers: {
+            'x-gitlab-url': config.gitlabUrl,
+            'x-gitlab-token': config.token,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Failed to download' }));
+        throw new Error(error.error || 'Failed to download artifact');
+      }
+
+      // Download the file
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = group.artifacts[0]?.filename || `artifacts-${group.jobId}.zip`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
       notifySuccess('Download Started', `Downloading artifacts from ${group.jobName}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to download artifact:', error);
-      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to download artifact';
+      const err = error as { message?: string };
+      const errorMsg = err?.message || 'Failed to download artifact';
       notifyError('Download Failed', errorMsg);
     } finally {
       setDownloadingIds(prev => {
@@ -127,12 +164,13 @@ export default function ArtifactsTab() {
     }
   };
 
-  const handleDelete = async (group: GroupedArtifact) => {
-    if (deletingIds.has(group.jobId)) return;
+  const handleDeleteClick = (group: GroupedArtifact) => {
+    setDeleteDialog({ isOpen: true, group });
+  };
 
-    if (!confirm(`Are you sure you want to delete artifacts from job "${group.jobName}"?`)) {
-      return;
-    }
+  const handleDeleteConfirm = async () => {
+    const group = deleteDialog.group;
+    if (!group || deletingIds.has(group.jobId)) return;
 
     setDeletingIds(prev => new Set(prev).add(group.jobId));
 
@@ -141,9 +179,11 @@ export default function ArtifactsTab() {
       await api.deleteArtifacts(group.projectId, group.jobId);
       setArtifacts(artifacts.filter(a => a.id !== group.jobId));
       notifySuccess('Deleted', `Artifacts from ${group.jobName} deleted`);
-    } catch (error: any) {
+      setDeleteDialog({ isOpen: false, group: null });
+    } catch (error) {
       console.error('Failed to delete artifact:', error);
-      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to delete artifact';
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to delete artifact';
       notifyError('Delete Failed', errorMsg);
     } finally {
       setDeletingIds(prev => {
@@ -151,6 +191,12 @@ export default function ArtifactsTab() {
         next.delete(group.jobId);
         return next;
       });
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    if (!deletingIds.has(deleteDialog.group?.jobId || 0)) {
+      setDeleteDialog({ isOpen: false, group: null });
     }
   };
 
@@ -165,18 +211,6 @@ export default function ArtifactsTab() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success':
-        return 'text-green-500';
-      case 'failed':
-        return 'text-red-500';
-      case 'running':
-        return 'text-blue-500';
-      default:
-        return 'text-zinc-500';
-    }
-  };
 
   if (loading) {
     return (
@@ -227,7 +261,7 @@ export default function ArtifactsTab() {
 
           {/* Table Body */}
           <div className="divide-y divide-zinc-800">
-            {groupedArtifacts.map((group, index) => {
+            {groupedArtifacts.map((group) => {
               const isExpanded = expandedJobs.has(group.jobId);
               const isDownloading = downloadingIds.has(group.jobId);
               const isDeleting = deletingIds.has(group.jobId);
@@ -323,7 +357,7 @@ export default function ArtifactsTab() {
                         {isDownloading ? 'Downloading...' : 'Download'}
                       </button>
                       <button
-                        onClick={() => handleDelete(group)}
+                        onClick={() => handleDeleteClick(group)}
                         disabled={isDeleting || isDownloading}
                         className={`p-2 rounded-lg transition-colors ${
                           isDeleting
@@ -389,6 +423,17 @@ export default function ArtifactsTab() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Artifacts"
+        description="This action cannot be undone. This will permanently delete all artifacts from this job."
+        jobName={deleteDialog.group?.jobName || ''}
+        isDeleting={deletingIds.has(deleteDialog.group?.jobId || 0)}
+      />
     </div>
   );
 }

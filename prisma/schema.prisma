@@ -59,6 +59,7 @@ model User {
   refreshInterval Int      @default(10000)
   notifyPipelineFailures Boolean @default(true)
   notifyPipelineSuccess  Boolean @default(false)
+  activeTab       String   @default("overview")
 
   // Session tracking
   lastLoginAt     DateTime?

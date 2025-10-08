@@ -29,7 +29,17 @@ export default function Home() {
   // usePipelineAlerts();
 
   useEffect(() => {
+    // Set theme attribute and class for proper styling
     document.documentElement.setAttribute('data-theme', theme);
+
+    // Apply theme class to html element
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
   }, [theme]);
 
   // const handleNavigate = (tab: string) => {

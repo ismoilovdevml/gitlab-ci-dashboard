@@ -296,6 +296,14 @@ class GitLabAPI {
     });
   }
 
+  // Get config
+  getConfig() {
+    return {
+      gitlabUrl: this.baseUrl,
+      token: this.token,
+    };
+  }
+
   // Health check - no cache
   async checkConnection(): Promise<boolean> {
     try {
@@ -532,17 +540,24 @@ class GitLabAPI {
   }
 
   async getAllArtifacts(): Promise<JobArtifact[]> {
-    const projects = await this.getProjects(1, 50);
-    const artifactPromises = projects.map(project =>
-      this.getJobArtifacts(project.id, 1, 10).catch(() => [])
+    return cachedFetch(
+      'gitlab:artifacts:all',
+      async () => {
+        const projects = await this.getProjects(1, 50);
+        const artifactPromises = projects.map(project =>
+          this.getJobArtifacts(project.id, 1, 10).catch(() => [])
+        );
+        const allArtifacts = await Promise.all(artifactPromises);
+        return allArtifacts.flat();
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
     );
-    const allArtifacts = await Promise.all(artifactPromises);
-    return allArtifacts.flat();
   }
 
   async downloadArtifact(projectId: number, jobId: number): Promise<Blob> {
     const response = await this.api.get(`/projects/${projectId}/jobs/${jobId}/artifacts`, {
       responseType: 'blob',
+      maxRedirects: 5, // Follow redirects to CDN
     });
     return response.data;
   }
@@ -558,19 +573,31 @@ class GitLabAPI {
   }
 
   async getAllContainerRepositories(): Promise<ContainerRepository[]> {
-    const projects = await this.getProjects(1, 50);
-    const repoPromises = projects.map(project =>
-      this.getContainerRepositories(project.id).catch(() => [])
+    return cachedFetch(
+      'gitlab:container:repositories:all',
+      async () => {
+        const projects = await this.getProjects(1, 50);
+        const repoPromises = projects.map(project =>
+          this.getContainerRepositories(project.id).catch(() => [])
+        );
+        const allRepos = await Promise.all(repoPromises);
+        return allRepos.flat();
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
     );
-    const allRepos = await Promise.all(repoPromises);
-    return allRepos.flat();
   }
 
   async getContainerTags(projectId: number, repositoryId: number): Promise<ContainerTag[]> {
-    const response = await this.api.get(
-      `/projects/${projectId}/registry/repositories/${repositoryId}/tags`
+    return cachedFetch(
+      `gitlab:container:tags:${projectId}:${repositoryId}`,
+      async () => {
+        const response = await this.api.get(
+          `/projects/${projectId}/registry/repositories/${repositoryId}/tags`
+        );
+        return response.data;
+      },
+      CacheTTL.SHORT // 30 seconds cache for tags
     );
-    return response.data;
   }
 
   async deleteContainerTag(

@@ -159,10 +159,11 @@ export default function SettingsTab() {
         setSaved(true);
         notifySuccess('Configuration Saved', 'Settings saved successfully');
 
+        // Give time for user preferences hook to save to database
         setTimeout(() => {
           setSaved(false);
           window.location.reload();
-        }, 1500);
+        }, 2000); // Increased from 1500ms to 2000ms
       } catch (error) {
         if (axios.isAxiosError(error)) {
           notifyError('Save Failed', error.response?.data?.error || 'Could not save configuration');
@@ -476,7 +477,7 @@ export default function SettingsTab() {
                   <button
                     onClick={handleAutoRefreshToggle}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      autoRefresh ? 'bg-orange-500' : 'bg-gray-300 dark:bg-zinc-700'
+                      autoRefresh ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
                     }`}
                   >
                     <span
@@ -522,7 +523,7 @@ export default function SettingsTab() {
                 <button
                   onClick={() => handleNotificationToggle('failure')}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    notifyPipelineFailures ? 'bg-orange-500' : 'bg-gray-300 dark:bg-zinc-700'
+                    notifyPipelineFailures ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
                   }`}
                 >
                   <span
@@ -540,7 +541,7 @@ export default function SettingsTab() {
                 <button
                   onClick={() => handleNotificationToggle('success')}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    notifyPipelineSuccess ? 'bg-orange-500' : 'bg-gray-300 dark:bg-zinc-700'
+                    notifyPipelineSuccess ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
                   }`}
                 >
                   <span

@@ -87,10 +87,14 @@ export const useDashboardStore = create<DashboardStore>()(
     }),
     {
       name: 'gitlab-dashboard-storage',
-      // Only persist theme and activeTab - NO sensitive data!
+      // Persist user preferences to localStorage
       partialize: (state) => ({
         theme: state.theme,
         activeTab: state.activeTab,
+        autoRefresh: state.autoRefresh,
+        refreshInterval: state.refreshInterval,
+        notifyPipelineFailures: state.notifyPipelineFailures,
+        notifyPipelineSuccess: state.notifyPipelineSuccess,
       }),
     }
   )
