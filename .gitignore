@@ -27,6 +27,7 @@ yarn-error.log*
 # Environment files with secrets
 .env
 .env*.local
+.env.local
 
 # vercel
 .vercel
@@ -44,6 +45,7 @@ next-env.d.ts
 
 # Local development files
 docker-compose.local.yml
+docker-compose.local.yaml
 test-security.sh
 *.backup
 *.bak*

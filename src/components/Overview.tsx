@@ -18,6 +18,7 @@ export default function Overview() {
     projects,
     setActivePipelines,
     setStats,
+    setProjects,
     setIsLoading,
     setError,
     autoRefresh,
@@ -42,6 +43,12 @@ export default function Overview() {
       // Get API instance from database configuration
       const api = await getGitLabAPIAsync();
 
+      // Load projects if not already loaded
+      const projectsToUse = projects.length > 0 ? projects : await api.getProjects(1, 50);
+      if (projects.length === 0 && !abortSignal?.aborted) {
+        setProjects(projectsToUse);
+      }
+
       const [pipelines, pipelineStats] = await Promise.all([
         api.getAllActivePipelines(),
         api.getPipelineStats(),
@@ -55,7 +62,7 @@ export default function Overview() {
 
       // Load recent pipelines from ALL projects for accurate Top Active Projects
       // Increase to get better pipeline count statistics
-      const recentPromises = projects.map(project =>
+      const recentPromises = projectsToUse.map(project =>
         api.getPipelines(project.id, 1, 10).catch(() => [])
       );
       const allRecent = await Promise.all(recentPromises);
@@ -85,7 +92,7 @@ export default function Overview() {
 
         // Enrich jobs with project data from store
         const enrichedJobs = jobs.map(job => {
-          const projectData = projects.find(p => p.id === job.pipeline.project_id);
+          const projectData = projectsToUse.find(p => p.id === job.pipeline.project_id);
           if (projectData && !job.project) {
             // Add project data to job if missing
             return {
@@ -117,6 +124,7 @@ export default function Overview() {
   useEffect(() => {
     const controller = new AbortController();
 
+    // Always try to load data - projects will be fetched if needed
     loadData(controller.signal);
 
     if (autoRefresh) {
