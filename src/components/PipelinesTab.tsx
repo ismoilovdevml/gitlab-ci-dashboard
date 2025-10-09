@@ -31,10 +31,8 @@ export default function PipelinesTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPipelines, setTotalPipelines] = useState(0);
   const pipelinesPerPage = 20;
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -200,16 +198,16 @@ export default function PipelinesTab() {
   const totalPages = Math.ceil(totalPipelines / pipelinesPerPage);
 
   return (
-    <div className={`space-y-6 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-      {/* Header with animation */}
-      <div className={`transition-all duration-500 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
         <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Pipelines</h1>
         <p className={textSecondary}>Browse and manage CI/CD pipelines</p>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
         {/* Projects Sidebar */}
-        <div className={`col-span-3 space-y-4 transition-all duration-500 delay-200 ${mounted ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}>
+        <div className="col-span-3 space-y-4">
           <div className="relative">
             <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
             <input
@@ -277,10 +275,10 @@ export default function PipelinesTab() {
         </div>
 
         {/* Pipelines List */}
-        <div className={`col-span-9 space-y-4 transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+        <div className={`col-span-9 space-y-4 `}>
           {/* Statistics Cards */}
           {selectedProject && (
-            <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-all duration-500 delay-400 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+            <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 `}>
               <div className={`rounded-xl p-4 border transition-all ${
                 theme === 'light'
                   ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-sm hover:shadow-md'
@@ -357,7 +355,7 @@ export default function PipelinesTab() {
 
           {/* Pipeline Status Distribution Chart */}
           {selectedProject && pipelines.length > 0 && (
-            <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''} transition-all duration-500 delay-500 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+            <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''} `}>
               <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
                 <BarChart3 className="w-5 h-5 text-orange-500" />
                 Pipeline Status Distribution
@@ -441,7 +439,7 @@ export default function PipelinesTab() {
           )}
 
           {/* Filters and Actions */}
-          <div className={`flex items-center justify-between gap-4 transition-all duration-500 delay-600 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <div className={`flex items-center justify-between gap-4 `}>
             <div className="flex items-center gap-4">
               {/* Status Filter */}
               <div className="relative">
@@ -489,7 +487,7 @@ export default function PipelinesTab() {
 
           {!selectedPipeline ? (
             <>
-              <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 transition-all duration-500 delay-700 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+              <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 `}>
                 {pipelines.length > 0 ? (
                   pipelines.map((pipeline) => (
                     <PipelineCard

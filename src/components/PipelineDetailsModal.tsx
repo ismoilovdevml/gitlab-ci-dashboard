@@ -134,12 +134,20 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
 
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto ${
-      theme === 'light' ? 'bg-black/30' : 'bg-black/80'
-    }`}>
-      <div className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col ${surface} ${
-        theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
-      }`}>
+    <>
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Modal container */}
+      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
+        <div
+          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
+            theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className={`p-6 flex items-center justify-between border-b ${
           theme === 'light' ? 'border-gray-200 bg-gradient-to-r from-gray-50 to-white' : 'border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-800'
@@ -363,20 +371,21 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         </div>
       </div>
 
-      {selectedJob && logs && (
-        <LogViewer
-          logs={logs}
-          jobName={selectedJob.name}
-          jobStatus={selectedJob.status}
-          projectId={projectId}
-          jobId={selectedJob.id}
-          onClose={() => {
-            setSelectedJob(null);
-            setLogs('');
-          }}
-          onRefreshLogs={refreshJobLogs}
-        />
-      )}
-    </div>
+        {selectedJob && logs && (
+          <LogViewer
+            logs={logs}
+            jobName={selectedJob.name}
+            jobStatus={selectedJob.status}
+            projectId={projectId}
+            jobId={selectedJob.id}
+            onClose={() => {
+              setSelectedJob(null);
+              setLogs('');
+            }}
+            onRefreshLogs={refreshJobLogs}
+          />
+        )}
+      </div>
+    </>
   );
 }

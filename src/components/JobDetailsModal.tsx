@@ -193,7 +193,7 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
 
   return (
     <>
-      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto ${
+      <div className={`fixed inset-0 backdrop-blur-sm z-[999] flex items-center justify-center p-4 overflow-y-auto ${
         theme === 'light' ? 'bg-black/30' : 'bg-black/80'
       }`} onClick={onClose}>
         <div

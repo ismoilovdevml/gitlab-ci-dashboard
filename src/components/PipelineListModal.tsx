@@ -80,12 +80,19 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
 
   return (
     <>
-      <div className={`fixed inset-0 backdrop-blur-sm z-40 flex items-center justify-center p-4 ${
-        theme === 'light' ? 'bg-black/20' : 'bg-black/80'
-      }`}>
-        <div className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col ${
-          theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
-        }`}>
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Modal container */}
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 pointer-events-none">
+        <div
+          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${
+            theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className={`p-6 border-b flex items-center justify-between ${
             theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'

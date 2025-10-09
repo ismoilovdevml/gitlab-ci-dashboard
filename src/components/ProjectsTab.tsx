@@ -15,10 +15,8 @@ export default function ProjectsTab() {
   const [starringProjects, setStarringProjects] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -110,14 +108,14 @@ export default function ProjectsTab() {
   }, [projects]);
 
   return (
-    <div className={`space-y-6 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-      <div className={`transition-all duration-500 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+    <div className="space-y-6">
+      <div>
         <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Projects</h1>
         <p className={textSecondary}>All your GitLab projects</p>
       </div>
 
       {/* Statistics Cards - Only Essential */}
-      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-500 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => {
             setVisibilityFilter('all');
@@ -186,7 +184,7 @@ export default function ProjectsTab() {
       </div>
 
       {/* Filters */}
-      <div className={`flex flex-wrap items-center gap-4 transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+      <div className="flex flex-wrap items-center gap-4">
         <div className="flex-1 min-w-[200px] relative">
           <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
           <input
@@ -219,17 +217,16 @@ export default function ProjectsTab() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 transition-all duration-500 delay-400 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-        {filteredProjects.map((project, index) => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        {filteredProjects.map((project) => (
           <div
             key={project.id}
             onClick={() => setSelectedProject(project)}
-            className={`rounded-2xl p-4 transition-all duration-500 group cursor-pointer border-2 ${
+            className={`rounded-2xl p-4 transition-all group cursor-pointer border-2 ${
               theme === 'light'
                 ? 'bg-white border-gray-200 hover:border-orange-400 shadow-sm hover:shadow-lg'
                 : 'bg-zinc-900/50 border-zinc-800 hover:border-orange-500/50 backdrop-blur-sm'
-            } ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-            style={{ transitionDelay: `${400 + index * 50}ms` }}
+            }`}
           >
             {/* Header with Avatar and Name */}
             <div className="flex items-start gap-3 mb-3">
