@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 
 // Cache TTL constants (in seconds)
 export const CacheTTL = {
+  REALTIME: 5,      // 5 seconds - for active jobs/pipelines (near real-time)
   SHORT: 30,        // 30 seconds
   MEDIUM: 120,      // 2 minutes
   LONG: 300,        // 5 minutes
@@ -448,7 +449,7 @@ class GitLabAPI {
           .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
           .slice(0, 50); // Limit to 50 active pipelines max
       },
-      CacheTTL.SHORT // 30 seconds cache for active pipelines - fast updates
+      CacheTTL.REALTIME // 10 seconds cache for active pipelines - real-time updates
     );
   }
 
@@ -475,7 +476,7 @@ class GitLabAPI {
         const response = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/jobs`);
         return response.data;
       },
-      CacheTTL.SHORT // 30 seconds cache for jobs to catch running jobs quickly
+      CacheTTL.REALTIME // 10 seconds cache for jobs to catch running jobs in real-time
     );
   }
 
