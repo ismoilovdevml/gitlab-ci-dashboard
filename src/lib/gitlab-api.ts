@@ -426,17 +426,30 @@ class GitLabAPI {
   }
 
   async getAllActivePipelines(): Promise<Pipeline[]> {
-    // Limit to 20 most active projects to reduce memory usage
-    const projects = await this.getProjects(1, 20);
-    const pipelinePromises = projects.map(project =>
-      this.getPipelines(project.id, 1, 5).catch(() => [])
+    return cachedFetch(
+      'gitlab:active-pipelines',
+      async () => {
+        // Limit to 20 most active projects to reduce memory usage
+        const projects = await this.getProjects(1, 20);
+        const pipelinePromises = projects.map(project =>
+          // Direct API call without cache for fresh data
+          this.api.get(`/projects/${project.id}/pipelines`, {
+            params: {
+              per_page: 10,
+              page: 1,
+              order_by: 'updated_at',
+            },
+          }).then(res => res.data as Pipeline[]).catch(() => [])
+        );
+        const allPipelines = await Promise.all(pipelinePromises);
+        return allPipelines
+          .flat()
+          .filter(p => ['running', 'pending', 'created'].includes(p.status))
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+          .slice(0, 50); // Limit to 50 active pipelines max
+      },
+      CacheTTL.SHORT // 30 seconds cache for active pipelines - fast updates
     );
-    const allPipelines = await Promise.all(pipelinePromises);
-    return allPipelines
-      .flat()
-      .filter(p => ['running', 'pending', 'created'].includes(p.status))
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, 50); // Limit to 50 active pipelines max
   }
 
   async getPipeline(projectId: number, pipelineId: number): Promise<Pipeline> {
@@ -456,8 +469,14 @@ class GitLabAPI {
 
   // Jobs
   async getPipelineJobs(projectId: number, pipelineId: number): Promise<Job[]> {
-    const response = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/jobs`);
-    return response.data;
+    return cachedFetch(
+      `gitlab:jobs:${projectId}:${pipelineId}`,
+      async () => {
+        const response = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/jobs`);
+        return response.data;
+      },
+      CacheTTL.SHORT // 30 seconds cache for jobs to catch running jobs quickly
+    );
   }
 
   async getJob(projectId: number, jobId: number): Promise<Job> {

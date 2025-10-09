@@ -76,8 +76,8 @@ export default function Overview() {
         .slice(0, 50);  // Keep more pipelines for accurate counting
       setRecentPipelines(recent);
 
-      // Load active jobs from running pipelines
-      const runningPipelines = pipelines.slice(0, 5);
+      // Load active jobs from running pipelines (increased to 20 for better visibility)
+      const runningPipelines = pipelines.slice(0, 20);
       const jobsPromises = runningPipelines.map(pipeline =>
         api.getPipelineJobs(pipeline.project_id, pipeline.id).catch(() => [])
       );
@@ -88,7 +88,7 @@ export default function Overview() {
           .flat()
           .filter(job => job.status === 'running' || job.status === 'pending')
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 10);
+          .slice(0, 20); // Show up to 20 active jobs
 
         // Enrich jobs with project data from store
         const enrichedJobs = jobs.map(job => {
