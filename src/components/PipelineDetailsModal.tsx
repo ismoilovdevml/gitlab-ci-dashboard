@@ -112,6 +112,22 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     }
   };
 
+  // Calculate pipeline duration if not provided
+  const pipelineDuration = useMemo(() => {
+    if (pipeline.duration) return pipeline.duration;
+
+    // Calculate from started_at and finished_at if available
+    if (pipeline.started_at && pipeline.finished_at) {
+      const start = new Date(pipeline.started_at).getTime();
+      const end = new Date(pipeline.finished_at).getTime();
+      return Math.floor((end - start) / 1000); // Convert to seconds
+    }
+
+    // Fall back to sum of job durations
+    const totalJobDuration = jobs.reduce((sum, job) => sum + (job.duration || 0), 0);
+    return totalJobDuration > 0 ? totalJobDuration : null;
+  }, [pipeline.duration, pipeline.started_at, pipeline.finished_at, jobs]);
+
   // Pipeline statistics
   const pipelineStats = useMemo(() => {
     const total = jobs.length;
@@ -244,7 +260,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
                 <Timer className={`w-4 h-4 ${textSecondary}`} />
                 <span className={`text-xs font-medium ${textSecondary}`}>Duration</span>
               </div>
-              <p className={`text-sm font-semibold ${textPrimary}`}>{pipeline.duration ? formatDuration(pipeline.duration) : '-'}</p>
+              <p className={`text-sm font-semibold ${textPrimary}`}>{pipelineDuration ? formatDuration(pipelineDuration) : '-'}</p>
             </div>
             <div className={`rounded-lg p-3 border ${
               theme === 'light' ? 'bg-white border-gray-200' : 'bg-zinc-900 border-zinc-800'
@@ -258,7 +274,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={pipeline.user.avatar_url} className="w-5 h-5 rounded-full" alt="" />
                 )}
-                <span className={`text-sm truncate ${textPrimary}`}>{pipeline.user?.name || 'Unknown'}</span>
+                <span className={`text-sm truncate ${textPrimary}`}>{pipeline.user?.name || 'Auto'}</span>
               </div>
             </div>
           </div>

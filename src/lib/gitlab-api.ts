@@ -71,14 +71,14 @@ export interface Pipeline {
   web_url: string;
   created_at: string;
   updated_at: string;
-  started_at: string;
-  finished_at: string;
-  duration: number;
-  user: {
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration?: number | null;
+  user?: {
     name: string;
     username: string;
     avatar_url: string;
-  };
+  } | null;
 }
 
 export interface Job {
@@ -739,8 +739,8 @@ class GitLabAPI {
 
     // Calculate MTTR (Mean Time To Recovery)
     const failedPipelines = pipelines
-      .filter(p => p.status === 'failed')
-      .sort((a, b) => new Date(a.finished_at).getTime() - new Date(b.finished_at).getTime());
+      .filter(p => p.status === 'failed' && p.finished_at)
+      .sort((a, b) => new Date(a.finished_at!).getTime() - new Date(b.finished_at!).getTime());
 
     let mttrSum = 0;
     let mttrCount = 0;
@@ -754,7 +754,7 @@ class GitLabAPI {
           new Date(p.created_at) > new Date(failedPipeline.created_at)
       );
 
-      if (nextSuccess) {
+      if (nextSuccess && nextSuccess.finished_at && failedPipeline.finished_at) {
         const recoveryTime =
           new Date(nextSuccess.finished_at).getTime() -
           new Date(failedPipeline.finished_at).getTime();
@@ -1075,9 +1075,9 @@ class GitLabAPI {
             const avgTime = totalDuration / deploymentPipelines.length;
             const deploymentsPerDay = deploymentPipelines.length / days;
 
-            const sortedDeployments = deploymentPipelines.sort(
-              (a, b) => new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime()
-            );
+            const sortedDeployments = deploymentPipelines
+              .filter(p => p.finished_at)
+              .sort((a, b) => new Date(b.finished_at!).getTime() - new Date(a.finished_at!).getTime());
 
             // Calculate trend
             const midpoint = Math.floor(deploymentPipelines.length / 2);
