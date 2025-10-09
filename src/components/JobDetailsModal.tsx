@@ -193,14 +193,20 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
 
   return (
     <>
-      <div className={`fixed inset-0 backdrop-blur-sm z-[999] flex items-center justify-center p-4 overflow-y-auto ${
-        theme === 'light' ? 'bg-black/30' : 'bg-black/80'
-      }`} onClick={onClose}>
+      {/* Backdrop overlay */}
+      <div
+        className={`fixed inset-0 z-[999] backdrop-blur-sm ${
+          theme === 'light' ? 'bg-black/50' : 'bg-black/80'
+        }`}
+        onClick={onClose}
+      />
+
+      {/* Modal container */}
+      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 pointer-events-none overflow-y-auto">
         <div
-          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col ${surface} ${
+          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
             theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
           }`}
-          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className={`p-6 flex items-center justify-between border-b ${

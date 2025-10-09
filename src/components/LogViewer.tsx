@@ -134,15 +134,23 @@ export default function LogViewer({
   const warningCount = logs.split('\n').filter(line => parseLogLine(line).level === 'warning').length;
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
-      theme === 'light' ? 'bg-black/20' : 'bg-black/80'
-    }`}>
-      <div className={`rounded-xl flex flex-col ${
-        isFullscreen ? 'w-full h-full' : 'w-full max-w-7xl h-[85vh]'
-      } ${
-        theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
-      }`}>
-        {/* Header */}
+    <>
+      {/* Backdrop overlay */}
+      <div
+        className={`fixed inset-0 z-[1000] backdrop-blur-sm ${
+          theme === 'light' ? 'bg-black/50' : 'bg-black/80'
+        }`}
+        onClick={onClose}
+      />
+
+      {/* Modal container */}
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
+        <div className={`rounded-xl flex flex-col pointer-events-auto ${
+          isFullscreen ? 'w-full h-full' : 'w-full max-w-7xl h-[85vh]'
+        } ${
+          theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
+        }`}>
+          {/* Header */}
         <div className={`p-4 border-b ${theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'}`}>
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -340,7 +348,8 @@ export default function LogViewer({
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
