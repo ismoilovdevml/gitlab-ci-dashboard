@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
+import { randomBytes } from 'crypto';
 import prisma from '@/lib/db/prisma';
 
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
@@ -21,10 +22,11 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 /**
- * Generate random session token
+ * Generate cryptographically secure random session token
+ * Uses crypto.randomBytes instead of Math.random() for security
  */
 export function generateSessionToken(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+  return randomBytes(32).toString('hex');
 }
 
 /**
@@ -101,36 +103,51 @@ export async function getSession() {
     },
   });
 
-  // Check if session exists and is valid
-  if (!session || session.expiresAt < new Date()) {
-    if (session) {
-      // Delete expired session
-      await prisma.session.delete({ where: { id: session.id } });
+  // Use transaction to prevent race conditions (Session Fixation fix)
+  const result = await prisma.$transaction(async (tx) => {
+    // Check if session exists and is valid
+    if (!session || session.expiresAt < new Date()) {
+      if (session) {
+        // Delete expired session
+        await tx.session.delete({ where: { id: session.id } });
+      }
+      return null;
     }
-    return null;
-  }
 
-  // Check if user is active
-  if (!session.user.isActive) {
-    return null;
-  }
+    // Check if user is active
+    if (!session.user.isActive) {
+      return null;
+    }
 
-  // Update last activity
-  await prisma.user.update({
-    where: { id: session.userId },
-    data: { lastActivityAt: new Date() },
+    // Update last activity
+    await tx.user.update({
+      where: { id: session.userId },
+      data: { lastActivityAt: new Date() },
+    });
+
+    return session;
   });
 
-  return session;
+  return result;
 }
 
 /**
  * Delete session (logout)
+ * Fixed: Added error handling for session fixation prevention
  */
 export async function deleteSession(token: string) {
-  await prisma.session.delete({
-    where: { token },
-  });
+  try {
+    const deleted = await prisma.session.delete({
+      where: { token },
+    });
+    if (!deleted) {
+      throw new Error('Session not found');
+    }
+    return true;
+  } catch (error) {
+    console.error('Failed to delete session:', error);
+    throw new Error('Failed to invalidate session');
+  }
 }
 
 /**

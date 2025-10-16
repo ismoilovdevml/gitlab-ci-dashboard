@@ -56,12 +56,20 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
 
   return (
     <>
-      <div className={`fixed inset-0 backdrop-blur-sm z-40 flex items-center justify-center p-4 ${
-        theme === 'light' ? 'bg-black/20' : 'bg-black/80'
-      }`}>
-        <div className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto ${
-          theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
-        }`}>
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Modal container */}
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 pointer-events-none">
+
+        <div
+          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto pointer-events-auto ${
+            theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className={`sticky top-0 p-6 flex items-center justify-between ${
             theme === 'light' ? 'bg-white border-b border-[#d2d2d7]/50' : 'bg-zinc-900 border-b border-zinc-800'

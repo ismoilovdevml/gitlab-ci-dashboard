@@ -14,8 +14,15 @@ import {
   Server as ServerIcon,
   Zap as BoltIcon,
   BarChart3 as ChartBarIcon,
+  Tag as TagIcon,
+  Settings as SettingsIcon,
+  Timer as TimerIcon,
+  Shield as ShieldIcon,
+  Calendar as CalendarIcon,
+  GitCommit as GitCommitIcon,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { formatPercentage } from '@/lib/utils';
 
 interface RunnerDetailsModalProps {
   runner: Runner | null;
@@ -71,7 +78,7 @@ export default function RunnerDetailsModal({
     : 0;
 
   const successRate = jobStats.total > 0
-    ? ((jobStats.success / jobStats.total) * 100).toFixed(1)
+    ? formatPercentage((jobStats.success / jobStats.total) * 100)
     : '0';
 
   const getStatusColor = (status: string) => {
@@ -193,11 +200,38 @@ export default function RunnerDetailsModal({
             <div className="p-6 space-y-6">
               {/* Runner Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Version */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-gray-800/50 border-gray-700'
+                  theme === 'light' ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' : 'bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <CpuChipIcon className="w-6 h-6 text-blue-400" />
+                    <GitCommitIcon className="w-6 h-6 text-blue-500" />
+                    <div>
+                      <p className={`text-xs ${textSecondary}`}>Version</p>
+                      <p className={`text-lg font-semibold ${textPrimary}`}>{runner.version || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revision */}
+                <div className={`rounded-lg p-4 border ${
+                  theme === 'light' ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200' : 'bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/30'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <SettingsIcon className="w-6 h-6 text-purple-500" />
+                    <div>
+                      <p className={`text-xs ${textSecondary}`}>Revision</p>
+                      <p className={`text-sm font-mono ${textPrimary}`}>{runner.revision ? runner.revision.substring(0, 8) : 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Architecture */}
+                <div className={`rounded-lg p-4 border ${
+                  theme === 'light' ? 'bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200' : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border-cyan-500/30'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <CpuChipIcon className="w-6 h-6 text-cyan-500" />
                     <div>
                       <p className={`text-xs ${textSecondary}`}>Architecture</p>
                       <p className={`text-lg font-semibold ${textPrimary}`}>{runner.architecture || 'N/A'}</p>
@@ -205,11 +239,12 @@ export default function RunnerDetailsModal({
                   </div>
                 </div>
 
+                {/* Platform */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-gray-800/50 border-gray-700'
+                  theme === 'light' ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200' : 'bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <ServerIcon className="w-6 h-6 text-purple-400" />
+                    <ServerIcon className="w-6 h-6 text-green-500" />
                     <div>
                       <p className={`text-xs ${textSecondary}`}>Platform</p>
                       <p className={`text-lg font-semibold ${textPrimary}`}>{runner.platform || 'N/A'}</p>
@@ -217,14 +252,32 @@ export default function RunnerDetailsModal({
                   </div>
                 </div>
 
+                {/* Created Date */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-gray-800/50 border-gray-700'
+                  theme === 'light' ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200' : 'bg-gradient-to-br from-orange-500/10 to-orange-600/10 border-orange-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <ClockIcon className="w-6 h-6 text-green-400" />
+                    <CalendarIcon className="w-6 h-6 text-orange-500" />
+                    <div>
+                      <p className={`text-xs ${textSecondary}`}>Created</p>
+                      <p className={`text-sm font-semibold ${textPrimary}`}>
+                        {runner.created_at
+                          ? formatDistanceToNow(new Date(runner.created_at), { addSuffix: true })
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Last Contact */}
+                <div className={`rounded-lg p-4 border ${
+                  theme === 'light' ? 'bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200' : 'bg-gradient-to-br from-teal-500/10 to-teal-600/10 border-teal-500/30'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <ClockIcon className="w-6 h-6 text-teal-500" />
                     <div>
                       <p className={`text-xs ${textSecondary}`}>Last Contact</p>
-                      <p className={`text-lg font-semibold ${textPrimary}`}>
+                      <p className={`text-sm font-semibold ${textPrimary}`}>
                         {runner.contacted_at
                           ? formatDistanceToNow(new Date(runner.contacted_at), { addSuffix: true })
                           : 'Never'}
@@ -233,23 +286,25 @@ export default function RunnerDetailsModal({
                   </div>
                 </div>
 
+                {/* Access Level */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-gray-800/50 border-gray-700'
+                  theme === 'light' ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200' : 'bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 border-indigo-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <BoltIcon className="w-6 h-6 text-yellow-400" />
+                    <ShieldIcon className="w-6 h-6 text-indigo-500" />
                     <div>
-                      <p className={`text-xs ${textSecondary}`}>IP Address</p>
-                      <p className={`text-lg font-semibold ${textPrimary}`}>{runner.ip_address || 'N/A'}</p>
+                      <p className={`text-xs ${textSecondary}`}>Access Level</p>
+                      <p className={`text-lg font-semibold ${textPrimary} capitalize`}>{runner.access_level || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
 
+                {/* Type */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-gray-800/50 border-gray-700'
+                  theme === 'light' ? 'bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200' : 'bg-gradient-to-br from-pink-500/10 to-pink-600/10 border-pink-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <ChartBarIcon className="w-6 h-6 text-indigo-400" />
+                    <ChartBarIcon className="w-6 h-6 text-pink-500" />
                     <div>
                       <p className={`text-xs ${textSecondary}`}>Type</p>
                       <p className={`text-lg font-semibold ${textPrimary} capitalize`}>{runner.runner_type || 'N/A'}</p>
@@ -257,15 +312,88 @@ export default function RunnerDetailsModal({
                   </div>
                 </div>
 
+                {/* Maximum Timeout */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-gray-800/50 border-gray-700'
+                  theme === 'light' ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200' : 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 border-yellow-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <CheckCircleIcon className="w-6 h-6 text-teal-400" />
+                    <TimerIcon className="w-6 h-6 text-yellow-500" />
                     <div>
-                      <p className={`text-xs ${textSecondary}`}>Status</p>
-                      <p className={`text-lg font-semibold ${textPrimary} capitalize`}>{runner.active ? 'Active' : 'Inactive'}</p>
+                      <p className={`text-xs ${textSecondary}`}>Max Timeout</p>
+                      <p className={`text-lg font-semibold ${textPrimary}`}>
+                        {runner.maximum_timeout ? `${runner.maximum_timeout}s` : 'Unlimited'}
+                      </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags Section */}
+              {runner.tag_list && runner.tag_list.length > 0 && (
+                <div className={`rounded-lg p-4 border ${
+                  theme === 'light' ? 'bg-orange-50 border-orange-200' : 'bg-orange-500/10 border-orange-500/30'
+                }`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <TagIcon className="w-5 h-5 text-orange-500" />
+                    <h3 className={`text-lg font-semibold ${textPrimary}`}>Tags ({runner.tag_list.length})</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {runner.tag_list.map((tag) => (
+                      <span
+                        key={tag}
+                        className={`px-3 py-1.5 rounded-lg font-medium text-sm ${
+                          theme === 'light'
+                            ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                            : 'bg-orange-500/20 text-orange-400 border border-orange-500/40'
+                        }`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Configuration Section */}
+              <div className={`rounded-lg p-4 border ${
+                theme === 'light' ? 'bg-blue-50 border-blue-200' : 'bg-blue-500/10 border-blue-500/30'
+              }`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <SettingsIcon className="w-5 h-5 text-blue-500" />
+                  <h3 className={`text-lg font-semibold ${textPrimary}`}>Configuration</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className={`rounded-lg p-3 ${
+                    theme === 'light' ? 'bg-white border border-blue-200' : 'bg-blue-500/5 border border-blue-500/20'
+                  }`}>
+                    <p className={`text-xs ${textSecondary} mb-1`}>Run Untagged</p>
+                    <p className={`font-semibold ${textPrimary}`}>
+                      {runner.run_untagged ? '✅ Yes' : '❌ No'}
+                    </p>
+                  </div>
+                  <div className={`rounded-lg p-3 ${
+                    theme === 'light' ? 'bg-white border border-blue-200' : 'bg-blue-500/5 border border-blue-500/20'
+                  }`}>
+                    <p className={`text-xs ${textSecondary} mb-1`}>Locked</p>
+                    <p className={`font-semibold ${textPrimary}`}>
+                      {runner.locked ? '🔒 Yes' : '🔓 No'}
+                    </p>
+                  </div>
+                  <div className={`rounded-lg p-3 ${
+                    theme === 'light' ? 'bg-white border border-blue-200' : 'bg-blue-500/5 border border-blue-500/20'
+                  }`}>
+                    <p className={`text-xs ${textSecondary} mb-1`}>Paused</p>
+                    <p className={`font-semibold ${textPrimary}`}>
+                      {runner.paused ? '⏸️ Yes' : '▶️ No'}
+                    </p>
+                  </div>
+                  <div className={`rounded-lg p-3 ${
+                    theme === 'light' ? 'bg-white border border-blue-200' : 'bg-blue-500/5 border border-blue-500/20'
+                  }`}>
+                    <p className={`text-xs ${textSecondary} mb-1`}>Active</p>
+                    <p className={`font-semibold ${textPrimary}`}>
+                      {runner.active ? '✅ Yes' : '❌ No'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -496,7 +624,7 @@ export default function RunnerDetailsModal({
                           <div key={item.label}>
                             <div className="flex items-center justify-between text-sm mb-1">
                               <span className={textSecondary}>{item.label}</span>
-                              <span className={`font-medium ${textPrimary}`}>{item.count} ({percentage.toFixed(1)}%)</span>
+                              <span className={`font-medium ${textPrimary}`}>{item.count} ({formatPercentage(percentage)}%)</span>
                             </div>
                             <div className={`w-full rounded-full h-2 ${
                               theme === 'light' ? 'bg-gray-200' : 'bg-gray-700'

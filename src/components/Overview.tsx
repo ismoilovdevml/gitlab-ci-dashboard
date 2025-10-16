@@ -5,7 +5,7 @@ import { Activity, GitBranch, CheckCircle, XCircle, Clock, Search, Award, Zap, T
 import StatsCard from './StatsCard';
 import PipelineDetailsModal from './PipelineDetailsModal';
 import PipelineListModal from './PipelineListModal';
-import DashboardAnalytics from './DashboardAnalytics';
+import JobDetailsModal from './JobDetailsModal';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { Pipeline, Job } from '@/lib/gitlab-api';
@@ -18,6 +18,7 @@ export default function Overview() {
     projects,
     setActivePipelines,
     setStats,
+    setProjects,
     setIsLoading,
     setError,
     autoRefresh,
@@ -31,6 +32,8 @@ export default function Overview() {
   const [recentPipelines, setRecentPipelines] = useState<Pipeline[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedJobProjectId, setSelectedJobProjectId] = useState<number | null>(null);
 
   const loadData = async (abortSignal?: AbortSignal) => {
     try {
@@ -39,6 +42,12 @@ export default function Overview() {
 
       // Get API instance from database configuration
       const api = await getGitLabAPIAsync();
+
+      // Load projects if not already loaded
+      const projectsToUse = projects.length > 0 ? projects : await api.getProjects(1, 50);
+      if (projects.length === 0 && !abortSignal?.aborted) {
+        setProjects(projectsToUse);
+      }
 
       const [pipelines, pipelineStats] = await Promise.all([
         api.getAllActivePipelines(),
@@ -51,9 +60,10 @@ export default function Overview() {
       setActivePipelines(pipelines);
       setStats(pipelineStats);
 
-      // Load recent pipelines and active jobs
-      const recentPromises = projects.slice(0, 10).map(project =>
-        api.getPipelines(project.id, 1, 5).catch(() => [])
+      // Load recent pipelines from ALL projects for accurate Top Active Projects
+      // Increase to get better pipeline count statistics
+      const recentPromises = projectsToUse.map(project =>
+        api.getPipelines(project.id, 1, 10).catch(() => [])
       );
       const allRecent = await Promise.all(recentPromises);
 
@@ -63,11 +73,11 @@ export default function Overview() {
       const recent = allRecent
         .flat()
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-        .slice(0, 15);
+        .slice(0, 50);  // Keep more pipelines for accurate counting
       setRecentPipelines(recent);
 
-      // Load active jobs from running pipelines
-      const runningPipelines = pipelines.slice(0, 5);
+      // Load active jobs from running pipelines (increased to 20 for better visibility)
+      const runningPipelines = pipelines.slice(0, 20);
       const jobsPromises = runningPipelines.map(pipeline =>
         api.getPipelineJobs(pipeline.project_id, pipeline.id).catch(() => [])
       );
@@ -78,8 +88,26 @@ export default function Overview() {
           .flat()
           .filter(job => job.status === 'running' || job.status === 'pending')
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 10);
-        setActiveJobs(jobs);
+          .slice(0, 20); // Show up to 20 active jobs
+
+        // Enrich jobs with project data from store
+        const enrichedJobs = jobs.map(job => {
+          const projectData = projectsToUse.find(p => p.id === job.pipeline.project_id);
+          if (projectData && !job.project) {
+            // Add project data to job if missing
+            return {
+              ...job,
+              project: {
+                id: projectData.id,
+                name: projectData.name,
+                name_with_namespace: projectData.name_with_namespace
+              }
+            };
+          }
+          return job;
+        });
+
+        setActiveJobs(enrichedJobs);
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -96,6 +124,7 @@ export default function Overview() {
   useEffect(() => {
     const controller = new AbortController();
 
+    // Always try to load data - projects will be fetched if needed
     loadData(controller.signal);
 
     if (autoRefresh) {
@@ -112,28 +141,46 @@ export default function Overview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, refreshInterval]);
 
-  // Top projects by pipeline count
+  // Top projects by total pipeline run count (most active)
   const topProjects = useMemo(() => {
     interface ProjectCount {
       project: typeof projects[0];
       count: number;
+      lastActivity: string;
     }
     const projectPipelineCounts = new Map<number, ProjectCount>();
 
+    // Count all recent pipelines per project
     recentPipelines.forEach(pipeline => {
       const project = projects.find(p => p.id === pipeline.project_id);
       if (project) {
         const existing = projectPipelineCounts.get(project.id);
         if (existing) {
           existing.count++;
+          // Keep track of latest activity
+          if (new Date(pipeline.updated_at) > new Date(existing.lastActivity)) {
+            existing.lastActivity = pipeline.updated_at;
+          }
         } else {
-          projectPipelineCounts.set(project.id, { project, count: 1 });
+          projectPipelineCounts.set(project.id, {
+            project,
+            count: 1,
+            lastActivity: pipeline.updated_at
+          });
         }
       }
     });
 
+    // Sort by pipeline count (descending), then by last activity (most recent first)
     return Array.from(projectPipelineCounts.values())
-      .sort((a, b) => b.count - a.count)
+      .sort((a, b) => {
+        // Primary sort: by count (higher first)
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        // Secondary sort: by last activity (more recent first)
+        return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+      })
       .slice(0, 5);
   }, [recentPipelines, projects]);
 
@@ -270,16 +317,28 @@ export default function Overview() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {filteredJobs.map((job) => {
+              // Multiple fallback strategies to get project name
+              const project = projects.find(p => p.id === job.pipeline.project_id);
+              const projectName = project?.name ||
+                                 job.project?.name ||
+                                 job.project?.name_with_namespace ||
+                                 'Loading...';
+
               return (
                 <div
                   key={job.id}
-                  className={`rounded-lg p-3 transition-all group ${card} ${
+                  onClick={() => {
+                    setSelectedJob(job);
+                    setSelectedJobProjectId(job.pipeline.project_id);
+                  }}
+                  className={`rounded-lg p-3 transition-all cursor-pointer group ${card} ${
                     theme === 'light'
                       ? 'shadow-sm hover:shadow-md hover:border-[#d2d2d7]'
                       : 'hover:border-zinc-700'
                   }`}
                 >
-                  <div className="flex items-start gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    {/* Status Icon */}
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0 ${
                       job.status === 'running' ? 'bg-blue-500/10 text-blue-500' :
                       'bg-yellow-500/10 text-yellow-500'
@@ -287,13 +346,16 @@ export default function Overview() {
                       {job.status === 'running' ? <Activity className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-medium text-sm truncate ${textPrimary}`}>{job.name}</h3>
-                      <p className={`text-xs truncate ${textSecondary}`}>{job.project?.name || 'Unknown'}</p>
+                      <h3 className={`font-medium text-sm truncate group-hover:text-blue-500 transition-colors ${textPrimary}`}>
+                        {job.name}
+                      </h3>
+                      <p className={`text-xs truncate ${textSecondary}`}>{projectName}</p>
                     </div>
                   </div>
-                  <div className={`flex items-center justify-between text-xs ${textSecondary}`}>
-                    <span className="truncate">{job.stage}</span>
-                    <span className="whitespace-nowrap ml-2">{formatRelativeTime(job.created_at)}</span>
+                  <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
+                    <GitBranch className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{job.ref}</span>
+                    <span className="whitespace-nowrap ml-auto">{formatRelativeTime(job.created_at)}</span>
                   </div>
                 </div>
               );
@@ -431,9 +493,6 @@ export default function Overview() {
         )}
       </div>
 
-      {/* Dashboard Analytics */}
-      <DashboardAnalytics />
-
       {/* Modals */}
       {showPipelineList && (
         <PipelineListModal
@@ -450,6 +509,18 @@ export default function Overview() {
           onClose={() => {
             setSelectedPipeline(null);
             setSelectedProjectId(null);
+          }}
+        />
+      )}
+
+      {/* Job Details Modal */}
+      {selectedJob && selectedJobProjectId && (
+        <JobDetailsModal
+          job={selectedJob}
+          projectId={selectedJobProjectId}
+          onClose={() => {
+            setSelectedJob(null);
+            setSelectedJobProjectId(null);
           }}
         />
       )}

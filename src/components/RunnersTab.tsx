@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Server, Circle, Search, Filter, Activity, CheckCircle, XCircle, Pause, TrendingUp, Clock, Cpu, HardDrive } from 'lucide-react';
+import { Server, Circle, Search, Filter, Activity, CheckCircle, XCircle, Pause, TrendingUp, Clock, Cpu } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync, Runner } from '@/lib/gitlab-api';
 import { formatRelativeTime, cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ export default function RunnersTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [sharingFilter, setSharingFilter] = useState<'all' | 'shared' | 'dedicated'>('all');
   const [selectedRunner, setSelectedRunner] = useState<Runner | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -78,10 +79,13 @@ export default function RunnersTab() {
 
       const matchesStatus = statusFilter === 'all' || runner.status === statusFilter;
       const matchesType = typeFilter === 'all' || runner.runner_type === typeFilter;
+      const matchesSharing = sharingFilter === 'all' ||
+        (sharingFilter === 'shared' && runner.is_shared) ||
+        (sharingFilter === 'dedicated' && !runner.is_shared);
 
-      return matchesSearch && matchesStatus && matchesType;
+      return matchesSearch && matchesStatus && matchesType && matchesSharing;
     });
-  }, [runners, searchTerm, statusFilter, typeFilter]);
+  }, [runners, searchTerm, statusFilter, typeFilter, sharingFilter]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -136,6 +140,7 @@ export default function RunnersTab() {
           onClick={() => {
             setStatusFilter('all');
             setTypeFilter('all');
+            setSharingFilter('all');
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
@@ -157,7 +162,10 @@ export default function RunnersTab() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('online')}
+          onClick={() => {
+            setStatusFilter('online');
+            setSharingFilter('all');
+          }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
               ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
@@ -178,7 +186,10 @@ export default function RunnersTab() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('offline')}
+          onClick={() => {
+            setStatusFilter('offline');
+            setSharingFilter('all');
+          }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
               ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
@@ -199,7 +210,10 @@ export default function RunnersTab() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('paused')}
+          onClick={() => {
+            setStatusFilter('paused');
+            setSharingFilter('all');
+          }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
               ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 hover:from-yellow-100 hover:to-yellow-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
@@ -221,11 +235,8 @@ export default function RunnersTab() {
 
         <button
           onClick={() => {
-            setTypeFilter('all');
-            const sharedRunners = runners.filter(r => r.is_shared);
-            if (sharedRunners.length > 0) {
-              handleRunnerClick(sharedRunners[0]);
-            }
+            setSharingFilter(sharingFilter === 'shared' ? 'all' : 'shared');
+            setStatusFilter('all');
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
@@ -248,11 +259,8 @@ export default function RunnersTab() {
 
         <button
           onClick={() => {
-            setTypeFilter('all');
-            const dedicatedRunners = runners.filter(r => !r.is_shared);
-            if (dedicatedRunners.length > 0) {
-              handleRunnerClick(dedicatedRunners[0]);
-            }
+            setSharingFilter(sharingFilter === 'dedicated' ? 'all' : 'dedicated');
+            setStatusFilter('all');
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
@@ -358,6 +366,7 @@ export default function RunnersTab() {
               setSearchTerm('');
               setStatusFilter('all');
               setTypeFilter('all');
+              setSharingFilter('all');
             }}
             className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
           >
@@ -394,7 +403,7 @@ export default function RunnersTab() {
                     <h3 className={`font-semibold text-sm truncate ${textPrimary}`}>
                       {runner.description || runner.name || `Runner #${runner.id}`}
                     </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className={`text-xs ${textSecondary}`}>
                         {runner.runner_type}
                       </span>
@@ -405,6 +414,14 @@ export default function RunnersTab() {
                           Shared
                         </span>
                       )}
+                      {/* Tags */}
+                      {runner.tag_list && runner.tag_list.length > 0 && runner.tag_list.map((tag) => (
+                        <span key={tag} className={`text-xs px-1.5 py-0.5 rounded ${
+                          theme === 'light' ? 'bg-orange-50 text-orange-600' : 'bg-orange-500/10 text-orange-400'
+                        }`}>
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -431,21 +448,21 @@ export default function RunnersTab() {
 
                 <div className={`rounded-lg p-2 ${theme === 'light' ? 'bg-[#f5f5f7]' : 'bg-zinc-800/50'}`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <HardDrive className={`w-3.5 h-3.5 ${textSecondary}`} />
-                    <span className={`text-xs ${textSecondary}`}>Arch</span>
+                    <Clock className={`w-3.5 h-3.5 ${textSecondary}`} />
+                    <span className={`text-xs ${textSecondary}`}>Created</span>
                   </div>
                   <p className={`text-sm font-medium truncate ${textPrimary}`}>
-                    {runner.architecture || 'N/A'}
+                    {runner.created_at ? formatRelativeTime(runner.created_at) : 'N/A'}
                   </p>
                 </div>
 
                 <div className={`rounded-lg p-2 ${theme === 'light' ? 'bg-[#f5f5f7]' : 'bg-zinc-800/50'}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <Activity className={`w-3.5 h-3.5 ${textSecondary}`} />
-                    <span className={`text-xs ${textSecondary}`}>IP Address</span>
+                    <span className={`text-xs ${textSecondary}`}>Version</span>
                   </div>
                   <p className={`text-sm font-mono truncate ${textPrimary}`}>
-                    {runner.ip_address || 'N/A'}
+                    {runner.version || 'N/A'}
                   </p>
                 </div>
 

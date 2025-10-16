@@ -1,23 +1,53 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Download, Trash2, Package, Clock, HardDrive, FileArchive } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Download, Trash2, Clock, HardDrive, FileArchive, ChevronDown, ChevronRight, File, ExternalLink, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync, JobArtifact } from '@/lib/gitlab-api';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
+import { useNotifications } from '@/hooks/useNotifications';
+import DeleteConfirmDialog from './DeleteConfirmDialog';
+
+interface CommitInfo {
+  short_id?: string;
+  title?: string;
+  author_name?: string;
+}
+
+interface GroupedArtifact {
+  jobName: string;
+  jobId: number;
+  projectName: string;
+  projectId: number;
+  status: string;
+  ref: string;
+  createdAt: string;
+  commit: CommitInfo | null;
+  artifacts: {
+    filename: string;
+    size: number;
+  }[];
+  totalSize: number;
+}
 
 export default function ArtifactsTab() {
-  const {  } = useDashboardStore();
+  const { } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card } = useTheme();
+  const { notifySuccess, notifyError } = useNotifications();
   const [artifacts, setArtifacts] = useState<JobArtifact[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
+  const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; group: GroupedArtifact | null }>({
+    isOpen: false,
+    group: null,
+  });
 
   useEffect(() => {
     loadArtifacts();
-     
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadArtifacts = async () => {
@@ -28,181 +58,382 @@ export default function ArtifactsTab() {
       setArtifacts(artifactsList);
     } catch (error) {
       console.error('Failed to load artifacts:', error);
+      notifyError('Load Failed', 'Failed to load artifacts');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownload = async (artifact: JobArtifact) => {
-    if (downloadingIds.has(artifact.id)) return;
+  // Group artifacts by job
+  const groupedArtifacts = useMemo(() => {
+    const groups = new Map<number, GroupedArtifact>();
 
-    setDownloadingIds(prev => new Set(prev).add(artifact.id));
+    artifacts.forEach(artifact => {
+      if (!groups.has(artifact.id)) {
+        const artifactFiles = artifact.artifacts_file ? [{
+          filename: artifact.artifacts_file.filename || 'artifacts.zip',
+          size: artifact.artifacts_file.size || 0
+        }] : [];
+
+        // Use pipeline.project_id as fallback if project.id is not available
+        const projectId = artifact.project?.id || artifact.pipeline?.project_id || 0;
+        const projectName = artifact.project?.name_with_namespace || 'Unknown Project';
+
+        groups.set(artifact.id, {
+          jobName: artifact.name,
+          jobId: artifact.id,
+          projectName: projectName,
+          projectId: projectId,
+          status: artifact.status,
+          ref: artifact.ref,
+          createdAt: artifact.created_at,
+          commit: artifact.commit,
+          artifacts: artifactFiles,
+          totalSize: artifactFiles.reduce((sum, f) => sum + f.size, 0)
+        });
+      }
+    });
+
+    return Array.from(groups.values()).sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [artifacts]);
+
+  const toggleExpand = (jobId: number) => {
+    setExpandedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
+    });
+  };
+
+  const handleDownload = async (group: GroupedArtifact) => {
+    if (downloadingIds.has(group.jobId)) return;
+
+    setDownloadingIds(prev => new Set(prev).add(group.jobId));
 
     try {
       const api = await getGitLabAPIAsync();
-      const blob = await api.downloadArtifact(artifact.project.id, artifact.id);
+      const config = api.getConfig();
 
+      // Use backend API to download artifact
+      const filename = group.artifacts[0]?.filename || `artifacts-${group.jobId}.zip`;
+      const response = await fetch(
+        `/api/artifacts/download?projectId=${group.projectId}&jobId=${group.jobId}&filename=${encodeURIComponent(filename)}`,
+        {
+          method: 'GET',
+          headers: {
+            'x-gitlab-url': config.gitlabUrl,
+            'x-gitlab-token': config.token,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Failed to download' }));
+        throw new Error(error.error || 'Failed to download artifact');
+      }
+
+      // Download the file
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = artifact.artifacts_file?.filename || `artifacts-${artifact.id}.zip`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+
+      notifySuccess('Download Started', `Downloading artifacts from ${group.jobName}`);
     } catch (error) {
       console.error('Failed to download artifact:', error);
-      alert('Failed to download artifact');
+      const err = error as { message?: string };
+      const errorMsg = err?.message || 'Failed to download artifact';
+      notifyError('Download Failed', errorMsg);
     } finally {
       setDownloadingIds(prev => {
         const next = new Set(prev);
-        next.delete(artifact.id);
+        next.delete(group.jobId);
         return next;
       });
     }
   };
 
-  const handleDelete = async (artifact: JobArtifact) => {
-    if (deletingIds.has(artifact.id)) return;
+  const handleDeleteClick = (group: GroupedArtifact) => {
+    setDeleteDialog({ isOpen: true, group });
+  };
 
-    if (!confirm(`Are you sure you want to delete artifacts from job "${artifact.name}"?`)) {
-      return;
-    }
+  const handleDeleteConfirm = async () => {
+    const group = deleteDialog.group;
+    if (!group || deletingIds.has(group.jobId)) return;
 
-    setDeletingIds(prev => new Set(prev).add(artifact.id));
+    setDeletingIds(prev => new Set(prev).add(group.jobId));
 
     try {
       const api = await getGitLabAPIAsync();
-      await api.deleteArtifacts(artifact.project.id, artifact.id);
-      setArtifacts(artifacts.filter(a => a.id !== artifact.id));
+      await api.deleteArtifacts(group.projectId, group.jobId);
+      setArtifacts(artifacts.filter(a => a.id !== group.jobId));
+      notifySuccess('Deleted', `Artifacts from ${group.jobName} deleted`);
+      setDeleteDialog({ isOpen: false, group: null });
     } catch (error) {
       console.error('Failed to delete artifact:', error);
-      alert('Failed to delete artifact');
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to delete artifact';
+      notifyError('Delete Failed', errorMsg);
     } finally {
       setDeletingIds(prev => {
         const next = new Set(prev);
-        next.delete(artifact.id);
+        next.delete(group.jobId);
         return next;
       });
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success':
-        return 'bg-green-500/10 text-green-500 border-green-500/20';
-      case 'failed':
-        return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'running':
-        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      default:
-        return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20';
+  const handleDeleteCancel = () => {
+    if (!deletingIds.has(deleteDialog.group?.jobId || 0)) {
+      setDeleteDialog({ isOpen: false, group: null });
     }
   };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'failed':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <AlertCircle className="w-4 h-4 text-zinc-500" />;
+    }
+  };
+
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className={textSecondary}>Loading artifacts...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+          <div className={textSecondary}>Loading artifacts...</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Artifacts</h1>
-        <p className={textSecondary}>Job artifacts from all projects</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Artifacts</h1>
+          <p className={textSecondary}>
+            {groupedArtifacts.length} job{groupedArtifacts.length !== 1 ? 's' : ''} with artifacts
+          </p>
+        </div>
       </div>
 
-      {artifacts.length === 0 ? (
+      {groupedArtifacts.length === 0 ? (
         <div className={`rounded-xl p-12 text-center ${card} ${
           theme === 'light' ? 'shadow-sm' : ''
         }`}>
-          <FileArchive className={`w-12 h-12 mx-auto mb-4 ${
+          <FileArchive className={`w-16 h-16 mx-auto mb-4 ${
             theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'
           }`} />
-          <h3 className={`font-semibold mb-2 ${textPrimary}`}>No Artifacts Found</h3>
+          <h3 className={`text-lg font-semibold mb-2 ${textPrimary}`}>No Artifacts Found</h3>
           <p className={textSecondary}>No job artifacts available across your projects</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {artifacts.map((artifact) => (
-            <div
-              key={artifact.id}
-              className={`rounded-xl p-6 transition-all ${card} ${
-                theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'hover:border-zinc-700'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Package className="w-5 h-5 text-orange-500" />
-                    <h3 className={`font-semibold ${textPrimary}`}>{artifact.name}</h3>
-                    <span
-                      className={`px-2 py-1 rounded text-xs border ${getStatusColor(
-                        artifact.status
-                      )}`}
-                    >
-                      {artifact.status}
-                    </span>
-                  </div>
-                  <p className={`text-sm mb-2 ${textSecondary}`}>
-                    {artifact.project.name_with_namespace}
-                  </p>
-                  <div className={`flex items-center gap-4 text-xs ${textSecondary}`}>
-                    <div className="flex items-center gap-1">
-                      <HardDrive className="w-3 h-3" />
-                      <span>{formatBytes(artifact.artifacts_file?.size || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatRelativeTime(artifact.created_at)}</span>
-                    </div>
-                    <span className="font-mono">{artifact.ref}</span>
-                  </div>
-                </div>
+        <div className={`rounded-xl overflow-hidden ${card} ${
+          theme === 'light' ? 'shadow-sm' : 'border border-zinc-800'
+        }`}>
+          {/* Table Header */}
+          <div className={`grid grid-cols-12 gap-4 px-6 py-3 text-xs font-medium ${textSecondary} ${
+            theme === 'light' ? 'bg-gray-50 border-b border-gray-200' : 'bg-zinc-900/50 border-b border-zinc-800'
+          }`}>
+            <div className="col-span-1"></div>
+            <div className="col-span-4">Job</div>
+            <div className="col-span-2 text-center">Size</div>
+            <div className="col-span-2 text-center">Created</div>
+            <div className="col-span-3 text-right">Actions</div>
+          </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleDownload(artifact)}
-                    disabled={downloadingIds.has(artifact.id)}
-                    className={`p-2 text-blue-500 rounded-lg transition-colors disabled:opacity-50 ${
-                      theme === 'light' ? 'hover:bg-blue-50' : 'hover:bg-blue-500/10'
-                    }`}
-                    title="Download artifacts"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(artifact)}
-                    disabled={deletingIds.has(artifact.id)}
-                    className={`p-2 text-red-500 rounded-lg transition-colors disabled:opacity-50 ${
-                      theme === 'light' ? 'hover:bg-red-50' : 'hover:bg-red-500/10'
-                    }`}
-                    title="Delete artifacts"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+          {/* Table Body */}
+          <div className="divide-y divide-zinc-800">
+            {groupedArtifacts.map((group) => {
+              const isExpanded = expandedJobs.has(group.jobId);
+              const isDownloading = downloadingIds.has(group.jobId);
+              const isDeleting = deletingIds.has(group.jobId);
 
-              {artifact.commit && (
-                <div className={`pt-4 border-t ${
-                  theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'
-                }`}>
-                  <p className={`text-xs line-clamp-1 ${textSecondary}`}>
-                    <span className={`font-mono ${
-                      theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'
-                    }`}>{artifact.commit.short_id}</span>{' '}
-                    {artifact.commit.title}
-                  </p>
+              return (
+                <div key={group.jobId}>
+                  {/* Job Row */}
+                  <div className={`grid grid-cols-12 gap-4 px-6 py-4 items-center transition-colors ${
+                    theme === 'light' ? 'hover:bg-gray-50' : 'hover:bg-zinc-900/30'
+                  }`}>
+                    {/* Expand Button */}
+                    <div className="col-span-1">
+                      <button
+                        onClick={() => toggleExpand(group.jobId)}
+                        className={`p-1 rounded transition-colors ${
+                          theme === 'light' ? 'hover:bg-gray-200' : 'hover:bg-zinc-800'
+                        }`}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
+                      <span className={`ml-2 text-xs ${textSecondary}`}>
+                        {group.artifacts.length} file{group.artifacts.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Job Info */}
+                    <div className="col-span-4">
+                      <div className="flex items-start gap-3">
+                        {getStatusIcon(group.status)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`font-medium ${textPrimary}`}>{group.jobName}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded font-mono ${
+                              theme === 'light' ? 'bg-gray-100 text-gray-600' : 'bg-zinc-800 text-zinc-400'
+                            }`}>
+                              #{group.jobId}
+                            </span>
+                          </div>
+                          <div className={`text-xs ${textSecondary} truncate`}>
+                            {group.projectName}
+                          </div>
+                          <div className={`text-xs ${textSecondary} font-mono mt-1`}>
+                            {group.ref}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Size */}
+                    <div className="col-span-2 text-center">
+                      <div className={`flex items-center justify-center gap-1 ${textPrimary}`}>
+                        <HardDrive className="w-3 h-3" />
+                        <span className="text-sm font-medium">{formatBytes(group.totalSize)}</span>
+                      </div>
+                    </div>
+
+                    {/* Created */}
+                    <div className="col-span-2 text-center">
+                      <div className={`flex items-center justify-center gap-1 ${textSecondary}`}>
+                        <Clock className="w-3 h-3" />
+                        <span className="text-sm">{formatRelativeTime(group.createdAt)}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-3 flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => window.open(`https://gitlab.com/${group.projectName}/-/jobs/${group.jobId}`, '_blank')}
+                        className={`p-2 rounded-lg transition-colors ${
+                          theme === 'light' ? 'hover:bg-gray-100 text-gray-600' : 'hover:bg-zinc-800 text-zinc-400'
+                        }`}
+                        title="Open in GitLab"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(group)}
+                        disabled={isDownloading || isDeleting}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                          isDownloading
+                            ? 'bg-blue-500/20 text-blue-400 cursor-not-allowed'
+                            : theme === 'light'
+                            ? 'bg-blue-500 text-white hover:bg-blue-600'
+                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
+                        title="Download artifacts"
+                      >
+                        <Download className="w-4 h-4" />
+                        {isDownloading ? 'Downloading...' : 'Download'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(group)}
+                        disabled={isDeleting || isDownloading}
+                        className={`p-2 rounded-lg transition-colors ${
+                          isDeleting
+                            ? 'text-red-500 opacity-50 cursor-not-allowed'
+                            : theme === 'light'
+                            ? 'hover:bg-red-50 text-red-500'
+                            : 'hover:bg-red-500/10 text-red-500'
+                        }`}
+                        title="Delete artifacts"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Artifact Files */}
+                  {isExpanded && (
+                    <div className={`px-6 py-3 ${
+                      theme === 'light' ? 'bg-gray-50/50' : 'bg-zinc-900/20'
+                    }`}>
+                      <div className="ml-6 space-y-2">
+                        {group.artifacts.map((artifact, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-center gap-3 px-4 py-2 rounded-lg ${
+                              theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-900 border border-zinc-800'
+                            }`}
+                          >
+                            <File className="w-4 h-4 text-orange-500" />
+                            <span className={`flex-1 text-sm font-mono ${textPrimary}`}>
+                              {artifact.filename}
+                            </span>
+                            <span className={`text-xs ${textSecondary}`}>
+                              {formatBytes(artifact.size)}
+                            </span>
+                          </div>
+                        ))}
+
+                        {/* Commit Info */}
+                        {group.commit && (
+                          <div className={`px-4 py-3 rounded-lg border-l-2 border-orange-500 ${
+                            theme === 'light' ? 'bg-orange-50/50' : 'bg-orange-500/5'
+                          }`}>
+                            <div className={`text-xs ${textSecondary}`}>
+                              <span className={`font-mono ${textPrimary}`}>
+                                {group.commit.short_id}
+                              </span>{' '}
+                              {group.commit.title}
+                            </div>
+                            {group.commit.author_name && (
+                              <div className={`text-xs mt-1 ${textSecondary}`}>
+                                by {group.commit.author_name}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Artifacts"
+        description="This action cannot be undone. This will permanently delete all artifacts from this job."
+        jobName={deleteDialog.group?.jobName || ''}
+        isDeleting={deletingIds.has(deleteDialog.group?.jobId || 0)}
+      />
     </div>
   );
 }

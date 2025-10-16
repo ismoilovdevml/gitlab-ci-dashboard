@@ -7,13 +7,14 @@ import NotificationToast from '@/components/NotificationToast';
 import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useConfigLoader } from '@/hooks/useConfigLoader';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 // import { usePipelineAlerts } from '@/hooks/usePipelineAlerts'; // Disabled - using webhooks now
 
 // Lazy load heavy components
 const PipelinesTab = lazy(() => import('@/components/PipelinesTab'));
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab'));
 const RunnersTab = lazy(() => import('@/components/RunnersTab'));
-const InsightsTab = lazy(() => import('@/components/InsightsTab'));
+const AnalyticsTab = lazy(() => import('@/components/analytics/AnalyticsTab'));
 const ArtifactsTab = lazy(() => import('@/components/ArtifactsTab'));
 const ContainerRegistryTab = lazy(() => import('@/components/ContainerRegistryTab'));
 const AlertingTab = lazy(() => import('@/components/AlertingTab'));
@@ -25,11 +26,24 @@ export default function Home() {
   // Load config from database on mount (ALL PAGES)
   useConfigLoader();
 
+  // Load and sync user preferences with database
+  useUserPreferences();
+
   // Enable pipeline alerts monitoring (DISABLED - using webhooks now for instant alerts)
   // usePipelineAlerts();
 
   useEffect(() => {
+    // Set theme attribute and class for proper styling
     document.documentElement.setAttribute('data-theme', theme);
+
+    // Apply theme class to html element
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
   }, [theme]);
 
   // const handleNavigate = (tab: string) => {
@@ -64,10 +78,10 @@ export default function Home() {
             <RunnersTab />
           </Suspense>
         );
-      case 'insights':
+      case 'analytics':
         return (
           <Suspense fallback={<LoadingSpinner />}>
-            <InsightsTab />
+            <AnalyticsTab />
           </Suspense>
         );
       case 'artifacts':

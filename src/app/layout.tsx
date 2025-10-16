@@ -15,13 +15,15 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon-192x192.png', type: 'image/png', sizes: '192x192' },
-      { url: '/icon-512x512.png', type: 'image/png', sizes: '512x512' },
+      { url: '/gitlab-logo-500-rgb.png', type: 'image/png', sizes: '32x32' },
+      { url: '/gitlab-logo-500-rgb.png', type: 'image/png', sizes: '192x192' },
+      { url: '/gitlab-logo-500-rgb.png', type: 'image/png', sizes: '512x512' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
     apple: [
-      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/gitlab-logo-500-rgb.png', sizes: '180x180', type: 'image/png' },
     ],
+    shortcut: '/gitlab-logo-500-rgb.png',
   },
 }
 

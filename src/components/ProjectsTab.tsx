@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { ExternalLink, Star, GitFork, Clock, Lock, Globe, Eye, Search, Filter, FolderGit2 } from 'lucide-react';
+import { ExternalLink, Star, GitFork, Lock, Globe, Eye, Search, Filter, FolderGit2, GitBranch, Tag, GitCommit } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
-import { formatRelativeTime } from '@/lib/utils';
 import { Project } from '@/lib/gitlab-api';
 import { useTheme } from '@/hooks/useTheme';
 import ProjectDetailsModal from './ProjectDetailsModal';
@@ -60,11 +59,23 @@ export default function ProjectsTab() {
   const getVisibilityIcon = (visibility: string) => {
     switch (visibility) {
       case 'private':
-        return <Lock className="w-4 h-4 text-red-500" />;
+        return (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20">
+            <Lock className="w-3 h-3 text-red-500" />
+          </div>
+        );
       case 'internal':
-        return <Eye className="w-4 h-4 text-yellow-500" />;
+        return (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+            <Eye className="w-3 h-3 text-yellow-500" />
+          </div>
+        );
       case 'public':
-        return <Globe className="w-4 h-4 text-green-500" />;
+        return (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-500/10 border border-green-500/20">
+            <Globe className="w-3 h-3 text-green-500" />
+          </div>
+        );
       default:
         return null;
     }
@@ -211,86 +222,111 @@ export default function ProjectsTab() {
           <div
             key={project.id}
             onClick={() => setSelectedProject(project)}
-            className={`rounded-xl p-6 transition-all group cursor-pointer ${card} ${
-              theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'hover:border-zinc-700'
+            className={`rounded-2xl p-4 transition-all group cursor-pointer border-2 ${
+              theme === 'light'
+                ? 'bg-white border-gray-200 hover:border-orange-400 shadow-sm hover:shadow-lg'
+                : 'bg-zinc-900/50 border-zinc-800 hover:border-orange-500/50 backdrop-blur-sm'
             }`}
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                {project.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={project.avatar_url}
-                    alt={project.name}
-                    className="w-12 h-12 rounded-lg object-cover border border-zinc-700"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      if (e.currentTarget.nextElementSibling) {
-                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
-                      }
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg"
-                  style={{ display: project.avatar_url ? 'none' : 'flex' }}
-                >
-                  <span className="text-white font-bold text-lg">
-                    {project.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className={`font-semibold group-hover:text-orange-500 transition-colors ${textPrimary}`}>
-                      {project.name}
-                    </h3>
+            {/* Header with Avatar and Name */}
+            <div className="flex items-start gap-3 mb-3">
+              {project.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={project.avatar_url}
+                  alt={project.name}
+                  className="w-12 h-12 rounded-xl object-cover border-2 border-orange-500/30 shadow-lg shadow-orange-500/20 group-hover:shadow-orange-500/40 transition-shadow"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                    }
+                  }}
+                />
+              ) : null}
+              <div
+                className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:shadow-orange-500/50 transition-shadow"
+                style={{ display: project.avatar_url ? 'none' : 'flex' }}
+              >
+                <span className="text-white font-bold text-lg">
+                  {project.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className={`font-bold text-lg group-hover:text-orange-500 transition-colors truncate ${textPrimary}`}>
+                    {project.name}
+                  </h3>
+                  <div className="flex-shrink-0">
                     {getVisibilityIcon(project.visibility)}
                   </div>
-                  <p className={`text-xs ${textSecondary}`}>{project.namespace.name}</p>
                 </div>
+                <p className={`text-sm truncate ${textSecondary}`}>{project.namespace.name}</p>
               </div>
               <a
                 href={project.web_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className={`transition-colors ${
-                  theme === 'light' ? 'text-[#86868b] hover:text-[#1d1d1f]' : 'text-zinc-500 hover:text-white'
+                className={`p-2 rounded-lg transition-all hover:bg-orange-500/10 hover:scale-110 ${
+                  theme === 'light' ? 'text-gray-600 hover:text-orange-600' : 'text-zinc-500 hover:text-orange-400'
                 }`}
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>
 
-            {project.description && (
-              <p className={`text-sm mb-4 line-clamp-2 ${textSecondary}`}>
-                {project.description}
-              </p>
-            )}
-
-            <div className={`flex items-center gap-4 text-xs mb-4 ${textSecondary}`}>
+            {/* Statistics Row */}
+            <div className={`flex items-center justify-between px-3 py-2.5 mb-2.5 rounded-xl border ${
+              theme === 'light'
+                ? 'bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200'
+                : 'bg-gradient-to-r from-zinc-800/40 to-zinc-800/20 border-zinc-700/50'
+            }`}>
+              {/* Stars */}
               <button
                 onClick={(e) => handleToggleStar(e, project)}
                 disabled={starringProjects.has(project.id)}
-                className="flex items-center gap-1 hover:text-yellow-500 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 hover:scale-110 transition-all disabled:opacity-50"
               >
                 <Star
-                  className={`w-3 h-3 ${project.star_count > 0 ? 'fill-yellow-500 text-yellow-500' : ''}`}
+                  className="w-4 h-4 fill-yellow-500 text-yellow-500"
                 />
-                <span>{project.star_count}</span>
+                <span className={`text-sm font-semibold ${textPrimary}`}>{project.star_count}</span>
               </button>
-              <div className="flex items-center gap-1">
-                <GitFork className="w-3 h-3" />
-                <span>{project.forks_count}</span>
+
+              {/* Forks */}
+              <div className="flex items-center gap-1.5 hover:scale-105 transition-transform">
+                <GitFork className="w-4 h-4 text-blue-400" />
+                <span className={`text-sm font-semibold ${textPrimary}`}>{project.forks_count}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                <span>{formatRelativeTime(project.last_activity_at)}</span>
+
+              {/* Commits */}
+              <div className="flex items-center gap-1.5 hover:scale-105 transition-transform">
+                <GitCommit className="w-4 h-4 text-blue-500" />
+                <span className={`text-xs ${textSecondary}`}>Commits</span>
+                <span className="text-sm font-bold text-blue-500">
+                  {project.statistics?.commit_count || 0}
+                </span>
+              </div>
+
+              {/* Branches */}
+              <div className="flex items-center gap-1.5 hover:scale-105 transition-transform">
+                <GitBranch className="w-4 h-4 text-green-500" />
+                <span className={`text-xs ${textSecondary}`}>Branches</span>
+                <span className="text-sm font-bold text-green-500">0</span>
+              </div>
+
+              {/* Tags */}
+              <div className="flex items-center gap-1.5 hover:scale-105 transition-transform">
+                <Tag className="w-4 h-4 text-purple-500" />
+                <span className={`text-xs ${textSecondary}`}>Tags</span>
+                <span className="text-sm font-bold text-purple-500">0</span>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-zinc-800">
-              <span className="text-xs text-zinc-600 font-mono">
+            {/* Project Path */}
+            <div className={`pt-2 border-t ${theme === 'light' ? 'border-gray-200' : 'border-zinc-800'}`}>
+              <span className={`text-xs font-mono ${textSecondary}`}>
                 {project.path_with_namespace}
               </span>
             </div>

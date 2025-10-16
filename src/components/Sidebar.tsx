@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, BarChart3, Bell, LogOut, User, Download, Sparkles } from 'lucide-react';
+import Image from 'next/image';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, Bell, LogOut, User, Download, Sparkles, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
@@ -103,7 +104,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'pipelines', icon: GitBranch, label: 'Pipelines' },
     { id: 'projects', icon: Boxes, label: 'Projects' },
     { id: 'runners', icon: PlayCircle, label: 'Runners' },
-    { id: 'insights', icon: BarChart3, label: 'Insights' },
+    { id: 'analytics', icon: TrendingUp, label: 'Analytics' },
     { id: 'artifacts', icon: FileArchive, label: 'Artifacts' },
     { id: 'registry', icon: Package, label: 'Registry' },
     { id: 'alerting', icon: Bell, label: 'Alerting' },
@@ -114,8 +115,14 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     <div className={`w-64 h-screen flex flex-col transition-colors ${sidebar}`}>
       <div className={`p-6 ${theme === 'light' ? 'border-b border-gray-200' : 'border-b border-zinc-800'}`}>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-            <GitBranch className="w-7 h-7 text-white" />
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center">
+            <Image
+              src="/gitlab-logo-500-rgb.svg"
+              alt="GitLab"
+              width={56}
+              height={56}
+              priority
+            />
           </div>
           <div className="flex-1">
             <h1 className={`text-xl font-bold ${textPrimary}`}>GitLab CI/CD</h1>

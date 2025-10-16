@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, RefreshCw, Bell, Moon, Eye, EyeOff, Save, AlertCircle, Zap, Trash2, Download, Upload } from 'lucide-react';
+import { Settings, RefreshCw, Bell, Moon, Sun, Eye, EyeOff, Save, Lock, LogOut, Key, Info } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTheme } from '@/hooks/useTheme';
-import { getCache, invalidateCache } from '@/lib/gitlab-api';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 export default function SettingsTab() {
+  const router = useRouter();
   const {
     theme: currentTheme,
     setTheme,
@@ -18,164 +19,123 @@ export default function SettingsTab() {
     setNotifyPipelineSuccess: setStoreNotifyPipelineSuccess,
   } = useDashboardStore();
 
-  // Load config from database API instead of Zustand
+  // State
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(10000);
   const [gitlabUrl, setGitlabUrl] = useState('https://gitlab.com');
   const [gitlabToken, setGitlabToken] = useState('');
   const [notifyPipelineFailures, setNotifyPipelineFailures] = useState(true);
   const [notifyPipelineSuccess, setNotifyPipelineSuccess] = useState(false);
+  const [username, setUsername] = useState('');
+  const [role, setRole] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [appVersion, setAppVersion] = useState('');
 
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
   const { theme, card, textPrimary, textSecondary } = useTheme();
 
   const [showToken, setShowToken] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [localUrl, setLocalUrl] = useState(gitlabUrl);
   const [localToken, setLocalToken] = useState(gitlabToken);
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [cacheStats, setCacheStats] = useState({ size: 0, entries: 0 });
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [csrfToken, setCsrfToken] = useState<string>('');
 
-  // Load user config from session on mount
+  // Load user config on mount
   useEffect(() => {
-    const loadUserConfig = async () => {
-      try {
-        // Get current user session (includes their GitLab config)
-        const response = await axios.get('/api/auth/session');
-        if (response.data.authenticated && response.data.user) {
-          const user = response.data.user;
-
-          // Update local state with user's config
-          const url = user.gitlabUrl || 'https://gitlab.com';
-          const token = user.gitlabToken === '***' ? '' : user.gitlabToken || '';
-
-          setGitlabUrl(url);
-          setGitlabToken(token);
-          setLocalUrl(url);
-          setLocalToken(token);
-          setAutoRefresh(user.autoRefresh ?? true);
-          setRefreshInterval(user.refreshInterval ?? 10000);
-          setNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
-          setNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
-
-          // Update Zustand store
-          setStoreAutoRefresh(user.autoRefresh ?? true);
-          setStoreRefreshInterval(user.refreshInterval ?? 10000);
-          setStoreNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
-          setStoreNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
-        }
-      } catch (error) {
-        console.error('❌ Failed to load user config:', error);
-      }
-    };
-
     loadUserConfig();
-  }, [setStoreAutoRefresh, setStoreRefreshInterval, setStoreNotifyPipelineFailures, setStoreNotifyPipelineSuccess]);
+    loadVersionInfo();
+    loadCSRFToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Sync input fields when gitlabUrl/gitlabToken change
-  useEffect(() => {
-    setLocalUrl(gitlabUrl);
-    setLocalToken(gitlabToken);
-  }, [gitlabUrl, gitlabToken]);
+  const loadCSRFToken = async () => {
+    try {
+      const response = await axios.get('/api/csrf');
+      if (response.data && response.data.csrfToken) {
+        setCsrfToken(response.data.csrfToken);
+      }
+    } catch (error) {
+      console.error('Failed to load CSRF token:', error);
+    }
+  };
+
+  const loadUserConfig = async () => {
+    try {
+      const response = await axios.get('/api/auth/session');
+      if (response.data.authenticated && response.data.user) {
+        const user = response.data.user;
+
+        setUsername(user.username || '');
+        setRole(user.role || '');
+
+        const url = user.gitlabUrl || 'https://gitlab.com';
+        const token = user.gitlabToken === '***' ? '' : user.gitlabToken || '';
+
+        setGitlabUrl(url);
+        setGitlabToken(token);
+        setLocalUrl(url);
+        setLocalToken(token);
+        setAutoRefresh(user.autoRefresh ?? true);
+        setRefreshInterval(user.refreshInterval ?? 10000);
+        setNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
+        setNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
+
+        setStoreAutoRefresh(user.autoRefresh ?? true);
+        setStoreRefreshInterval(user.refreshInterval ?? 10000);
+        setStoreNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
+        setStoreNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
+      }
+    } catch (error) {
+      console.error('Failed to load user config:', error);
+    }
+  };
+
+  const loadVersionInfo = async () => {
+    try {
+      const response = await axios.get('/api/version');
+      if (response.data) {
+        setAppVersion(response.data.currentVersion || '1.2.0');
+      }
+    } catch (error) {
+      console.error('Failed to load version:', error);
+      setAppVersion('1.2.0');
+    }
+  };
 
   const refreshIntervals = [
-    { value: 5000, label: '5 seconds' },
-    { value: 10000, label: '10 seconds' },
-    { value: 30000, label: '30 seconds' },
-    { value: 60000, label: '1 minute' },
-    { value: 300000, label: '5 minutes' },
+    { value: 5000, label: '5s' },
+    { value: 10000, label: '10s' },
+    { value: 30000, label: '30s' },
+    { value: 60000, label: '1m' },
+    { value: 300000, label: '5m' },
   ];
-
-  const updateCacheStats = () => {
-    const cache = getCache();
-    const stats = cache.getStats();
-    setCacheStats({
-      size: stats.size,
-      entries: stats.entries.length
-    });
-  };
-
-  const handleClearCache = () => {
-    invalidateCache();
-    updateCacheStats();
-    notifySuccess('Cache Cleared', 'All cached data has been removed');
-  };
-
-  const handleExportSettings = () => {
-    const settings = {
-      gitlabUrl,
-      autoRefresh,
-      refreshInterval,
-      theme: currentTheme,
-      notifyPipelineFailures,
-      notifyPipelineSuccess,
-      exportedAt: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gitlab-dashboard-settings-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    notifySuccess('Settings Exported', 'Downloaded settings file');
-  };
-
-  const handleImportSettings = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const settings = JSON.parse(e.target?.result as string);
-
-        // Apply all settings immediately to the store
-        if (settings.gitlabUrl) {
-          setLocalUrl(settings.gitlabUrl);
-          setGitlabUrl(settings.gitlabUrl);
-        }
-        if (typeof settings.autoRefresh === 'boolean') setAutoRefresh(settings.autoRefresh);
-        if (settings.refreshInterval) setRefreshInterval(settings.refreshInterval);
-        if (settings.theme) setTheme(settings.theme);
-        if (typeof settings.notifyPipelineFailures === 'boolean') setNotifyPipelineFailures(settings.notifyPipelineFailures);
-        if (typeof settings.notifyPipelineSuccess === 'boolean') setNotifyPipelineSuccess(settings.notifyPipelineSuccess);
-
-        notifySuccess('Settings Imported', 'Applied settings from file. GitLab URL updated - please add your token and test connection.');
-      } catch {
-        notifyError('Import Failed', 'Invalid settings file');
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
 
   const testGitLabConnection = async () => {
     setTesting(true);
     try {
       const response = await axios.get(`${localUrl}/api/v4/user`, {
-        headers: {
-          'PRIVATE-TOKEN': localToken,
-        },
+        headers: { 'PRIVATE-TOKEN': localToken },
       });
 
       if (response.status === 200) {
-        notifySuccess('GitLab Connected', `Successfully connected as ${response.data.name || response.data.username}`);
+        notifySuccess('GitLab Connected', `Connected as ${response.data.name || response.data.username}`);
         return true;
       }
       return false;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 401) {
-          notifyError('Connection Failed', 'Invalid API token. Please check your credentials.');
+          notifyError('Connection Failed', 'Invalid API token');
         } else if (error.code === 'ERR_NETWORK') {
-          notifyError('Connection Failed', 'Cannot reach GitLab server. Check the URL.');
+          notifyError('Connection Failed', 'Cannot reach GitLab server');
         } else {
-          notifyError('Connection Failed', error.message || 'Unknown error occurred');
+          notifyError('Connection Failed', error.message || 'Unknown error');
         }
       } else {
         notifyError('Connection Failed', 'Failed to connect to GitLab');
@@ -187,15 +147,11 @@ export default function SettingsTab() {
   };
 
   const handleSaveGitLabConfig = async () => {
-    console.log('🔄 Starting save process...');
     const isConnected = await testGitLabConnection();
-    console.log('✅ Connection test result:', isConnected);
 
     if (isConnected) {
       try {
-        console.log('📤 Sending config to API...');
-        // Save to database via API
-        const response = await axios.post('/api/config', {
+        await axios.post('/api/config', {
           url: localUrl,
           token: localToken,
           autoRefresh,
@@ -203,38 +159,84 @@ export default function SettingsTab() {
           theme: currentTheme,
           notifyPipelineFailures,
           notifyPipelineSuccess,
+        }, {
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
         });
-        console.log('✅ Save response:', response.data);
 
-        // Update local state
         setGitlabUrl(localUrl);
         setGitlabToken(localToken);
 
-        // Update Zustand store (only UI preferences, not credentials)
         setStoreAutoRefresh(autoRefresh);
         setStoreRefreshInterval(refreshInterval);
         setStoreNotifyPipelineFailures(notifyPipelineFailures);
         setStoreNotifyPipelineSuccess(notifyPipelineSuccess);
 
         setSaved(true);
-        notifySuccess('Configuration Saved', 'Settings saved successfully to database');
+        notifySuccess('Configuration Saved', 'Settings saved successfully');
 
+        // Give time for user preferences hook to save to database
         setTimeout(() => {
           setSaved(false);
           window.location.reload();
-        }, 1500);
+        }, 2000); // Increased from 1500ms to 2000ms
       } catch (error) {
-        console.error('❌ Failed to save config:', error);
         if (axios.isAxiosError(error)) {
-          console.error('Response data:', error.response?.data);
-          console.error('Response status:', error.response?.status);
-          notifyError('Save Failed', error.response?.data?.error || 'Could not save configuration to database');
+          notifyError('Save Failed', error.response?.data?.error || 'Could not save configuration');
         } else {
-          notifyError('Save Failed', 'Could not save configuration to database');
+          notifyError('Save Failed', 'Could not save configuration');
         }
       }
-    } else {
-      console.log('❌ Connection test failed, not saving');
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      notifyError('Validation Error', 'All password fields are required');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      notifyError('Validation Error', 'New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      notifyError('Validation Error', 'Password must be at least 8 characters');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const response = await axios.post('/api/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+
+      if (response.data.success) {
+        notifySuccess('Password Changed', 'Your password has been updated');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        notifyError('Change Failed', 'Current password is incorrect');
+      } else {
+        notifyError('Change Failed', 'Could not change password');
+      }
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/auth/logout');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
@@ -246,6 +248,7 @@ export default function SettingsTab() {
   const handleAutoRefreshToggle = () => {
     const newValue = !autoRefresh;
     setAutoRefresh(newValue);
+    setStoreAutoRefresh(newValue); // Save to Zustand store (will trigger database save)
     if (newValue) {
       notifySuccess('Auto Refresh Enabled', 'Dashboard will refresh automatically');
     } else {
@@ -257,184 +260,342 @@ export default function SettingsTab() {
     if (type === 'failure') {
       const newValue = !notifyPipelineFailures;
       setNotifyPipelineFailures(newValue);
-      if (newValue) {
-        notifySuccess('Notifications Enabled', 'You will be notified of pipeline failures');
-      } else {
-        notifyInfo('Notifications Disabled', 'Pipeline failure notifications turned off');
-      }
+      setStoreNotifyPipelineFailures(newValue); // Save to Zustand store (will trigger database save)
     } else {
       const newValue = !notifyPipelineSuccess;
       setNotifyPipelineSuccess(newValue);
-      if (newValue) {
-        notifySuccess('Notifications Enabled', 'You will be notified of pipeline successes');
-      } else {
-        notifyInfo('Notifications Disabled', 'Pipeline success notifications turned off');
-      }
+      setStoreNotifyPipelineSuccess(newValue); // Save to Zustand store (will trigger database save)
     }
   };
 
-  // Update cache stats on mount
-  useState(() => {
-    updateCacheStats();
-  });
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <h1 className={`text-2xl font-bold ${textPrimary}`}>Settings</h1>
-        <div className="flex gap-2">
-          <label className="cursor-pointer">
-            <input type="file" accept=".json" onChange={handleImportSettings} className="hidden" />
-            <div className={`px-3 py-1.5 text-sm rounded-lg border ${
-              theme === 'light' ? 'border-[#d2d2d7] bg-white hover:bg-[#f5f5f7] shadow-sm' : 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700'
-            } ${textPrimary} flex items-center gap-1.5 transition-all`}>
-              <Upload className="w-3.5 h-3.5" />
-              Import
-            </div>
-          </label>
-          <button onClick={handleExportSettings} className={`px-3 py-1.5 text-sm rounded-lg border ${
-            theme === 'light' ? 'border-[#d2d2d7] bg-white hover:bg-[#f5f5f7] shadow-sm' : 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700'
-          } ${textPrimary} flex items-center gap-1.5 transition-all`}>
-            <Download className="w-3.5 h-3.5" />
-            Export
+        <div className="flex items-center gap-3">
+          <span className={`text-sm ${textSecondary}`}>{username}</span>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+            role === 'admin'
+              ? 'bg-orange-500/10 text-orange-500'
+              : 'bg-blue-500/10 text-blue-500'
+          }`}>
+            {role.toUpperCase()}
+          </span>
+          <button
+            onClick={handleLogout}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-sm font-medium ${
+              theme === 'light'
+                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                : 'bg-red-950 text-red-400 hover:bg-red-900'
+            }`}
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Logout
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* GitLab Configuration */}
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
-          <div className="flex items-center gap-2 mb-3">
-            <Settings className="w-4 h-4 text-orange-500" />
-            <h3 className={`font-semibold text-sm ${textPrimary}`}>GitLab</h3>
-          </div>
-          <div className="space-y-3">
-            <input
-              type="text"
-              value={localUrl}
-              onChange={(e) => setLocalUrl(e.target.value)}
-              placeholder="https://gitlab.com"
-              className={`w-full px-3 py-2 text-sm rounded-lg border transition-all focus:outline-none focus:ring-2 ${
-                theme === 'light' ? 'bg-white border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b] focus:ring-orange-500/20' : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500 focus:ring-orange-500'
-              }`}
-            />
-            <div className="relative">
-              <input
-                type={showToken ? 'text' : 'password'}
-                value={localToken}
-                onChange={(e) => setLocalToken(e.target.value)}
-                placeholder="glpat-xxxxxxxxxxxxx"
-                className={`w-full px-3 py-2 pr-9 text-sm rounded-lg border font-mono transition-all focus:outline-none focus:ring-2 ${
-                  theme === 'light' ? 'bg-white border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b] focus:ring-orange-500/20' : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500 focus:ring-orange-500'
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Left Column */}
+        <div className="space-y-5">
+          {/* GitLab Configuration */}
+          <div className={`rounded-lg p-5 ${card}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Settings className="w-4 h-4 text-orange-500" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>GitLab Configuration</h3>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className={`text-xs ${textSecondary} mb-1.5 block`}>GitLab URL</label>
+                <input
+                  type="text"
+                  value={localUrl}
+                  onChange={(e) => setLocalUrl(e.target.value)}
+                  placeholder="https://gitlab.com"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                    theme === 'light'
+                      ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                      : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+                  } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                />
+              </div>
+              <div>
+                <label className={`text-xs ${textSecondary} mb-1.5 block`}>Access Token</label>
+                <div className="relative">
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    value={localToken}
+                    onChange={(e) => setLocalToken(e.target.value)}
+                    placeholder="glpat-xxxxxxxxxxxxx"
+                    className={`w-full px-3 py-2 pr-9 rounded-lg border font-mono text-sm ${
+                      theme === 'light'
+                        ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                        : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+                    } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                  />
+                  <button
+                    onClick={() => setShowToken(!showToken)}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 ${textSecondary}`}
+                  >
+                    {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={handleSaveGitLabConfig}
+                disabled={!localUrl || !localToken || testing}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all text-sm font-medium ${
+                  (!localUrl || !localToken || testing) && 'opacity-50 cursor-not-allowed'
                 }`}
+              >
+                {testing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Testing...
+                  </>
+                ) : saved ? (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    Test & Save
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Change Password */}
+          <div className={`rounded-lg p-5 ${card}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Lock className="w-4 h-4 text-red-500" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>Change Password</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Current password"
+                  className={`w-full px-3 py-2 pr-9 rounded-lg border text-sm ${
+                    theme === 'light'
+                      ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                      : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+                  } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                />
+                <button
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 ${textSecondary}`}
+                >
+                  {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (min 8 characters)"
+                  className={`w-full px-3 py-2 pr-9 rounded-lg border text-sm ${
+                    theme === 'light'
+                      ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                      : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+                  } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                />
+                <button
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 ${textSecondary}`}
+                >
+                  {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                  theme === 'light'
+                    ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                    : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+                } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
               />
-              <button onClick={() => setShowToken(!showToken)} className={`absolute right-2 top-1/2 -translate-y-1/2 transition-colors ${
-                theme === 'light' ? 'text-[#86868b] hover:text-[#1d1d1f]' : 'text-zinc-500 hover:text-white'
-              }`}>
-                {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-            <button onClick={handleSaveGitLabConfig} disabled={!localUrl || !localToken || testing} className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all font-medium ${
-              (!localUrl || !localToken || testing) && 'opacity-50 cursor-not-allowed'
-            } shadow-sm`}>
-              {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" />Testing...</> : saved ? <><AlertCircle className="w-3.5 h-3.5" />Saved!</> : <><Save className="w-3.5 h-3.5" />Save</>}
-            </button>
-          </div>
-        </div>
-
-        {/* Auto Refresh */}
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
-          <div className="flex items-center gap-2 mb-3">
-            <RefreshCw className="w-4 h-4 text-blue-500" />
-            <h3 className={`font-semibold text-sm ${textPrimary}`}>Auto Refresh</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${textSecondary}`}>Enable</span>
-              <button onClick={handleAutoRefreshToggle} className={`relative w-11 h-6 rounded-full transition-colors ${
-                autoRefresh ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
-              }`}>
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${autoRefresh ? 'transform translate-x-5' : ''}`} />
-              </button>
-            </div>
-            {autoRefresh && (
-              <select value={refreshInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} className={`w-full px-3 py-2 text-sm rounded-lg border transition-all focus:outline-none focus:ring-2 ${
-                theme === 'light' ? 'bg-white border-[#d2d2d7] text-[#1d1d1f] focus:ring-orange-500/20' : 'bg-zinc-900 border-zinc-700 text-white focus:ring-orange-500'
-              }`}>
-                {refreshIntervals.map((interval) => (
-                  <option key={interval.value} value={interval.value}>{interval.label}</option>
-                ))}
-              </select>
-            )}
-          </div>
-        </div>
-
-        {/* Notifications */}
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
-          <div className="flex items-center gap-2 mb-3">
-            <Bell className="w-4 h-4 text-green-500" />
-            <h3 className={`font-semibold text-sm ${textPrimary}`}>Notifications</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${textSecondary}`}>Failures</span>
-              <button onClick={() => handleNotificationToggle('failure')} className={`relative w-11 h-6 rounded-full transition-colors ${
-                notifyPipelineFailures ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
-              }`}>
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${notifyPipelineFailures ? 'transform translate-x-5' : ''}`} />
-              </button>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${textSecondary}`}>Success</span>
-              <button onClick={() => handleNotificationToggle('success')} className={`relative w-11 h-6 rounded-full transition-colors ${
-                notifyPipelineSuccess ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
-              }`}>
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${notifyPipelineSuccess ? 'transform translate-x-5' : ''}`} />
+              <button
+                onClick={handleChangePassword}
+                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all text-sm font-medium ${
+                  (changingPassword || !currentPassword || !newPassword || !confirmPassword) && 'opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {changingPassword ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Changing...
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-3.5 h-3.5" />
+                    Change Password
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Theme */}
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
-          <div className="flex items-center gap-2 mb-3">
-            <Moon className="w-4 h-4 text-purple-500" />
-            <h3 className={`font-semibold text-sm ${textPrimary}`}>Theme</h3>
+        {/* Right Column */}
+        <div className="space-y-5">
+          {/* Preferences */}
+          <div className={`rounded-lg p-5 ${card}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Settings className="w-4 h-4 text-blue-500" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>Preferences</h3>
+            </div>
+            <div className="space-y-4">
+              {/* Theme */}
+              <div>
+                <label className={`text-xs ${textSecondary} mb-2 block`}>Theme</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleThemeChange('dark')}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                      currentTheme === 'dark'
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : theme === 'light'
+                        ? 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                    }`}
+                  >
+                    <Moon className="w-3.5 h-3.5 inline mr-1.5" />
+                    Dark
+                  </button>
+                  <button
+                    onClick={() => handleThemeChange('light')}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                      currentTheme === 'light'
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : theme === 'light'
+                        ? 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                    }`}
+                  >
+                    <Sun className="w-3.5 h-3.5 inline mr-1.5" />
+                    Light
+                  </button>
+                </div>
+              </div>
+
+              {/* Auto Refresh */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className={`text-xs ${textSecondary}`}>Auto Refresh</label>
+                  <button
+                    onClick={handleAutoRefreshToggle}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      autoRefresh ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        autoRefresh ? 'translate-x-5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+                {autoRefresh && (
+                  <select
+                    value={refreshInterval}
+                    onChange={(e) => {
+                      const newValue = Number(e.target.value);
+                      setRefreshInterval(newValue);
+                      setStoreRefreshInterval(newValue); // Save to Zustand store (will trigger database save)
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                      theme === 'light'
+                        ? 'bg-white border-gray-200 text-gray-900'
+                        : 'bg-zinc-900 border-zinc-700 text-white'
+                    } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                  >
+                    {refreshIntervals.map((interval) => (
+                      <option key={interval.value} value={interval.value}>
+                        {interval.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => handleThemeChange('dark')} className={`px-3 py-2 text-sm border-2 rounded-lg font-medium transition-all ${
-              currentTheme === 'dark' ? 'border-orange-500 bg-orange-500/10 text-orange-500 shadow-sm' : theme === 'light' ? 'border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
-            }`}>🌙 Dark</button>
-            <button onClick={() => handleThemeChange('light')} className={`px-3 py-2 text-sm border-2 rounded-lg font-medium transition-all ${
-              currentTheme === 'light' ? 'border-orange-500 bg-orange-500/10 text-orange-500 shadow-sm' : theme === 'light' ? 'border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
-            }`}>☀️ Light</button>
+
+          {/* Notifications */}
+          <div className={`rounded-lg p-5 ${card}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Bell className="w-4 h-4 text-green-500" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>Notifications</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-sm font-medium ${textPrimary}`}>Pipeline Failures</p>
+                  <p className={`text-xs ${textSecondary}`}>Get notified when pipelines fail</p>
+                </div>
+                <button
+                  onClick={() => handleNotificationToggle('failure')}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    notifyPipelineFailures ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      notifyPipelineFailures ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-sm font-medium ${textPrimary}`}>Pipeline Success</p>
+                  <p className={`text-xs ${textSecondary}`}>Get notified when pipelines succeed</p>
+                </div>
+                <button
+                  onClick={() => handleNotificationToggle('success')}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    notifyPipelineSuccess ? 'bg-orange-500' : theme === 'light' ? 'bg-gray-300' : 'bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      notifyPipelineSuccess ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* About */}
+          <div className={`rounded-lg p-5 ${card}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="w-4 h-4 text-purple-500" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>About</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${textSecondary}`}>Product</span>
+                <span className={`text-sm font-medium ${textPrimary}`}>GitLab CI/CD Dashboard</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${textSecondary}`}>Version</span>
+                <span className={`text-sm font-medium ${textPrimary}`}>v{appVersion}</span>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Performance */}
-        <div className={`rounded-xl p-4 ${card} ${theme === 'light' ? 'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : ''} transition-all`}>
-          <div className="flex items-center gap-2 mb-3">
-            <Zap className="w-4 h-4 text-yellow-500" />
-            <h3 className={`font-semibold text-sm ${textPrimary}`}>Performance</h3>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${textSecondary}`}>API Mode</span>
-              <span className="text-xs font-medium text-green-500">UNLIMITED</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${textSecondary}`}>Cache</span>
-              <span className={`text-xs font-medium ${textPrimary}`}>{cacheStats.entries} entries</span>
-            </div>
-            <button onClick={handleClearCache} className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-all ${
-              theme === 'light' ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 shadow-sm' : 'border-red-900 bg-red-950 text-red-400 hover:bg-red-900'
-            }`}>
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear Cache
-            </button>
-          </div>
-        </div>
-
       </div>
     </div>
   );

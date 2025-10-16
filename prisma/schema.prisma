@@ -59,6 +59,7 @@ model User {
   refreshInterval Int      @default(10000)
   notifyPipelineFailures Boolean @default(true)
   notifyPipelineSuccess  Boolean @default(false)
+  activeTab       String   @default("overview")
 
   // Session tracking
   lastLoginAt     DateTime?
@@ -68,6 +69,7 @@ model User {
   updatedAt       DateTime @updatedAt
 
   sessions        Session[]
+  dashboards      Dashboard[]
 
   @@map("users")
 }
@@ -116,4 +118,121 @@ model PipelineStatus {
   @@map("pipeline_status")
   @@index([projectId])
   @@index([updatedAt])
+}
+
+// ==========================================
+// Analytics & Metrics
+// ==========================================
+
+// Deployment Metrics (for DORA calculations)
+model Deployment {
+  id          String   @id @default(cuid())
+  projectId   Int
+  projectName String
+  pipelineId  Int
+  environment String   // production, staging, development
+  status      String   // success, failed, running
+  startedAt   DateTime
+  finishedAt  DateTime?
+  duration    Int?     // seconds
+  commitSha   String
+  ref         String   // branch name
+  triggeredBy String?  // username
+  createdAt   DateTime @default(now())
+
+  @@map("deployments")
+  @@index([projectId])
+  @@index([environment])
+  @@index([status])
+  @@index([startedAt])
+  @@index([finishedAt])
+}
+
+// Incident Tracking (for DORA Mean Time to Recovery)
+model Incident {
+  id          String   @id @default(cuid())
+  projectId   Int
+  projectName String
+  title       String
+  severity    String   // critical, high, medium, low
+  status      String   // open, investigating, resolved, closed
+  detectedAt  DateTime
+  resolvedAt  DateTime?
+  duration    Int?     // seconds
+  affectedEnv String   // production, staging
+  rootCause   String?
+  createdBy   String?  // user id
+  createdAt   DateTime @default(now())
+
+  @@map("incidents")
+  @@index([projectId])
+  @@index([status])
+  @@index([detectedAt])
+}
+
+// DORA Metrics (Pre-calculated for performance)
+model DoraMetric {
+  id                String   @id @default(cuid())
+  projectId         Int
+  projectName       String
+  period            String   // daily, weekly, monthly
+  periodStart       DateTime
+  periodEnd         DateTime
+
+  // Deployment Frequency
+  deploymentCount   Int      @default(0)
+  deploymentFreq    Float    @default(0) // per day
+
+  // Lead Time for Changes
+  avgLeadTime       Int      @default(0) // seconds
+  medianLeadTime    Int      @default(0)
+
+  // Mean Time to Recovery
+  incidentCount     Int      @default(0)
+  avgMttr           Int      @default(0) // seconds
+
+  // Change Failure Rate
+  failedDeployments Int      @default(0)
+  failureRate       Float    @default(0) // percentage
+
+  calculatedAt      DateTime @default(now())
+
+  @@map("dora_metrics")
+  @@unique([projectId, period, periodStart])
+  @@index([projectId])
+  @@index([periodStart])
+}
+
+// Custom Dashboard Configuration
+model Dashboard {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  layout      Json     // Grid layout configuration
+  widgets     Json     // Widget configurations
+  filters     Json?    // Default filters
+  isDefault   Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("dashboards")
+  @@index([userId])
+}
+
+// Trend Analysis Data
+model TrendData {
+  id          String   @id @default(cuid())
+  metric      String   // pipeline_success_rate, avg_duration, deployment_freq
+  projectId   Int?
+  value       Float
+  timestamp   DateTime
+  metadata    Json?
+
+  @@map("trend_data")
+  @@index([metric, projectId])
+  @@index([timestamp])
 }

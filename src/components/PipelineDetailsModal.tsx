@@ -5,7 +5,7 @@ import { X, ExternalLink, Clock, GitCommit, PlayCircle, RotateCw, XCircle, GitBr
 import { Pipeline, Job } from '@/lib/gitlab-api';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime } from '@/lib/utils';
+import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime, formatPercentage } from '@/lib/utils';
 import LogViewer from './LogViewer';
 import PipelineVisualization from './PipelineVisualization';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -112,6 +112,22 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     }
   };
 
+  // Calculate pipeline duration if not provided
+  const pipelineDuration = useMemo(() => {
+    if (pipeline.duration) return pipeline.duration;
+
+    // Calculate from started_at and finished_at if available
+    if (pipeline.started_at && pipeline.finished_at) {
+      const start = new Date(pipeline.started_at).getTime();
+      const end = new Date(pipeline.finished_at).getTime();
+      return Math.floor((end - start) / 1000); // Convert to seconds
+    }
+
+    // Fall back to sum of job durations
+    const totalJobDuration = jobs.reduce((sum, job) => sum + (job.duration || 0), 0);
+    return totalJobDuration > 0 ? totalJobDuration : null;
+  }, [pipeline.duration, pipeline.started_at, pipeline.finished_at, jobs]);
+
   // Pipeline statistics
   const pipelineStats = useMemo(() => {
     const total = jobs.length;
@@ -128,18 +144,26 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     return {
       total, success, failed, running, pending, canceled, skipped,
       totalDuration, avgDuration,
-      successRate: total > 0 ? ((success / total) * 100).toFixed(1) : '0'
+      successRate: total > 0 ? formatPercentage((success / total) * 100) : '0'
     };
   }, [jobs]);
 
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto ${
-      theme === 'light' ? 'bg-black/30' : 'bg-black/80'
-    }`}>
-      <div className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col ${surface} ${
-        theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
-      }`}>
+    <>
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Modal container */}
+      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
+        <div
+          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
+            theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className={`p-6 flex items-center justify-between border-b ${
           theme === 'light' ? 'border-gray-200 bg-gradient-to-r from-gray-50 to-white' : 'border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-800'
@@ -236,7 +260,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
                 <Timer className={`w-4 h-4 ${textSecondary}`} />
                 <span className={`text-xs font-medium ${textSecondary}`}>Duration</span>
               </div>
-              <p className={`text-sm font-semibold ${textPrimary}`}>{pipeline.duration ? formatDuration(pipeline.duration) : '-'}</p>
+              <p className={`text-sm font-semibold ${textPrimary}`}>{pipelineDuration ? formatDuration(pipelineDuration) : '-'}</p>
             </div>
             <div className={`rounded-lg p-3 border ${
               theme === 'light' ? 'bg-white border-gray-200' : 'bg-zinc-900 border-zinc-800'
@@ -250,7 +274,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={pipeline.user.avatar_url} className="w-5 h-5 rounded-full" alt="" />
                 )}
-                <span className={`text-sm truncate ${textPrimary}`}>{pipeline.user?.name || 'Unknown'}</span>
+                <span className={`text-sm truncate ${textPrimary}`}>{pipeline.user?.name || 'Auto'}</span>
               </div>
             </div>
           </div>
@@ -363,20 +387,21 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         </div>
       </div>
 
-      {selectedJob && logs && (
-        <LogViewer
-          logs={logs}
-          jobName={selectedJob.name}
-          jobStatus={selectedJob.status}
-          projectId={projectId}
-          jobId={selectedJob.id}
-          onClose={() => {
-            setSelectedJob(null);
-            setLogs('');
-          }}
-          onRefreshLogs={refreshJobLogs}
-        />
-      )}
-    </div>
+        {selectedJob && logs && (
+          <LogViewer
+            logs={logs}
+            jobName={selectedJob.name}
+            jobStatus={selectedJob.status}
+            projectId={projectId}
+            jobId={selectedJob.id}
+            onClose={() => {
+              setSelectedJob(null);
+              setLogs('');
+            }}
+            onRefreshLogs={refreshJobLogs}
+          />
+        )}
+      </div>
+    </>
   );
 }

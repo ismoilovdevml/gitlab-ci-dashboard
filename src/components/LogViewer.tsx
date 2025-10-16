@@ -108,6 +108,35 @@ export default function LogViewer({
     return { level: 'default', color: 'text-zinc-400', bg: '' };
   };
 
+  // Escape HTML to prevent XSS attacks
+  const escapeHtml = (text: string): string => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  // Safely highlight search term without XSS vulnerability
+  const highlightSearchTerm = (line: string, term: string): React.ReactNode => {
+    if (!term) return line;
+
+    const escapedLine = escapeHtml(line);
+    const escapedTerm = escapeHtml(term);
+
+    // Split by search term (case insensitive)
+    const parts = escapedLine.split(new RegExp(`(${escapedTerm})`, 'gi'));
+
+    return parts.map((part, i) => {
+      if (part.toLowerCase() === escapedTerm.toLowerCase()) {
+        return (
+          <mark key={i} className="bg-yellow-500 text-black px-1 rounded">
+            {part}
+          </mark>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   // Filter and highlight logs
   const processLogs = () => {
     if (!logs) return [];
@@ -134,15 +163,23 @@ export default function LogViewer({
   const warningCount = logs.split('\n').filter(line => parseLogLine(line).level === 'warning').length;
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
-      theme === 'light' ? 'bg-black/20' : 'bg-black/80'
-    }`}>
-      <div className={`rounded-xl flex flex-col ${
-        isFullscreen ? 'w-full h-full' : 'w-full max-w-7xl h-[85vh]'
-      } ${
-        theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
-      }`}>
-        {/* Header */}
+    <>
+      {/* Backdrop overlay */}
+      <div
+        className={`fixed inset-0 z-[1000] backdrop-blur-sm ${
+          theme === 'light' ? 'bg-black/50' : 'bg-black/80'
+        }`}
+        onClick={onClose}
+      />
+
+      {/* Modal container */}
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
+        <div className={`rounded-xl flex flex-col pointer-events-auto ${
+          isFullscreen ? 'w-full h-full' : 'w-full max-w-7xl h-[85vh]'
+        } ${
+          theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
+        }`}>
+          {/* Header */}
         <div className={`p-4 border-b ${theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'}`}>
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -323,14 +360,7 @@ export default function LogViewer({
                   </span>
                   <span className={item.color}>
                     {searchTerm && item.line.toLowerCase().includes(searchTerm.toLowerCase()) ? (
-                      <span
-                        dangerouslySetInnerHTML={{
-                          __html: item.line.replace(
-                            new RegExp(`(${searchTerm})`, 'gi'),
-                            '<mark class="bg-yellow-500 text-black px-1 rounded">$1</mark>'
-                          ),
-                        }}
-                      />
+                      highlightSearchTerm(item.line, searchTerm)
                     ) : (
                       item.line
                     )}
@@ -340,7 +370,8 @@ export default function LogViewer({
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

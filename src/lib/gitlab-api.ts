@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 
 // Cache TTL constants (in seconds)
 export const CacheTTL = {
+  REALTIME: 5,      // 5 seconds - for active jobs/pipelines (near real-time)
   SHORT: 30,        // 30 seconds
   MEDIUM: 120,      // 2 minutes
   LONG: 300,        // 5 minutes
@@ -71,14 +72,14 @@ export interface Pipeline {
   web_url: string;
   created_at: string;
   updated_at: string;
-  started_at: string;
-  finished_at: string;
-  duration: number;
-  user: {
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration?: number | null;
+  user?: {
     name: string;
     username: string;
     avatar_url: string;
-  };
+  } | null;
 }
 
 export interface Job {
@@ -133,6 +134,7 @@ export interface Project {
   star_count: number;
   forks_count: number;
   last_activity_at: string;
+  created_at: string;
   visibility: 'public' | 'private' | 'internal';
   namespace: {
     id: number;
@@ -141,6 +143,19 @@ export interface Project {
     kind: string;
     full_path: string;
   };
+  statistics?: {
+    commit_count: number;
+    storage_size: number;
+    repository_size: number;
+    wiki_size: number;
+    lfs_objects_size: number;
+    job_artifacts_size: number;
+    packages_size: number;
+    snippets_size: number;
+  };
+  // Additional fields for detailed view
+  open_issues_count?: number;
+  default_branch?: string;
 }
 
 export interface Runner {
@@ -148,14 +163,23 @@ export interface Runner {
   description: string;
   ip_address: string;
   active: boolean;
+  paused: boolean;
   is_shared: boolean;
   runner_type: string;
   name: string;
   online: boolean;
   status: 'online' | 'offline' | 'not_connected' | 'paused';
-  contacted_at: string;
-  architecture: string;
-  platform: string;
+  contacted_at: string | null;
+  architecture: string | null;
+  platform: string | null;
+  revision: string;
+  version: string;
+  access_level: string;
+  maximum_timeout: number | null;
+  tag_list: string[];
+  run_untagged: boolean;
+  locked: boolean;
+  created_at: string;
   projects: Array<{
     id: number;
     name: string;
@@ -296,6 +320,14 @@ class GitLabAPI {
     });
   }
 
+  // Get config
+  getConfig() {
+    return {
+      gitlabUrl: this.baseUrl,
+      token: this.token,
+    };
+  }
+
   // Health check - no cache
   async checkConnection(): Promise<boolean> {
     try {
@@ -342,8 +374,38 @@ class GitLabAPI {
   }
 
   async getProject(projectId: number): Promise<Project> {
-    const response = await this.api.get(`/projects/${projectId}`);
+    const response = await this.api.get(`/projects/${projectId}`, {
+      params: {
+        statistics: true,
+      },
+    });
     return response.data;
+  }
+
+  async getProjectBranchesCount(projectId: number): Promise<number> {
+    try {
+      const response = await this.api.get(`/projects/${projectId}/repository/branches`, {
+        params: { per_page: 1 },
+      });
+      // Get total count from pagination headers
+      const total = response.headers['x-total'];
+      return total ? parseInt(total, 10) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  async getProjectTagsCount(projectId: number): Promise<number> {
+    try {
+      const response = await this.api.get(`/projects/${projectId}/repository/tags`, {
+        params: { per_page: 1 },
+      });
+      // Get total count from pagination headers
+      const total = response.headers['x-total'];
+      return total ? parseInt(total, 10) : 0;
+    } catch {
+      return 0;
+    }
   }
 
   // Pipelines
@@ -365,17 +427,30 @@ class GitLabAPI {
   }
 
   async getAllActivePipelines(): Promise<Pipeline[]> {
-    // Limit to 20 most active projects to reduce memory usage
-    const projects = await this.getProjects(1, 20);
-    const pipelinePromises = projects.map(project =>
-      this.getPipelines(project.id, 1, 5).catch(() => [])
+    return cachedFetch(
+      'gitlab:active-pipelines',
+      async () => {
+        // Limit to 20 most active projects to reduce memory usage
+        const projects = await this.getProjects(1, 20);
+        const pipelinePromises = projects.map(project =>
+          // Direct API call without cache for fresh data
+          this.api.get(`/projects/${project.id}/pipelines`, {
+            params: {
+              per_page: 10,
+              page: 1,
+              order_by: 'updated_at',
+            },
+          }).then(res => res.data as Pipeline[]).catch(() => [])
+        );
+        const allPipelines = await Promise.all(pipelinePromises);
+        return allPipelines
+          .flat()
+          .filter(p => ['running', 'pending', 'created'].includes(p.status))
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+          .slice(0, 50); // Limit to 50 active pipelines max
+      },
+      CacheTTL.REALTIME // 10 seconds cache for active pipelines - real-time updates
     );
-    const allPipelines = await Promise.all(pipelinePromises);
-    return allPipelines
-      .flat()
-      .filter(p => ['running', 'pending', 'created'].includes(p.status))
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, 50); // Limit to 50 active pipelines max
   }
 
   async getPipeline(projectId: number, pipelineId: number): Promise<Pipeline> {
@@ -395,8 +470,14 @@ class GitLabAPI {
 
   // Jobs
   async getPipelineJobs(projectId: number, pipelineId: number): Promise<Job[]> {
-    const response = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/jobs`);
-    return response.data;
+    return cachedFetch(
+      `gitlab:jobs:${projectId}:${pipelineId}`,
+      async () => {
+        const response = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/jobs`);
+        return response.data;
+      },
+      CacheTTL.REALTIME // 10 seconds cache for jobs to catch running jobs in real-time
+    );
   }
 
   async getJob(projectId: number, jobId: number): Promise<Job> {
@@ -437,7 +518,30 @@ class GitLabAPI {
               page,
             },
           });
-          return response.data;
+
+          // Fetch detailed information for each runner
+          const runners = response.data;
+          const detailedRunners = await Promise.all(
+            runners.map(async (runner: Runner) => {
+              try {
+                const detailResponse = await this.api.get(`/runners/${runner.id}`);
+                console.log(`[GitLab API] Runner ${runner.id} details:`, {
+                  id: detailResponse.data.id,
+                  description: detailResponse.data.description,
+                  ip_address: detailResponse.data.ip_address,
+                  platform: detailResponse.data.platform,
+                  architecture: detailResponse.data.architecture,
+                  contacted_at: detailResponse.data.contacted_at,
+                });
+                return detailResponse.data;
+              } catch (error) {
+                console.warn(`Failed to fetch details for runner ${runner.id}:`, error);
+                return runner; // Return basic info if detail fetch fails
+              }
+            })
+          );
+
+          return detailedRunners;
         } catch {
           console.log('Admin access not available, fetching project runners...');
 
@@ -460,7 +564,29 @@ class GitLabAPI {
               }
             });
 
-            return Array.from(runnersMap.values());
+            // Fetch detailed information for each unique runner
+            const uniqueRunners = Array.from(runnersMap.values());
+            const detailedRunners = await Promise.all(
+              uniqueRunners.map(async (runner) => {
+                try {
+                  const detailResponse = await this.api.get(`/runners/${runner.id}`);
+                  console.log(`[GitLab API] Runner ${runner.id} details (project fallback):`, {
+                    id: detailResponse.data.id,
+                    description: detailResponse.data.description,
+                    ip_address: detailResponse.data.ip_address,
+                    platform: detailResponse.data.platform,
+                    architecture: detailResponse.data.architecture,
+                    contacted_at: detailResponse.data.contacted_at,
+                  });
+                  return detailResponse.data;
+                } catch (error) {
+                  console.warn(`Failed to fetch details for runner ${runner.id}:`, error);
+                  return runner; // Return basic info if detail fetch fails
+                }
+              })
+            );
+
+            return detailedRunners;
           } catch (fallbackError) {
             console.error('Failed to fetch runners from projects:', fallbackError);
             return [];
@@ -532,17 +658,24 @@ class GitLabAPI {
   }
 
   async getAllArtifacts(): Promise<JobArtifact[]> {
-    const projects = await this.getProjects(1, 50);
-    const artifactPromises = projects.map(project =>
-      this.getJobArtifacts(project.id, 1, 10).catch(() => [])
+    return cachedFetch(
+      'gitlab:artifacts:all',
+      async () => {
+        const projects = await this.getProjects(1, 50);
+        const artifactPromises = projects.map(project =>
+          this.getJobArtifacts(project.id, 1, 10).catch(() => [])
+        );
+        const allArtifacts = await Promise.all(artifactPromises);
+        return allArtifacts.flat();
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
     );
-    const allArtifacts = await Promise.all(artifactPromises);
-    return allArtifacts.flat();
   }
 
   async downloadArtifact(projectId: number, jobId: number): Promise<Blob> {
     const response = await this.api.get(`/projects/${projectId}/jobs/${jobId}/artifacts`, {
       responseType: 'blob',
+      maxRedirects: 5, // Follow redirects to CDN
     });
     return response.data;
   }
@@ -558,19 +691,31 @@ class GitLabAPI {
   }
 
   async getAllContainerRepositories(): Promise<ContainerRepository[]> {
-    const projects = await this.getProjects(1, 50);
-    const repoPromises = projects.map(project =>
-      this.getContainerRepositories(project.id).catch(() => [])
+    return cachedFetch(
+      'gitlab:container:repositories:all',
+      async () => {
+        const projects = await this.getProjects(1, 50);
+        const repoPromises = projects.map(project =>
+          this.getContainerRepositories(project.id).catch(() => [])
+        );
+        const allRepos = await Promise.all(repoPromises);
+        return allRepos.flat();
+      },
+      CacheTTL.MEDIUM // 2 minutes cache
     );
-    const allRepos = await Promise.all(repoPromises);
-    return allRepos.flat();
   }
 
   async getContainerTags(projectId: number, repositoryId: number): Promise<ContainerTag[]> {
-    const response = await this.api.get(
-      `/projects/${projectId}/registry/repositories/${repositoryId}/tags`
+    return cachedFetch(
+      `gitlab:container:tags:${projectId}:${repositoryId}`,
+      async () => {
+        const response = await this.api.get(
+          `/projects/${projectId}/registry/repositories/${repositoryId}/tags`
+        );
+        return response.data;
+      },
+      CacheTTL.SHORT // 30 seconds cache for tags
     );
-    return response.data;
   }
 
   async deleteContainerTag(
@@ -614,8 +759,8 @@ class GitLabAPI {
 
     // Calculate MTTR (Mean Time To Recovery)
     const failedPipelines = pipelines
-      .filter(p => p.status === 'failed')
-      .sort((a, b) => new Date(a.finished_at).getTime() - new Date(b.finished_at).getTime());
+      .filter(p => p.status === 'failed' && p.finished_at)
+      .sort((a, b) => new Date(a.finished_at!).getTime() - new Date(b.finished_at!).getTime());
 
     let mttrSum = 0;
     let mttrCount = 0;
@@ -629,7 +774,7 @@ class GitLabAPI {
           new Date(p.created_at) > new Date(failedPipeline.created_at)
       );
 
-      if (nextSuccess) {
+      if (nextSuccess && nextSuccess.finished_at && failedPipeline.finished_at) {
         const recoveryTime =
           new Date(nextSuccess.finished_at).getTime() -
           new Date(failedPipeline.finished_at).getTime();
@@ -950,9 +1095,9 @@ class GitLabAPI {
             const avgTime = totalDuration / deploymentPipelines.length;
             const deploymentsPerDay = deploymentPipelines.length / days;
 
-            const sortedDeployments = deploymentPipelines.sort(
-              (a, b) => new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime()
-            );
+            const sortedDeployments = deploymentPipelines
+              .filter(p => p.finished_at)
+              .sort((a, b) => new Date(b.finished_at!).getTime() - new Date(a.finished_at!).getTime());
 
             // Calculate trend
             const midpoint = Math.floor(deploymentPipelines.length / 2);
@@ -997,7 +1142,8 @@ async function fetchConfigFromAPI(): Promise<{ url: string; token: string } | nu
   if (typeof window === 'undefined') return null;
 
   try {
-    const response = await fetch('/api/config');
+    // Use unmask=true to get real token for API calls (not for display)
+    const response = await fetch('/api/config?unmask=true');
     if (!response.ok) return null;
 
     const config = await response.json();

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Pipeline, Project, Runner, PipelineStats } from '@/lib/gitlab-api';
 
 interface DashboardStore {
@@ -87,10 +87,15 @@ export const useDashboardStore = create<DashboardStore>()(
     }),
     {
       name: 'gitlab-dashboard-storage',
-      // Only persist theme and activeTab - NO sensitive data!
+      storage: createJSONStorage(() => localStorage),
+      // Only persist these fields
       partialize: (state) => ({
         theme: state.theme,
         activeTab: state.activeTab,
+        autoRefresh: state.autoRefresh,
+        refreshInterval: state.refreshInterval,
+        notifyPipelineFailures: state.notifyPipelineFailures,
+        notifyPipelineSuccess: state.notifyPipelineSuccess,
       }),
     }
   )
