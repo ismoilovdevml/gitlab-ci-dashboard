@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { generateCSRFToken } from '@/lib/csrf';
 import { cookies } from 'next/headers';
 
@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
  * GET /api/csrf
  * Generate and return a CSRF token for the current session
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('gitlab_dashboard_session')?.value;
