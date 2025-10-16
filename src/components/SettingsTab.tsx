@@ -44,13 +44,26 @@ export default function SettingsTab() {
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [csrfToken, setCsrfToken] = useState<string>('');
 
   // Load user config on mount
   useEffect(() => {
     loadUserConfig();
     loadVersionInfo();
+    loadCSRFToken();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadCSRFToken = async () => {
+    try {
+      const response = await axios.get('/api/csrf');
+      if (response.data && response.data.csrfToken) {
+        setCsrfToken(response.data.csrfToken);
+      }
+    } catch (error) {
+      console.error('Failed to load CSRF token:', error);
+    }
+  };
 
   const loadUserConfig = async () => {
     try {
@@ -146,6 +159,10 @@ export default function SettingsTab() {
           theme: currentTheme,
           notifyPipelineFailures,
           notifyPipelineSuccess,
+        }, {
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
         });
 
         setGitlabUrl(localUrl);

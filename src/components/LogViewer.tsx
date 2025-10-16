@@ -108,6 +108,35 @@ export default function LogViewer({
     return { level: 'default', color: 'text-zinc-400', bg: '' };
   };
 
+  // Escape HTML to prevent XSS attacks
+  const escapeHtml = (text: string): string => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  // Safely highlight search term without XSS vulnerability
+  const highlightSearchTerm = (line: string, term: string): React.ReactNode => {
+    if (!term) return line;
+
+    const escapedLine = escapeHtml(line);
+    const escapedTerm = escapeHtml(term);
+
+    // Split by search term (case insensitive)
+    const parts = escapedLine.split(new RegExp(`(${escapedTerm})`, 'gi'));
+
+    return parts.map((part, i) => {
+      if (part.toLowerCase() === escapedTerm.toLowerCase()) {
+        return (
+          <mark key={i} className="bg-yellow-500 text-black px-1 rounded">
+            {part}
+          </mark>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   // Filter and highlight logs
   const processLogs = () => {
     if (!logs) return [];
@@ -331,14 +360,7 @@ export default function LogViewer({
                   </span>
                   <span className={item.color}>
                     {searchTerm && item.line.toLowerCase().includes(searchTerm.toLowerCase()) ? (
-                      <span
-                        dangerouslySetInnerHTML={{
-                          __html: item.line.replace(
-                            new RegExp(`(${searchTerm})`, 'gi'),
-                            '<mark class="bg-yellow-500 text-black px-1 rounded">$1</mark>'
-                          ),
-                        }}
-                      />
+                      highlightSearchTerm(item.line, searchTerm)
                     ) : (
                       item.line
                     )}

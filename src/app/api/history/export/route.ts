@@ -41,11 +41,42 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const history = await prisma.alertHistory.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 10000, // Limit export to 10k records
-    });
+    // SECURITY FIX: Use batch processing to prevent memory exhaustion
+    // Instead of loading all 10k records at once, stream in batches
+    const BATCH_SIZE = 1000;
+    const MAX_RECORDS = 10000;
+    let allRecords: Array<{
+      id: string;
+      projectName: string;
+      pipelineId: number;
+      status: string;
+      channel: string;
+      message: string;
+      sent: boolean;
+      error: string | null;
+      createdAt: Date;
+    }> = [];
+    let skip = 0;
+
+    // Fetch in batches to avoid memory issues
+    while (skip < MAX_RECORDS) {
+      const batch = await prisma.alertHistory.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: BATCH_SIZE,
+      });
+
+      if (batch.length === 0) break;
+
+      allRecords = allRecords.concat(batch);
+      skip += BATCH_SIZE;
+
+      // Stop if we've hit max or no more records
+      if (batch.length < BATCH_SIZE || allRecords.length >= MAX_RECORDS) break;
+    }
+
+    const history = allRecords.slice(0, MAX_RECORDS);
 
     if (format === 'json') {
       return NextResponse.json(history, {
@@ -55,7 +86,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Generate CSV
+    // Generate CSV in streaming fashion
     const csvHeaders = ['Date', 'Project', 'Pipeline ID', 'Status', 'Channel', 'Message', 'Sent', 'Error'];
     const csvRows = history.map(h => [
       h.createdAt.toISOString(),

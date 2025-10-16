@@ -18,8 +18,9 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    // Limit to max 100 records per request
-    const limit = Math.min(parseInt(limitParam || '50'), 100);
+    // SECURITY FIX: Limit to max 100 records per request with radix and NaN validation
+    const parsedLimit = parseInt(limitParam || '50', 10);
+    const limit = Math.min(Math.max(isNaN(parsedLimit) ? 50 : parsedLimit, 1), 100);
 
     // Build cache key from query params
     const cacheKey = `${HISTORY_CACHE_PREFIX}${search || ''}_${status || ''}_${channel || ''}_${startDate || ''}_${endDate || ''}_${cursor || ''}_${limit}`;

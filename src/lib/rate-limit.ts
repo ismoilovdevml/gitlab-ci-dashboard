@@ -49,17 +49,21 @@ export async function rateLimit(
     const ttl = await client.ttl(key);
     const remaining = Math.max(0, limit - current);
 
+    // SECURITY FIX: Handle edge cases in TTL
+    const resetTime = Date.now() + Math.max(0, ttl) * 1000;
+
     return {
       success: current <= limit,
       remaining,
-      reset: Date.now() + ttl * 1000,
+      reset: resetTime,
     };
   } catch (error) {
     console.error('Rate limit error:', error);
-    // Fail open: allow request if Redis is down
+    // SECURITY FIX: Fail closed - deny request if Redis is down
+    // This prevents attackers from bypassing rate limits by causing Redis failures
     return {
-      success: true,
-      remaining: limit,
+      success: false,
+      remaining: 0,
       reset: Date.now() + window * 1000,
     };
   }
@@ -112,9 +116,10 @@ export async function getRateLimitStatus(
     };
   } catch (error) {
     console.error('Get rate limit status error:', error);
+    // SECURITY FIX: Fail closed on error
     return {
-      success: true,
-      remaining: limit,
+      success: false,
+      remaining: 0,
       reset: Date.now(),
     };
   }

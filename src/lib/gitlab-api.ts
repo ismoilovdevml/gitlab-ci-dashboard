@@ -1142,7 +1142,8 @@ async function fetchConfigFromAPI(): Promise<{ url: string; token: string } | nu
   if (typeof window === 'undefined') return null;
 
   try {
-    const response = await fetch('/api/config');
+    // Use unmask=true to get real token for API calls (not for display)
+    const response = await fetch('/api/config?unmask=true');
     if (!response.ok) return null;
 
     const config = await response.json();
