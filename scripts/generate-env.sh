@@ -85,5 +85,5 @@ else
 fi
 
 echo "🚀 Next steps:"
-echo "   docker-compose up -d"
-echo "   docker-compose logs -f app"
+echo "   docker compose up -d"
+echo "   docker compose logs -f app"
