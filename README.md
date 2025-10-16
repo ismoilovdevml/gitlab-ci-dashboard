@@ -26,19 +26,16 @@ cd gitlab-ci-dashboard
 # 2. Generate secure environment variables (auto-creates random passwords)
 bash scripts/generate-env.sh production
 
-# OR manually:
-# cp .env.example .env
-# nano .env  # Edit with your values
+# ⚠️ IMPORTANT: Save the admin password shown above!
+# You can view it later with: cat .env | grep ADMIN_PASSWORD
 
 # 3. Start all services (PostgreSQL + Redis + App)
 docker compose up -d
 
-# 4. View admin credentials (save them!)
-# Username and password were shown after running generate-env.sh
-# Or view .env file: cat .env | grep ADMIN
-
-# 5. View logs
+# 4. Check logs to verify everything started
 docker compose logs -f app
+
+# Wait for "✓ Ready" message, then Ctrl+C to exit logs
 ```
 
 Open `http://localhost:3000` in your browser.
