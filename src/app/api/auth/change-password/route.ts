@@ -69,23 +69,34 @@ export async function POST(request: NextRequest) {
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update user password
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        password: hashedPassword,
-        updatedAt: new Date(),
-      },
+    // Update user password and invalidate all other sessions (security best practice)
+    await prisma.$transaction(async (tx) => {
+      // Update password
+      await tx.user.update({
+        where: { id: session.user.id },
+        data: {
+          password: hashedPassword,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Invalidate all other sessions except the current one
+      await tx.session.deleteMany({
+        where: {
+          userId: session.user.id,
+          token: { not: sessionToken },
+        },
+      });
     });
 
-    logger.info('Password changed successfully', {
+    logger.info('Password changed successfully, other sessions invalidated', {
       userId: session.user.id,
       username: session.user.username,
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Password changed successfully',
+      message: 'Password changed successfully. Other sessions have been logged out.',
     });
   } catch (error) {
     logger.error('Failed to change password', { error });

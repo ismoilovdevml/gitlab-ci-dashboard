@@ -30,24 +30,37 @@ class APIThrottler {
 
   /**
    * Check if we can make a request without hitting rate limit
-   * UNLIMITED MODE: Always returns true
+   * Uses sliding window algorithm
    */
   private canMakeRequest(): boolean {
-    // UNLIMITED: No rate limiting
-    return true
+    const now = Date.now()
+    const windowStart = now - this.options.windowMs
+    const key = 'global'
+
+    // Get existing timestamps and filter to current window
+    const timestamps = this.requestCounts.get(key) || []
+    const validTimestamps = timestamps.filter(t => t > windowStart)
+
+    // Update the stored timestamps
+    this.requestCounts.set(key, validTimestamps)
+
+    return validTimestamps.length < this.options.maxRequests
   }
 
   /**
-   * Record a request
-   * UNLIMITED MODE: No-op
+   * Record a request timestamp
    */
   private recordRequest(): void {
-    // UNLIMITED: No tracking needed
+    const now = Date.now()
+    const key = 'global'
+    const timestamps = this.requestCounts.get(key) || []
+    timestamps.push(now)
+    this.requestCounts.set(key, timestamps)
   }
 
   /**
-   * Process the request queue
-   * UNLIMITED MODE: Execute all requests in parallel, no waiting
+   * Process the request queue with rate limiting
+   * Respects maxRequests per windowMs using sliding window
    */
   private async processQueue(): Promise<void> {
     if (this.processing || this.queue.length === 0) {
@@ -56,21 +69,27 @@ class APIThrottler {
 
     this.processing = true
 
-    // UNLIMITED: Execute ALL requests in parallel immediately
-    const currentQueue = [...this.queue]
-    this.queue = []
+    // Sort by priority (higher first)
+    this.queue.sort((a, b) => b.priority - a.priority)
 
-    // Execute all in parallel without waiting
-    await Promise.all(
-      currentQueue.map(async (request) => {
-        try {
-          const result = await request.execute()
-          request.resolve(result)
-        } catch (error) {
-          request.reject(error)
+    while (this.queue.length > 0) {
+      if (this.canMakeRequest()) {
+        const request = this.queue.shift()
+        if (request) {
+          this.recordRequest()
+          try {
+            const result = await request.execute()
+            request.resolve(result)
+          } catch (error) {
+            request.reject(error)
+          }
         }
-      })
-    )
+      } else {
+        // Wait before retrying
+        const retryDelay = this.options.retryAfter || 100
+        await new Promise(resolve => setTimeout(resolve, retryDelay))
+      }
+    }
 
     this.processing = false
   }
@@ -98,13 +117,28 @@ class APIThrottler {
   }
 
   /**
+   * Get remaining requests in current window
+   */
+  getRemainingRequests(): number {
+    const now = Date.now()
+    const windowStart = now - this.options.windowMs
+    const key = 'global'
+    const timestamps = this.requestCounts.get(key) || []
+    const validTimestamps = timestamps.filter(t => t > windowStart)
+    return Math.max(0, this.options.maxRequests - validTimestamps.length)
+  }
+
+  /**
    * Get current queue status
    */
   getStatus() {
+    const remaining = this.getRemainingRequests()
     return {
       queueLength: this.queue.length,
       processing: this.processing,
-      requestCounts: Object.fromEntries(this.requestCounts)
+      remainingRequests: remaining,
+      maxRequests: this.options.maxRequests,
+      windowMs: this.options.windowMs
     }
   }
 

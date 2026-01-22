@@ -169,9 +169,40 @@ type WebhookPayload =
   | DeploymentPayload
   | ReleasePayload;
 
+// Validate GitLab webhook token
+async function validateWebhookToken(request: NextRequest): Promise<boolean> {
+  const webhookToken = request.headers.get('X-Gitlab-Token');
+
+  // Get expected token from database or environment
+  const expectedToken = process.env.GITLAB_WEBHOOK_SECRET;
+
+  // If no secret is configured, allow all requests (but log warning)
+  if (!expectedToken) {
+    console.warn('⚠️ GITLAB_WEBHOOK_SECRET not configured - webhook validation disabled');
+    return true;
+  }
+
+  // Validate token
+  if (!webhookToken || webhookToken !== expectedToken) {
+    console.error('❌ Invalid or missing X-Gitlab-Token header');
+    return false;
+  }
+
+  return true;
+}
+
 // POST /api/webhook/gitlab - Receive GitLab webhook
 export async function POST(request: NextRequest) {
   try {
+    // Validate webhook token first
+    const isValid = await validateWebhookToken(request);
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Invalid webhook token' },
+        { status: 401 }
+      );
+    }
+
     const payload: WebhookPayload = await request.json();
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

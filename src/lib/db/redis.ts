@@ -89,12 +89,37 @@ export const cacheHelpers = {
   },
 
   /**
-   * Invalidate cache by pattern
+   * Scan keys by pattern (non-blocking alternative to KEYS)
+   * Uses SCAN command which doesn't block Redis
+   */
+  async scanKeys(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor = '0';
+
+    do {
+      const [nextCursor, foundKeys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
+      keys.push(...foundKeys);
+    } while (cursor !== '0');
+
+    return keys;
+  },
+
+  /**
+   * Invalidate cache by pattern using SCAN (non-blocking)
    */
   async invalidate(pattern: string): Promise<number> {
-    const keys = await redis.keys(pattern);
+    const keys = await this.scanKeys(pattern);
     if (keys.length === 0) return 0;
-    return await redis.del(...keys);
+
+    // Delete in batches to avoid blocking
+    let deleted = 0;
+    const batchSize = 100;
+    for (let i = 0; i < keys.length; i += batchSize) {
+      const batch = keys.slice(i, i + batchSize);
+      deleted += await redis.del(...batch);
+    }
+    return deleted;
   },
 
   /**

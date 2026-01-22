@@ -9,24 +9,89 @@ export const CacheTTL = {
   VERY_LONG: 900    // 15 minutes
 };
 
-// Simple in-memory cache for client-side (lightweight)
-const clientCache = new Map<string, { data: unknown; expires: number }>();
+// LRU Cache with max size limit to prevent memory leaks
+class LRUCache<T> {
+  private cache = new Map<string, { data: T; expires: number }>();
+  private maxSize: number;
+
+  constructor(maxSize: number = 1000) {
+    this.maxSize = maxSize;
+  }
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    if (Date.now() > entry.expires) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.data;
+  }
+
+  set(key: string, data: T, ttlSeconds: number): void {
+    // Delete if exists to update position
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+
+    // Evict oldest entries if at max size
+    while (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
+
+    this.cache.set(key, {
+      data,
+      expires: Date.now() + ttlSeconds * 1000,
+    });
+  }
+
+  delete(key: string): boolean {
+    return this.cache.delete(key);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  keys(): IterableIterator<string> {
+    return this.cache.keys();
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+
+  // Clean up expired entries
+  cleanup(): number {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expires) {
+        this.cache.delete(key);
+        cleaned++;
+      }
+    }
+    return cleaned;
+  }
+}
+
+// LRU cache with max 1000 entries to prevent memory leaks
+const clientCache = new LRUCache<unknown>(1000);
 
 function getCached<T>(key: string): T | null {
-  const entry = clientCache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expires) {
-    clientCache.delete(key);
-    return null;
-  }
-  return entry.data as T;
+  return clientCache.get(key) as T | null;
 }
 
 function setCache(key: string, data: unknown, ttlSeconds: number): void {
-  clientCache.set(key, {
-    data,
-    expires: Date.now() + ttlSeconds * 1000,
-  });
+  clientCache.set(key, data, ttlSeconds);
 }
 
 // Helper function to cache async calls
@@ -41,6 +106,25 @@ async function cachedFetch<T>(
   const data = await fetcher();
   setCache(key, data, ttlSeconds);
   return data;
+}
+
+// Helper function to process items in batches with concurrency limit
+async function batchProcess<T, R>(
+  items: T[],
+  processor: (item: T) => Promise<R>,
+  concurrency: number = 5
+): Promise<R[]> {
+  const results: R[] = [];
+
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map(item => processor(item).catch(() => null as R))
+    );
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 // Export cache utilities for external use
@@ -59,7 +143,12 @@ export const invalidateCache = async (pattern?: string) => {
 
 export const getCache = () => {
   return {
-    getStats: () => ({ size: clientCache.size, entries: Array.from(clientCache.keys()) }),
+    getStats: () => ({
+      size: clientCache.size,
+      maxSize: 1000,
+      entries: Array.from(clientCache.keys())
+    }),
+    cleanup: () => clientCache.cleanup(),
   };
 };
 
@@ -505,7 +594,7 @@ class GitLabAPI {
     return response.data;
   }
 
-  // Runners
+  // Runners - optimized with batch processing
   async getRunners(page = 1, perPage = 20): Promise<Runner[]> {
     return cachedFetch(
       `gitlab:runners:${page}:${perPage}`,
@@ -519,74 +608,70 @@ class GitLabAPI {
             },
           });
 
-          // Fetch detailed information for each runner
-          const runners = response.data;
-          const detailedRunners = await Promise.all(
-            runners.map(async (runner: Runner) => {
+          // Fetch detailed information with concurrency limit (5 at a time)
+          const runners = response.data as Runner[];
+          const detailedRunners = await batchProcess(
+            runners,
+            async (runner) => {
               try {
                 const detailResponse = await this.api.get(`/runners/${runner.id}`);
-                console.log(`[GitLab API] Runner ${runner.id} details:`, {
-                  id: detailResponse.data.id,
-                  description: detailResponse.data.description,
-                  ip_address: detailResponse.data.ip_address,
-                  platform: detailResponse.data.platform,
-                  architecture: detailResponse.data.architecture,
-                  contacted_at: detailResponse.data.contacted_at,
-                });
-                return detailResponse.data;
-              } catch (error) {
-                console.warn(`Failed to fetch details for runner ${runner.id}:`, error);
-                return runner; // Return basic info if detail fetch fails
+                return detailResponse.data as Runner;
+              } catch {
+                return runner;
               }
-            })
+            },
+            5
           );
 
-          return detailedRunners;
+          return detailedRunners.filter((r): r is Runner => r !== null);
         } catch {
           console.log('Admin access not available, fetching project runners...');
 
-          // Fallback: Get runners from user's projects
+          // Fallback: Get runners from limited projects with batch processing
           try {
-            const projects = await this.getProjects(1, 50);
-            const runnerSets = await Promise.all(
-              projects.map(project =>
-                this.api.get(`/projects/${project.id}/runners`, {
-                  params: { per_page: 20 }
-                }).then(res => res.data).catch(() => [])
-              )
+            // Limit to 20 projects instead of 50
+            const projects = await this.getProjects(1, 20);
+
+            // Fetch runners from projects in batches of 5
+            const runnerSets = await batchProcess(
+              projects,
+              async (project) => {
+                try {
+                  const res = await this.api.get(`/projects/${project.id}/runners`, {
+                    params: { per_page: 10 }
+                  });
+                  return res.data as Runner[];
+                } catch {
+                  return [];
+                }
+              },
+              5
             );
 
             // Deduplicate runners by ID
             const runnersMap = new Map<number, Runner>();
-            runnerSets.flat().forEach((runner: Runner) => {
-              if (!runnersMap.has(runner.id)) {
+            runnerSets.flat().forEach((runner) => {
+              if (runner && !runnersMap.has(runner.id)) {
                 runnersMap.set(runner.id, runner);
               }
             });
 
-            // Fetch detailed information for each unique runner
-            const uniqueRunners = Array.from(runnersMap.values());
-            const detailedRunners = await Promise.all(
-              uniqueRunners.map(async (runner) => {
+            // Limit unique runners and fetch details in batches
+            const uniqueRunners = Array.from(runnersMap.values()).slice(0, 30);
+            const detailedRunners = await batchProcess(
+              uniqueRunners,
+              async (runner) => {
                 try {
                   const detailResponse = await this.api.get(`/runners/${runner.id}`);
-                  console.log(`[GitLab API] Runner ${runner.id} details (project fallback):`, {
-                    id: detailResponse.data.id,
-                    description: detailResponse.data.description,
-                    ip_address: detailResponse.data.ip_address,
-                    platform: detailResponse.data.platform,
-                    architecture: detailResponse.data.architecture,
-                    contacted_at: detailResponse.data.contacted_at,
-                  });
-                  return detailResponse.data;
-                } catch (error) {
-                  console.warn(`Failed to fetch details for runner ${runner.id}:`, error);
-                  return runner; // Return basic info if detail fetch fails
+                  return detailResponse.data as Runner;
+                } catch {
+                  return runner;
                 }
-              })
+              },
+              5
             );
 
-            return detailedRunners;
+            return detailedRunners.filter((r): r is Runner => r !== null);
           } catch (fallbackError) {
             console.error('Failed to fetch runners from projects:', fallbackError);
             return [];
@@ -661,12 +746,14 @@ class GitLabAPI {
     return cachedFetch(
       'gitlab:artifacts:all',
       async () => {
-        const projects = await this.getProjects(1, 50);
-        const artifactPromises = projects.map(project =>
-          this.getJobArtifacts(project.id, 1, 10).catch(() => [])
+        // Limit to 20 projects with batch processing
+        const projects = await this.getProjects(1, 20);
+        const allArtifacts = await batchProcess(
+          projects,
+          (project) => this.getJobArtifacts(project.id, 1, 10).catch(() => []),
+          5 // 5 concurrent requests
         );
-        const allArtifacts = await Promise.all(artifactPromises);
-        return allArtifacts.flat();
+        return allArtifacts.flat().slice(0, 100); // Limit to 100 artifacts
       },
       CacheTTL.MEDIUM // 2 minutes cache
     );
@@ -694,11 +781,13 @@ class GitLabAPI {
     return cachedFetch(
       'gitlab:container:repositories:all',
       async () => {
-        const projects = await this.getProjects(1, 50);
-        const repoPromises = projects.map(project =>
-          this.getContainerRepositories(project.id).catch(() => [])
+        // Limit to 20 projects with batch processing
+        const projects = await this.getProjects(1, 20);
+        const allRepos = await batchProcess(
+          projects,
+          (project) => this.getContainerRepositories(project.id).catch(() => []),
+          5 // 5 concurrent requests
         );
-        const allRepos = await Promise.all(repoPromises);
         return allRepos.flat();
       },
       CacheTTL.MEDIUM // 2 minutes cache

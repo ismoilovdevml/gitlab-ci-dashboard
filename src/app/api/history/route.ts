@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
-import { redis } from '@/lib/db/redis';
+import { redis, cacheHelpers } from '@/lib/db/redis';
 
 const HISTORY_CACHE_PREFIX = 'history:';
 const CACHE_TTL = 60; // 1 minute
@@ -59,10 +59,16 @@ export async function GET(request: NextRequest) {
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
-        where.createdAt.gte = new Date(startDate);
+        const parsedStartDate = new Date(startDate);
+        if (!isNaN(parsedStartDate.getTime())) {
+          where.createdAt.gte = parsedStartDate;
+        }
       }
       if (endDate) {
-        where.createdAt.lte = new Date(endDate);
+        const parsedEndDate = new Date(endDate);
+        if (!isNaN(parsedEndDate.getTime())) {
+          where.createdAt.lte = parsedEndDate;
+        }
       }
     }
 
@@ -132,12 +138,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Clear cache on new entry
+    // Clear cache on new entry using SCAN (non-blocking)
     try {
-      const keys = await redis.keys(`${HISTORY_CACHE_PREFIX}*`);
-      if (keys.length > 0) {
-        await redis.del(...keys);
-      }
+      await cacheHelpers.invalidate(`${HISTORY_CACHE_PREFIX}*`);
     } catch (cacheError) {
       console.warn('Cache clear failed:', cacheError);
     }
@@ -168,12 +171,9 @@ export async function DELETE(request: NextRequest) {
       await prisma.alertHistory.deleteMany();
     }
 
-    // Clear cache
+    // Clear cache using SCAN (non-blocking)
     try {
-      const keys = await redis.keys(`${HISTORY_CACHE_PREFIX}*`);
-      if (keys.length > 0) {
-        await redis.del(...keys);
-      }
+      await cacheHelpers.invalidate(`${HISTORY_CACHE_PREFIX}*`);
     } catch (cacheError) {
       console.warn('Cache clear failed:', cacheError);
     }
