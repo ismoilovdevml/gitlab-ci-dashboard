@@ -49,3 +49,6 @@ docker-compose.local.yaml
 test-security.sh
 *.backup
 *.bak*
+
+# Beads database (SQLite local only, JSONL syncs via git)
+.beads/*.db
