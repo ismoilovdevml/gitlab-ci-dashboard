@@ -4,9 +4,27 @@ import { useLicenseStatus } from '@/hooks/useLicenseStatus';
 import { AlertTriangle, Shield, ExternalLink } from 'lucide-react';
 
 export function LicenseBanner() {
-  const { license, loading, isFreeTier, isExpiringSoon } = useLicenseStatus();
+  const { license, loading, isFreeTier, isExpiringSoon, isInGracePeriod } = useLicenseStatus();
 
   if (loading) return null;
+
+  // Grace period warning (expired but still functional)
+  if (isInGracePeriod && license.error) {
+    return (
+      <div className="bg-orange-500/10 border border-orange-500/20 text-orange-400 px-4 py-2 flex items-center gap-2 text-sm">
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        <span>{license.error}</span>
+        <a
+          href={process.env.NEXT_PUBLIC_LICENSE_URL || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto flex items-center gap-1 text-orange-300 hover:text-orange-200 shrink-0"
+        >
+          Renew Now <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+    );
+  }
 
   // No license key or invalid = free tier info
   if (!license.valid && license.error) {

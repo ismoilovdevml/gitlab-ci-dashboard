@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { requireFeature } from '@/lib/license';
 
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('job_logs');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
     const jobId = searchParams.get('jobId');

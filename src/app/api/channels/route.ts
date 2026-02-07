@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { cacheHelpers } from '@/lib/db/redis';
+import { requireFeature } from '@/lib/license';
 
 // GET /api/channels - Get all alert channels
 export async function GET() {
   try {
+    const featureCheck = await requireFeature('alerts');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const channels = await cacheHelpers.getOrSet(
       'alert:channels',
       async () => {
@@ -28,6 +33,10 @@ export async function GET() {
 // POST /api/channels - Create or update channel
 export async function POST(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('alerts');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const body = await request.json();
     const { type, enabled, config } = body;
 
@@ -73,6 +82,10 @@ export async function POST(request: NextRequest) {
 // DELETE /api/channels?type=telegram
 export async function DELETE(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('alerts');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 

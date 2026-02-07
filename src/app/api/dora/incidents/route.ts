@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createIncident, resolveIncident } from '@/lib/dora-metrics';
+import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('dora_metrics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const body = await request.json();
     const {
       projectId,
@@ -47,6 +52,10 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('dora_metrics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const body = await request.json();
     const { incidentId, rootCause } = body;
 
@@ -74,6 +83,10 @@ export async function PATCH(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('dora_metrics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
     const status = searchParams.get('status');

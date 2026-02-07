@@ -2,12 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { validateCSRFToken } from '@/lib/csrf';
 import { getLicenseStatus, verifyLicense, saveLicenseKey, removeLicenseKey, TIER_FEATURES } from '@/lib/license';
+import { rateLimit } from '@/lib/rate-limit';
+
+function getClientIP(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+}
 
 /**
  * GET /api/license - Get current license status
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIP(request);
+    const rl = await rateLimit(`license:get:${ip}`, { limit: 30, window: 60 });
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,6 +50,12 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIP(request);
+    const rl = await rateLimit(`license:post:${ip}`, { limit: 5, window: 300 });
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+    }
+
     const user = await getCurrentUser();
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
@@ -94,6 +113,12 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const ip = getClientIP(request);
+    const rl = await rateLimit(`license:delete:${ip}`, { limit: 5, window: 300 });
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+    }
+
     const user = await getCurrentUser();
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });

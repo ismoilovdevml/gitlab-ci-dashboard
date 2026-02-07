@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { requireFeature } from '@/lib/license';
 
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('pipeline_analytics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const status = searchParams.get('status');

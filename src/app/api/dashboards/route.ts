@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
 
 // Get user from session (simplified - you should use proper auth)
@@ -12,6 +13,10 @@ function getUserIdFromRequest(request: NextRequest): string | null {
 
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('custom_dashboard');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const userId = getUserIdFromRequest(request);
 
     if (!userId) {
@@ -66,6 +71,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('custom_dashboard');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const userId = getUserIdFromRequest(request);
 
     if (!userId) {
@@ -118,6 +127,10 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('custom_dashboard');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const userId = getUserIdFromRequest(request);
 
     if (!userId) {
@@ -181,6 +194,10 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('custom_dashboard');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const userId = getUserIdFromRequest(request);
 
     if (!userId) {

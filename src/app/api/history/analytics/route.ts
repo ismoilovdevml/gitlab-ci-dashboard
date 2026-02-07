@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { redis } from '@/lib/db/redis';
+import { requireFeature } from '@/lib/license';
 
 const ANALYTICS_CACHE_KEY = 'history:analytics';
 const CACHE_TTL = 300; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('pipeline_analytics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30');
 

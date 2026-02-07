@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { redis, cacheHelpers } from '@/lib/db/redis';
+import { requireFeature } from '@/lib/license';
 
 const HISTORY_CACHE_PREFIX = 'history:';
 const CACHE_TTL = 60; // 1 minute
@@ -9,6 +10,10 @@ const CACHE_TTL = 60; // 1 minute
 // Supports cursor-based pagination, search, and filters
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('alerts');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get('limit');
     const cursor = searchParams.get('cursor');
@@ -116,6 +121,10 @@ export async function GET(request: NextRequest) {
 // POST /api/history - Add history entry
 export async function POST(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('alerts');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const body = await request.json();
     const { projectName, pipelineId, status, channel, message, sent, error } = body;
 
@@ -158,6 +167,10 @@ export async function POST(request: NextRequest) {
 // DELETE /api/history?id=xyz - Delete single entry or clear all
 export async function DELETE(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('alerts');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

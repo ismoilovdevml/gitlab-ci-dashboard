@@ -10,6 +10,7 @@ export interface LicenseStatusData {
   features: string[];
   expiresAt: string | null;
   daysRemaining: number;
+  gracePeriod?: boolean;
   error?: string;
 }
 
@@ -54,5 +55,6 @@ export function useLicenseStatus() {
     isEnterprise: license.tier === 'enterprise',
     canAccessFeature: (feature: string) => license.features.includes(feature),
     isExpiringSoon: license.daysRemaining > 0 && license.daysRemaining <= 30,
+    isInGracePeriod: license.gracePeriod === true,
   };
 }

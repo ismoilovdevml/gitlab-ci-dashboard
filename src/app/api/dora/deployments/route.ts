@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { trackDeployment } from '@/lib/dora-metrics';
+import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('dora_metrics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const body = await request.json();
     const {
       projectId,
@@ -53,6 +58,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('dora_metrics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
     const limit = parseInt(searchParams.get('limit') || '50', 10);

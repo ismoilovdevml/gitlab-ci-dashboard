@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateDoraMetrics, getDoraMetricsSummary } from '@/lib/dora-metrics';
+import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
+    const featureCheck = await requireFeature('dora_metrics');
+    if (featureCheck) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
     const projectIds = searchParams.get('projectIds');
