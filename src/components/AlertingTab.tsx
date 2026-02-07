@@ -94,8 +94,8 @@ export default function AlertingTab() {
       channels.forEach((ch: { type: string; enabled: boolean; config: Record<string, unknown> }) => {
         const channelType = ch.type as AlertChannel;
         if (channelType in config) {
-          // Type-safe assignment using spread operator
-          config[channelType] = { ...config[channelType], ...ch.config, enabled: ch.enabled };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (config as any)[channelType] = { ...config[channelType], ...ch.config, enabled: ch.enabled };
         }
       });
       setChannelConfig(config);

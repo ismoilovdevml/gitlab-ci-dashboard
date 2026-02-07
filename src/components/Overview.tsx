@@ -112,8 +112,10 @@ export default function Overview() {
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('Data loading was cancelled');
+      } else if (error instanceof Error && error.message.includes('not configured')) {
+        setError(error.message);
       } else {
-        console.error('Failed to load data:', error);
+        console.warn('Failed to load data:', error);
         setError(error instanceof Error ? error.message : 'Failed to load data');
       }
     } finally {

@@ -236,3 +236,12 @@ model TrendData {
   @@index([metric, projectId])
   @@index([timestamp])
 }
+
+// App Settings (key-value store for license, etc.)
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}

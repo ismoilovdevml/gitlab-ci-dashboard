@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, RefreshCw, Bell, Moon, Sun, Eye, EyeOff, Save, Lock, LogOut, Key, Info } from 'lucide-react';
+import { Settings, RefreshCw, Bell, Moon, Sun, Eye, EyeOff, Save, Lock, LogOut, Key, Info, Shield, CheckCircle, AlertTriangle, XCircle, Trash2 } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useLicenseStatus } from '@/hooks/useLicenseStatus';
 import { useTheme } from '@/hooks/useTheme';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
@@ -32,8 +33,12 @@ export default function SettingsTab() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [appVersion, setAppVersion] = useState('');
+  const [licenseKeyInput, setLicenseKeyInput] = useState('');
+  const [activatingLicense, setActivatingLicense] = useState(false);
+  const [removingLicense, setRemovingLicense] = useState(false);
 
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
+  const { license, loading: licenseLoading, refresh: refreshLicense, isFreeTier, isPro, isEnterprise } = useLicenseStatus();
   const { theme, card, textPrimary, textSecondary } = useTheme();
 
   const [showToken, setShowToken] = useState(false);
@@ -245,6 +250,55 @@ export default function SettingsTab() {
     notifyInfo('Theme Changed', `Switched to ${newTheme} theme`);
   };
 
+  const handleActivateLicense = async () => {
+    if (!licenseKeyInput.trim()) {
+      notifyError('Validation Error', 'Please enter a license key');
+      return;
+    }
+
+    setActivatingLicense(true);
+    try {
+      const response = await axios.post('/api/license', {
+        licenseKey: licenseKeyInput.trim(),
+      }, {
+        headers: { 'x-csrf-token': csrfToken },
+      });
+
+      if (response.data.success) {
+        notifySuccess('License Activated', `${response.data.data.tier.charAt(0).toUpperCase() + response.data.data.tier.slice(1)} license activated successfully`);
+        setLicenseKeyInput('');
+        refreshLicense();
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        notifyError('License Error', error.response.data.error);
+      } else {
+        notifyError('License Error', 'Failed to activate license key');
+      }
+    } finally {
+      setActivatingLicense(false);
+    }
+  };
+
+  const handleRemoveLicense = async () => {
+    setRemovingLicense(true);
+    try {
+      await axios.delete('/api/license', {
+        headers: { 'x-csrf-token': csrfToken },
+      });
+      notifySuccess('License Removed', 'Reverted to free tier');
+      refreshLicense();
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        notifyError('Error', error.response.data.error);
+      } else {
+        notifyError('Error', 'Failed to remove license');
+      }
+    } finally {
+      setRemovingLicense(false);
+    }
+  };
+
   const handleAutoRefreshToggle = () => {
     const newValue = !autoRefresh;
     setAutoRefresh(newValue);
@@ -367,6 +421,141 @@ export default function SettingsTab() {
                 )}
               </button>
             </div>
+          </div>
+
+          {/* License Management */}
+          <div className={`rounded-lg p-5 ${card}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-4 h-4 text-purple-500" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>License</h3>
+            </div>
+
+            {/* Current Status */}
+            {licenseLoading ? (
+              <div className="flex items-center gap-2 py-3">
+                <RefreshCw className="w-4 h-4 animate-spin text-orange-500" />
+                <span className={`text-sm ${textSecondary}`}>Checking license...</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Tier Badge */}
+                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                  theme === 'light' ? 'bg-gray-50' : 'bg-zinc-900'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {license.valid && !isFreeTier ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : license.error ? (
+                      <XCircle className="w-4 h-4 text-red-500" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                    )}
+                    <div>
+                      <span className={`text-sm font-semibold ${textPrimary}`}>
+                        {license.tier.charAt(0).toUpperCase() + license.tier.slice(1)}
+                      </span>
+                      {license.error && (
+                        <p className="text-xs text-red-500">{license.error}</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    isEnterprise ? 'bg-purple-500/10 text-purple-500' :
+                    isPro ? 'bg-blue-500/10 text-blue-500' :
+                    'bg-gray-500/10 text-gray-500'
+                  }`}>
+                    {isEnterprise ? 'Enterprise' : isPro ? 'Pro' : 'Free'}
+                  </span>
+                </div>
+
+                {/* License Details */}
+                {!isFreeTier && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs ${textSecondary}`}>Projects</span>
+                      <span className={`text-sm font-medium ${textPrimary}`}>
+                        {license.maxProjects === -1 ? 'Unlimited' : license.maxProjects}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs ${textSecondary}`}>Users</span>
+                      <span className={`text-sm font-medium ${textPrimary}`}>
+                        {license.maxUsers === -1 ? 'Unlimited' : license.maxUsers}
+                      </span>
+                    </div>
+                    {license.expiresAt && (
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs ${textSecondary}`}>Expires</span>
+                        <span className={`text-sm font-medium ${
+                          license.daysRemaining <= 30 ? 'text-yellow-500' :
+                          license.daysRemaining <= 7 ? 'text-red-500' : textPrimary
+                        }`}>
+                          {new Date(license.expiresAt).toLocaleDateString()} ({license.daysRemaining}d)
+                        </span>
+                      </div>
+                    )}
+                    {/* Remove button */}
+                    {role === 'admin' && (
+                      <button
+                        onClick={handleRemoveLicense}
+                        disabled={removingLicense}
+                        className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 mt-2 rounded-lg transition-all text-xs font-medium ${
+                          theme === 'light'
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                            : 'bg-red-950/50 text-red-400 hover:bg-red-950 border border-red-800/30'
+                        } ${removingLicense && 'opacity-50 cursor-not-allowed'}`}
+                      >
+                        {removingLicense ? (
+                          <><RefreshCw className="w-3 h-3 animate-spin" /> Removing...</>
+                        ) : (
+                          <><Trash2 className="w-3 h-3" /> Remove License</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* License Key Input (admin only) */}
+                {role === 'admin' && (
+                  <div className={`pt-3 ${!isFreeTier ? (theme === 'light' ? 'border-t border-gray-200' : 'border-t border-zinc-800') : ''}`}>
+                    <label className={`text-xs ${textSecondary} mb-1.5 block`}>
+                      {isFreeTier ? 'Enter License Key' : 'Update License Key'}
+                    </label>
+                    <textarea
+                      value={licenseKeyInput}
+                      onChange={(e) => setLicenseKeyInput(e.target.value)}
+                      placeholder="Paste your license key here (eyJhbGc...)"
+                      rows={3}
+                      className={`w-full px-3 py-2 rounded-lg border text-xs font-mono resize-none ${
+                        theme === 'light'
+                          ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                          : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+                      } focus:outline-none focus:ring-2 focus:ring-purple-500/20`}
+                    />
+                    <button
+                      onClick={handleActivateLicense}
+                      disabled={activatingLicense || !licenseKeyInput.trim()}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 mt-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all text-sm font-medium ${
+                        (activatingLicense || !licenseKeyInput.trim()) && 'opacity-50 cursor-not-allowed'
+                      }`}
+                    >
+                      {activatingLicense ? (
+                        <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Validating...</>
+                      ) : (
+                        <><Shield className="w-3.5 h-3.5" /> Activate License</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Upgrade CTA for non-admin free tier */}
+                {isFreeTier && role !== 'admin' && (
+                  <p className={`text-xs ${textSecondary}`}>
+                    Contact your admin to activate a license key.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Change Password */}

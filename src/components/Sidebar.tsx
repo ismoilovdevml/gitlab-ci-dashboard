@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, Bell, LogOut, User, Download, Sparkles, TrendingUp } from 'lucide-react';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, Bell, LogOut, User, Download, Sparkles, TrendingUp, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
+import { useLicenseStatus } from '@/hooks/useLicenseStatus';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import axios from 'axios';
 import UpdateModal from './UpdateModal';
@@ -20,6 +21,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const router = useRouter();
   const { theme, sidebar, sidebarItem, textPrimary, textMuted } = useTheme();
   const {  } = useDashboardStore();
+  const { canAccessFeature } = useLicenseStatus();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [username, setUsername] = useState<string>('');
@@ -76,7 +78,12 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         const connected = await api.checkConnection(); // Direct API check, no cache
         setIsConnected(connected);
       } catch (error) {
-        console.error('GitLab connection check failed:', error);
+        // Don't log as error when token is simply not configured yet
+        if (error instanceof Error && error.message.includes('not configured')) {
+          console.warn('GitLab token not configured yet');
+        } else {
+          console.warn('GitLab connection check failed:', error);
+        }
         setIsConnected(false);
       } finally {
         setIsChecking(false);
@@ -100,15 +107,15 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   };
 
   const menuItems = [
-    { id: 'overview', icon: Activity, label: 'Overview' },
-    { id: 'pipelines', icon: GitBranch, label: 'Pipelines' },
-    { id: 'projects', icon: Boxes, label: 'Projects' },
-    { id: 'runners', icon: PlayCircle, label: 'Runners' },
-    { id: 'analytics', icon: TrendingUp, label: 'Analytics' },
-    { id: 'artifacts', icon: FileArchive, label: 'Artifacts' },
-    { id: 'registry', icon: Package, label: 'Registry' },
-    { id: 'alerting', icon: Bell, label: 'Alerting' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'overview', icon: Activity, label: 'Overview', feature: null },
+    { id: 'pipelines', icon: GitBranch, label: 'Pipelines', feature: null },
+    { id: 'projects', icon: Boxes, label: 'Projects', feature: null },
+    { id: 'runners', icon: PlayCircle, label: 'Runners', feature: 'runner_monitoring' },
+    { id: 'analytics', icon: TrendingUp, label: 'Analytics', feature: 'dora_metrics' },
+    { id: 'artifacts', icon: FileArchive, label: 'Artifacts', feature: null },
+    { id: 'registry', icon: Package, label: 'Registry', feature: 'container_registry' },
+    { id: 'alerting', icon: Bell, label: 'Alerting', feature: 'alerts' },
+    { id: 'settings', icon: Settings, label: 'Settings', feature: null },
   ];
 
   return (
@@ -140,21 +147,25 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const isLocked = item.feature !== null && !canAccessFeature(item.feature);
             return (
               <li key={item.id}>
                 <button
-                  onClick={() => onTabChange(item.id)}
+                  onClick={() => !isLocked && onTabChange(item.id)}
                   className={cn(
                     'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
-                    activeTab === item.id
+                    isLocked && 'opacity-50 cursor-not-allowed',
+                    activeTab === item.id && !isLocked
                       ? theme === 'light'
                         ? 'bg-orange-50 text-orange-600 shadow-sm'
                         : 'bg-orange-500/10 text-orange-500 border border-orange-500/20'
                       : sidebarItem
                   )}
+                  title={isLocked ? `${item.label} requires a Pro or Enterprise license` : item.label}
                 >
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
+                  {isLocked && <Lock className="w-3.5 h-3.5 ml-auto opacity-60" />}
                 </button>
               </li>
             );
