@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import prisma from '@/lib/db/prisma';
 
 // GitLab webhook payload types
@@ -182,9 +183,21 @@ async function validateWebhookToken(request: NextRequest): Promise<boolean> {
     return true;
   }
 
-  // Validate token
-  if (!webhookToken || webhookToken !== expectedToken) {
-    console.error('❌ Invalid or missing X-Gitlab-Token header');
+  // Validate token using constant-time comparison to prevent timing attacks
+  if (!webhookToken) {
+    console.error('❌ Missing X-Gitlab-Token header');
+    return false;
+  }
+
+  try {
+    const expected = Buffer.from(expectedToken, 'utf-8');
+    const received = Buffer.from(webhookToken, 'utf-8');
+    if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
+      console.error('❌ Invalid X-Gitlab-Token header');
+      return false;
+    }
+  } catch {
+    console.error('❌ Failed to validate webhook token');
     return false;
   }
 
