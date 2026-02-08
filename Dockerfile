@@ -6,8 +6,7 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json* .npmrc* ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --prefer-offline --no-audit
+RUN npm ci --prefer-offline --no-audit
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -21,8 +20,7 @@ ENV NODE_ENV=production
 # Generate Prisma Client
 RUN npx prisma generate
 
-RUN --mount=type=cache,target=/app/.next/cache \
-    npm run build
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
