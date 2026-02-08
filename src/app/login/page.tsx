@@ -269,8 +269,8 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div className={`mt-8 text-center transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          {authMode === 'supabase' ? (
+        {authMode === 'supabase' && (
+          <div className={`mt-8 text-center transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <a
               href="https://cidash.dev"
               target="_blank"
@@ -279,12 +279,8 @@ export default function LoginPage() {
             >
               Powered by cidash.dev
             </a>
-          ) : (
-            <p className="text-sm text-zinc-600">
-              Built with ❤️ using Next.js & TypeScript
-            </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <style jsx>{`

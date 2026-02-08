@@ -17,6 +17,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Build-time args for NEXT_PUBLIC_ vars (inlined by Next.js at build)
+ARG NEXT_PUBLIC_AUTH_MODE
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 # Generate Prisma Client
 RUN npx prisma generate
 
