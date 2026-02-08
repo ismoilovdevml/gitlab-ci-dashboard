@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db/prisma';
 import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
-
-// Get user from session (simplified - you should use proper auth)
-function getUserIdFromRequest(request: NextRequest): string | null {
-  const sessionCookie = request.cookies.get('gitlab_dashboard_session');
-  // In production, decode and verify session token
-  // For now, return a mock user ID
-  return sessionCookie ? 'mock-user-id' : null;
-}
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,17 +9,17 @@ export async function GET(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
-    const userId = getUserIdFromRequest(request);
-
-    if (!userId) {
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = auth.user.id;
 
     const searchParams = request.nextUrl.searchParams;
     const dashboardId = searchParams.get('id');
 
     if (dashboardId) {
-      const dashboard = await prisma.dashboard.findUnique({
+      const dashboard = await db.dashboard.findUnique({
         where: { id: dashboardId },
       });
 
@@ -48,8 +40,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get all user dashboards
-    const dashboards = await prisma.dashboard.findMany({
+    // Get all user dashboards (org-scoped automatically)
+    const dashboards = await db.dashboard.findMany({
       where: {
         OR: [{ userId }, { isPublic: true }],
       },
@@ -75,11 +67,11 @@ export async function POST(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
-    const userId = getUserIdFromRequest(request);
-
-    if (!userId) {
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = auth.user.id;
 
     const body = await request.json();
     const { name, description, layout, widgets, filters, isDefault, isPublic } = body;
@@ -93,13 +85,13 @@ export async function POST(request: NextRequest) {
 
     // If setting as default, unset other defaults
     if (isDefault) {
-      await prisma.dashboard.updateMany({
+      await db.dashboard.updateMany({
         where: { userId, isDefault: true },
         data: { isDefault: false },
       });
     }
 
-    const dashboard = await prisma.dashboard.create({
+    const dashboard = await db.dashboard.create({
       data: {
         userId,
         name,
@@ -131,11 +123,11 @@ export async function PUT(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
-    const userId = getUserIdFromRequest(request);
-
-    if (!userId) {
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = auth.user.id;
 
     const body = await request.json();
     const { id, name, description, layout, widgets, filters, isDefault, isPublic } = body;
@@ -147,7 +139,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.dashboard.findUnique({
+    const existing = await db.dashboard.findUnique({
       where: { id },
     });
 
@@ -160,13 +152,13 @@ export async function PUT(request: NextRequest) {
 
     // If setting as default, unset other defaults
     if (isDefault && !existing.isDefault) {
-      await prisma.dashboard.updateMany({
+      await db.dashboard.updateMany({
         where: { userId, isDefault: true, id: { not: id } },
         data: { isDefault: false },
       });
     }
 
-    const dashboard = await prisma.dashboard.update({
+    const dashboard = await db.dashboard.update({
       where: { id },
       data: {
         ...(name && { name }),
@@ -198,11 +190,11 @@ export async function DELETE(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
-    const userId = getUserIdFromRequest(request);
-
-    if (!userId) {
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = auth.user.id;
 
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
@@ -214,7 +206,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.dashboard.findUnique({
+    const existing = await db.dashboard.findUnique({
       where: { id },
     });
 
@@ -225,7 +217,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.dashboard.delete({
+    await db.dashboard.delete({
       where: { id },
     });
 

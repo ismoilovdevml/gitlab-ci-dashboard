@@ -25,6 +25,7 @@
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@prisma/client": "^6.16.3",
+    "@supabase/supabase-js": "^2.95.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie": "^0.6.0",
     "@types/ioredis": "^4.28.10",

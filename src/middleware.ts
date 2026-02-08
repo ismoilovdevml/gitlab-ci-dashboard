@@ -11,10 +11,21 @@ const PUBLIC_API_ROUTES = ['/api/auth/login', '/api/webhook/gitlab', '/api/setup
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const authMode = process.env.AUTH_MODE || 'session';
 
-  // Get session cookie
-  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
-  const isAuthenticated = !!sessionCookie?.value;
+  // Determine authentication based on mode
+  let isAuthenticated = false;
+
+  if (authMode === 'supabase') {
+    // Cloud mode: check Bearer token or session cookie
+    const authHeader = request.headers.get('authorization');
+    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
+    isAuthenticated = !!authHeader?.startsWith('Bearer ') || !!sessionCookie?.value;
+  } else {
+    // Self-hosted mode: session cookie only
+    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
+    isAuthenticated = !!sessionCookie?.value;
+  }
 
   // Check if route is public
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
