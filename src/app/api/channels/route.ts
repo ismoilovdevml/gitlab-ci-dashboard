@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db/prisma';
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { cacheHelpers } from '@/lib/db/redis';
 import { requireFeature } from '@/lib/license';
 
@@ -10,10 +10,15 @@ export async function GET() {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const channels = await cacheHelpers.getOrSet(
       'alert:channels',
       async () => {
-        return await prisma.alertChannel.findMany({
+        return await db.alertChannel.findMany({
           orderBy: { updatedAt: 'desc' },
         });
       },
@@ -37,6 +42,11 @@ export async function POST(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { type, enabled, config } = body;
 
@@ -48,20 +58,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if channel exists
-    const existing = await prisma.alertChannel.findFirst({
+    const existing = await db.alertChannel.findFirst({
       where: { type },
     });
 
     let channel;
     if (existing) {
       // Update existing channel
-      channel = await prisma.alertChannel.update({
+      channel = await db.alertChannel.update({
         where: { id: existing.id },
         data: { enabled, config, updatedAt: new Date() },
       });
     } else {
       // Create new channel
-      channel = await prisma.alertChannel.create({
+      channel = await db.alertChannel.create({
         data: { type, enabled: enabled ?? false, config },
       });
     }
@@ -86,6 +96,11 @@ export async function DELETE(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 
@@ -97,12 +112,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Find channel by type first
-    const channel = await prisma.alertChannel.findFirst({
+    const channel = await db.alertChannel.findFirst({
       where: { type },
     });
 
     if (channel) {
-      await prisma.alertChannel.delete({
+      await db.alertChannel.delete({
         where: { id: channel.id },
       });
     }

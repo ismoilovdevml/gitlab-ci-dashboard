@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db/prisma';
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { requireFeature } from '@/lib/license';
 
 export async function GET(request: NextRequest) {
@@ -8,6 +8,11 @@ export async function GET(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const status = searchParams.get('status');
@@ -65,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch in batches to avoid memory issues
     while (skip < MAX_RECORDS) {
-      const batch = await prisma.alertHistory.findMany({
+      const batch = await db.alertHistory.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip,

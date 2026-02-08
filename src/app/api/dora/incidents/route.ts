@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createIncident, resolveIncident } from '@/lib/dora-metrics';
 import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,11 @@ export async function POST(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       projectId,
@@ -56,6 +62,11 @@ export async function PATCH(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { incidentId, rootCause } = body;
 
@@ -87,14 +98,17 @@ export async function GET(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
     const status = searchParams.get('status');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    const prisma = (await import('@/lib/db/prisma')).default;
-
-    const incidents = await prisma.incident.findMany({
+    const incidents = await db.incident.findMany({
       where: {
         ...(projectId && { projectId: parseInt(projectId, 10) }),
         ...(status && { status }),

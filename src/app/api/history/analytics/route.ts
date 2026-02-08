@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db/prisma';
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { redis } from '@/lib/db/redis';
 import { requireFeature } from '@/lib/license';
 
@@ -12,6 +12,11 @@ export async function GET(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30');
 
@@ -29,7 +34,7 @@ export async function GET(request: NextRequest) {
     startDate.setDate(startDate.getDate() - days);
 
     // Get all history records within date range
-    const history = await prisma.alertHistory.findMany({
+    const history = await db.alertHistory.findMany({
       where: {
         createdAt: {
           gte: startDate,

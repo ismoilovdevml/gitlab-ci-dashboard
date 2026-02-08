@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db/prisma';
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { redis, cacheHelpers } from '@/lib/db/redis';
 import { requireFeature } from '@/lib/license';
 
@@ -14,6 +14,11 @@ export async function GET(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get('limit');
     const cursor = searchParams.get('cursor');
@@ -77,7 +82,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const history = await prisma.alertHistory.findMany({
+    const history = await db.alertHistory.findMany({
       take: limit + 1, // Take one extra to check if there are more results
       ...(cursor && {
         cursor: { id: cursor },
@@ -125,6 +130,11 @@ export async function POST(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { projectName, pipelineId, status, channel, message, sent, error } = body;
 
@@ -135,7 +145,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const entry = await prisma.alertHistory.create({
+    const entry = await db.alertHistory.create({
       data: {
         projectName,
         pipelineId,
@@ -171,17 +181,22 @@ export async function DELETE(request: NextRequest) {
     if (featureCheck) {
       return NextResponse.json({ error: featureCheck.error }, { status: 403 });
     }
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (id) {
       // Delete single entry
-      await prisma.alertHistory.delete({
+      await db.alertHistory.delete({
         where: { id },
       });
     } else {
       // Clear all history
-      await prisma.alertHistory.deleteMany();
+      await db.alertHistory.deleteMany();
     }
 
     // Clear cache using SCAN (non-blocking)
