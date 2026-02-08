@@ -174,41 +174,39 @@ export async function calculateDoraMetrics(
       : 0;
 
     // Save to database
-    await prisma.doraMetric.upsert({
-      where: {
-        projectId_period_periodStart: {
+    // Upsert DORA metric — find existing record or create new
+    const existing = await prisma.doraMetric.findFirst({
+      where: { projectId, period, periodStart: startDate },
+    });
+
+    const metricData = {
+      deploymentCount: deployments.length,
+      deploymentFreq: deploymentsPerDay,
+      avgLeadTime: Math.round(avgLeadTime),
+      medianLeadTime: Math.round(medianLeadTime),
+      incidentCount: incidents.length,
+      avgMttr: Math.round(avgMttr),
+      failedDeployments: failedDeployments.length,
+      failureRate: changeFailureRate,
+    };
+
+    if (existing) {
+      await prisma.doraMetric.update({
+        where: { id: existing.id },
+        data: { ...metricData, calculatedAt: new Date() },
+      });
+    } else {
+      await prisma.doraMetric.create({
+        data: {
           projectId,
+          projectName,
           period,
           periodStart: startDate,
+          periodEnd: endDate,
+          ...metricData,
         },
-      },
-      create: {
-        projectId,
-        projectName,
-        period,
-        periodStart: startDate,
-        periodEnd: endDate,
-        deploymentCount: deployments.length,
-        deploymentFreq: deploymentsPerDay,
-        avgLeadTime: Math.round(avgLeadTime),
-        medianLeadTime: Math.round(medianLeadTime),
-        incidentCount: incidents.length,
-        avgMttr: Math.round(avgMttr),
-        failedDeployments: failedDeployments.length,
-        failureRate: changeFailureRate,
-      },
-      update: {
-        deploymentCount: deployments.length,
-        deploymentFreq: deploymentsPerDay,
-        avgLeadTime: Math.round(avgLeadTime),
-        medianLeadTime: Math.round(medianLeadTime),
-        incidentCount: incidents.length,
-        avgMttr: Math.round(avgMttr),
-        failedDeployments: failedDeployments.length,
-        failureRate: changeFailureRate,
-        calculatedAt: new Date(),
-      },
-    });
+      });
+    }
 
     return {
       projectId,

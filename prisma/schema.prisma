@@ -10,31 +10,85 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Alert Channel Configuration (Telegram, Slack, Discord, Email, Webhook)
-model AlertChannel {
+// ==========================================
+// Multi-Tenant: Organization & Membership
+// ==========================================
+
+model Organization {
   id        String   @id @default(cuid())
-  type      String   @unique // telegram, slack, discord, email, webhook
-  enabled   Boolean  @default(false)
-  config    Json     // Flexible JSON config for each channel type
+  name      String
+  slug      String   @unique
+  plan      String   @default("free") // free, pro, enterprise
+  ownerId   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  owner     User     @relation("OrgOwner", fields: [ownerId], references: [id])
+  members   OrganizationMember[]
+
+  // Tenant-scoped data
+  alertChannels  AlertChannel[]
+  alertHistory   AlertHistory[]
+  gitlabConfigs  GitLabConfig[]
+  pipelineStatus PipelineStatus[]
+  deployments    Deployment[]
+  incidents      Incident[]
+  doraMetrics    DoraMetric[]
+  dashboards     Dashboard[]
+  trendData      TrendData[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String   @default("member") // owner, admin, member, viewer
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+  @@index([userId])
+}
+
+// Alert Channel Configuration (Telegram, Slack, Discord, Email, Webhook)
+model AlertChannel {
+  id             String   @id @default(cuid())
+  organizationId String?
+  type           String   // telegram, slack, discord, email, webhook
+  enabled        Boolean  @default(false)
+  config         Json     // Flexible JSON config for each channel type
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, type])
   @@map("alert_channels")
 }
 
 // Alert History (Log of sent alerts)
 model AlertHistory {
-  id          String   @id @default(cuid())
-  projectName String
-  pipelineId  Int
-  status      String   // success, failed, running, canceled
-  channel     String   // telegram, slack, discord, etc
-  message     String
-  sent        Boolean  @default(false)
-  error       String?  // Error message if send failed
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectName    String
+  pipelineId     Int
+  status         String   // success, failed, running, canceled
+  channel        String   // telegram, slack, discord, etc
+  message        String
+  sent           Boolean  @default(false)
+  error          String?  // Error message if send failed
+  createdAt      DateTime @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("alert_history")
+  @@index([organizationId])
   @@index([projectName])
   @@index([pipelineId])
   @@index([createdAt])
@@ -70,6 +124,8 @@ model User {
 
   sessions        Session[]
   dashboards      Dashboard[]
+  ownedOrgs       Organization[]       @relation("OrgOwner")
+  orgMemberships  OrganizationMember[]
 
   @@map("users")
 }
@@ -92,6 +148,7 @@ model Session {
 // GitLab Configuration (Global settings - kept for backward compatibility)
 model GitLabConfig {
   id              String   @id @default(cuid())
+  organizationId  String?
   url             String   @default("https://gitlab.com")
   token           String   @default("")
   autoRefresh     Boolean  @default(true)
@@ -102,20 +159,27 @@ model GitLabConfig {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("gitlab_config")
+  @@index([organizationId])
 }
 
 // Pipeline Status Cache (for tracking changes)
 model PipelineStatus {
-  id          String   @id @default(cuid())
-  projectId   Int
-  pipelineId  Int
-  status      String
-  checkedAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      Int
+  pipelineId     Int
+  status         String
+  checkedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  @@unique([projectId, pipelineId])
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, projectId, pipelineId])
   @@map("pipeline_status")
+  @@index([organizationId])
   @@index([projectId])
   @@index([updatedAt])
 }
@@ -126,21 +190,25 @@ model PipelineStatus {
 
 // Deployment Metrics (for DORA calculations)
 model Deployment {
-  id          String   @id @default(cuid())
-  projectId   Int
-  projectName String
-  pipelineId  Int
-  environment String   // production, staging, development
-  status      String   // success, failed, running
-  startedAt   DateTime
-  finishedAt  DateTime?
-  duration    Int?     // seconds
-  commitSha   String
-  ref         String   // branch name
-  triggeredBy String?  // username
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      Int
+  projectName    String
+  pipelineId     Int
+  environment    String   // production, staging, development
+  status         String   // success, failed, running
+  startedAt      DateTime
+  finishedAt     DateTime?
+  duration       Int?     // seconds
+  commitSha      String
+  ref            String   // branch name
+  triggeredBy    String?  // username
+  createdAt      DateTime @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("deployments")
+  @@index([organizationId])
   @@index([projectId])
   @@index([environment])
   @@index([status])
@@ -150,21 +218,25 @@ model Deployment {
 
 // Incident Tracking (for DORA Mean Time to Recovery)
 model Incident {
-  id          String   @id @default(cuid())
-  projectId   Int
-  projectName String
-  title       String
-  severity    String   // critical, high, medium, low
-  status      String   // open, investigating, resolved, closed
-  detectedAt  DateTime
-  resolvedAt  DateTime?
-  duration    Int?     // seconds
-  affectedEnv String   // production, staging
-  rootCause   String?
-  createdBy   String?  // user id
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      Int
+  projectName    String
+  title          String
+  severity       String   // critical, high, medium, low
+  status         String   // open, investigating, resolved, closed
+  detectedAt     DateTime
+  resolvedAt     DateTime?
+  duration       Int?     // seconds
+  affectedEnv    String   // production, staging
+  rootCause      String?
+  createdBy      String?  // user id
+  createdAt      DateTime @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("incidents")
+  @@index([organizationId])
   @@index([projectId])
   @@index([status])
   @@index([detectedAt])
@@ -173,6 +245,7 @@ model Incident {
 // DORA Metrics (Pre-calculated for performance)
 model DoraMetric {
   id                String   @id @default(cuid())
+  organizationId    String?
   projectId         Int
   projectName       String
   period            String   // daily, weekly, monthly
@@ -197,42 +270,52 @@ model DoraMetric {
 
   calculatedAt      DateTime @default(now())
 
+  organization      Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("dora_metrics")
-  @@unique([projectId, period, periodStart])
+  @@unique([organizationId, projectId, period, periodStart])
+  @@index([organizationId])
   @@index([projectId])
   @@index([periodStart])
 }
 
 // Custom Dashboard Configuration
 model Dashboard {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  layout      Json     // Grid layout configuration
-  widgets     Json     // Widget configurations
-  filters     Json?    // Default filters
-  isDefault   Boolean  @default(false)
-  isPublic    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String
+  name           String
+  description    String?
+  layout         Json     // Grid layout configuration
+  widgets        Json     // Widget configurations
+  filters        Json?    // Default filters
+  isDefault      Boolean  @default(false)
+  isPublic       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("dashboards")
+  @@index([organizationId])
   @@index([userId])
 }
 
 // Trend Analysis Data
 model TrendData {
-  id          String   @id @default(cuid())
-  metric      String   // pipeline_success_rate, avg_duration, deployment_freq
-  projectId   Int?
-  value       Float
-  timestamp   DateTime
-  metadata    Json?
+  id             String   @id @default(cuid())
+  organizationId String?
+  metric         String   // pipeline_success_rate, avg_duration, deployment_freq
+  projectId      Int?
+  value          Float
+  timestamp      DateTime
+  metadata       Json?
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("trend_data")
+  @@index([organizationId])
   @@index([metric, projectId])
   @@index([timestamp])
 }
