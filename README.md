@@ -1,187 +1,194 @@
-# GitLab CI/CD Dashboard 🚀
+# GitLab CI/CD Dashboard
 
 Modern, real-time dashboard for monitoring and managing GitLab CI/CD pipelines with advanced alerting system.
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![Docker](https://img.shields.io/badge/docker-ready-brightgreen) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue) ![Redis](https://img.shields.io/badge/Redis-latest-red)
 
-## ✨ Features
+## Features
 
-### Core Features
-- 📊 **Real-time Pipeline Monitoring** - Auto-refresh with live updates
-- 🎨 **GitLab-style Visualization** - Beautiful pipeline stages & jobs view
-- 📝 **Live Log Streaming** - Real-time logs with syntax highlighting
-- 🔄 **Pipeline Management** - Retry, cancel, and manage pipelines
-- 🌓 **Dark & Light Themes** - Comfortable viewing in any environment
-- 📱 **Responsive Design** - Works on desktop, tablet, and mobile
+- **Real-time Pipeline Monitoring** — Auto-refresh with live updates
+- **GitLab-style Visualization** — Beautiful pipeline stages & jobs view
+- **Live Log Streaming** — Real-time logs with syntax highlighting
+- **Pipeline Management** — Retry, cancel, and manage pipelines
+- **DORA Metrics** — Deployment frequency, lead time, change failure rate, MTTR
+- **Alert System** — Slack, Telegram, Discord, email notifications
+- **Dark & Light Themes** — Comfortable viewing in any environment
+- **Responsive Design** — Works on desktop, tablet, and mobile
 
-## 🚀 Quick Start
+## Quick Start (One-liner)
 
-### Production Deployment (Docker Compose)
+Install with a single command — no repository access needed:
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/ismoilovdevml/gitlab-ci-dashboard.git
-cd gitlab-ci-dashboard
+curl -fsSL https://cidash.dev/api/install?file=install | bash
+```
 
-# 2. Generate secure environment variables (auto-creates random passwords)
-bash scripts/generate-env.sh production
+This will:
 
-# ⚠️ IMPORTANT: Save the admin password shown above!
-# You can view it later with: cat .env | grep ADMIN_PASSWORD
+1. Check that Docker and Docker Compose are installed
+2. Download `docker-compose.yml` from cidash.dev
+3. Generate a `.env` file with secure random passwords
+4. Pull the Docker image from Docker Hub
+5. Start PostgreSQL, Redis, and the dashboard
 
-# 3. Start all services (PostgreSQL + Redis + App)
+After installation, open `http://localhost:3000` and log in with the credentials shown in the terminal.
+
+### Install with License Key (Pro/Enterprise)
+
+```bash
+LICENSE_KEY="eyJ..." curl -fsSL https://cidash.dev/api/install?file=install | bash
+```
+
+### Install with Custom Port
+
+```bash
+DASHBOARD_PORT=8080 curl -fsSL https://cidash.dev/api/install?file=install | bash
+```
+
+### Install to Custom Directory
+
+```bash
+INSTALL_DIR=/opt/cidash curl -fsSL https://cidash.dev/api/install?file=install | bash
+```
+
+## Manual Installation
+
+If you prefer not to pipe curl to bash:
+
+```bash
+# 1. Create a directory
+mkdir gitlab-ci-dashboard && cd gitlab-ci-dashboard
+
+# 2. Download docker-compose.yml
+curl -fsSL "https://cidash.dev/api/install?file=docker-compose" -o docker-compose.yml
+
+# 3. Generate secure .env
+cat > .env << 'ENVEOF'
+POSTGRES_USER=gitlab_dashboard
+POSTGRES_PASSWORD=CHANGE_ME
+POSTGRES_DB=gitlab_dashboard
+REDIS_PASSWORD=CHANGE_ME
+NODE_ENV=production
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_GITLAB_URL=https://gitlab.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=CHANGE_ME
+ADMIN_EMAIL=admin@example.com
+SESSION_SECRET=CHANGE_ME_64_CHARS_MINIMUM
+ENVEOF
+
+# Replace CHANGE_ME values with secure random strings:
+sed -i.bak "s/POSTGRES_PASSWORD=CHANGE_ME/POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -dc A-Za-z0-9 | head -c 32)/" .env
+sed -i.bak "s/REDIS_PASSWORD=CHANGE_ME/REDIS_PASSWORD=$(openssl rand -base64 24 | tr -dc A-Za-z0-9 | head -c 32)/" .env
+sed -i.bak "s/ADMIN_PASSWORD=CHANGE_ME/ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -dc A-Za-z0-9 | head -c 24)/" .env
+sed -i.bak "s/SESSION_SECRET=CHANGE_ME_64_CHARS_MINIMUM/SESSION_SECRET=$(openssl rand -base64 48 | tr -dc A-Za-z0-9 | head -c 64)/" .env
+rm -f .env.bak
+chmod 600 .env
+
+# 4. Start all services
 docker compose up -d
 
-# 4. Check logs to verify everything started
+# 5. Check logs
 docker compose logs -f app
-
-# Wait for "✓ Ready" message, then Ctrl+C to exit logs
 ```
 
-Open `http://localhost:3000` in your browser.
+## First Login
 
-**First Login:**
-- URL: `http://localhost:3000/login`
-- Username: `admin` (or value from `ADMIN_USERNAME` in .env)
-- Password: Check `ADMIN_PASSWORD` in .env file
+- **URL:** `http://localhost:3000/login`
+- **Username:** `admin` (or the value from `ADMIN_USERNAME` in `.env`)
+- **Password:** Check `ADMIN_PASSWORD` in your `.env` file
 
-**Services:**
-- Dashboard UI: `http://localhost:3000`
-- PostgreSQL: Internal network only (secure by default)
-- Redis: Internal network only (secure by default)
+## Configuration
 
-### Stop Services
-
-```bash
-# Stop all services
-docker compose down
-
-# Stop and remove volumes (reset database)
-docker compose down -v
-```
-
-### Update to Latest Version
-
-The dashboard automatically checks for updates every 6 hours. When a new version is available, you'll see an update notification in the sidebar.
-
-**To update:**
-
-```bash
-# 1. Stop current containers
-docker compose down
-
-# 2. Pull latest image
-docker compose pull app
-
-# 3. Start with new version
-docker compose up -d
-
-# 4. Verify version (check sidebar)
-```
-
-**Alternative - Pull from Git:**
-
-```bash
-# 1. Pull latest code
-git pull origin main
-
-# 2. Rebuild containers
-docker compose up -d --build
-
-# 3. Verify version
-```
-
-## ⚙️ Configuration
-
-### 1. Connect to GitLab
+### Connect to GitLab
 
 1. Open `http://localhost:3000`
 2. Click **Settings** in the sidebar
 3. Enter your GitLab details:
-   - **GitLab URL**: `https://gitlab.com` or your self-hosted URL
+   - **GitLab URL**: `https://gitlab.com` or your self-hosted GitLab URL
    - **API Token**: Personal access token with `api` scope
 4. Click **Save Configuration**
 
-**Get API Token:**
-- Go to GitLab → Settings → Access Tokens
-- Create token with `api` scope
-- Copy and paste in dashboard
+**Get an API Token:**
 
+1. Go to GitLab → Settings → Access Tokens
+2. Create a token with `api` scope
+3. Copy and paste it in the dashboard
 
+### License Key (Optional)
 
-## 🏗️ Tech Stack
+Without a license, the dashboard runs in free tier (3 projects, 1 user). To unlock more:
 
-### Frontend
-- **Framework**: Next.js 15 (App Router)
-- **UI Library**: React 19
+1. Purchase a license at [cidash.dev/pricing](https://cidash.dev/pricing)
+2. Add to your `.env` file: `LICENSE_KEY=eyJ...`
+3. Restart: `docker compose restart app`
+
+## Managing the Dashboard
+
+```bash
+# View logs
+docker compose logs -f app
+
+# Stop all services
+docker compose down
+
+# Stop and remove all data (reset)
+docker compose down -v
+
+# Restart services
+docker compose restart
+```
+
+## Update to Latest Version
+
+The dashboard checks for updates automatically and shows a notification in the sidebar.
+
+```bash
+# Pull latest image and restart
+docker compose pull app && docker compose up -d
+```
+
+## Prerequisites
+
+- **Docker Engine** 20.0 or later
+- **Docker Compose** v2 (plugin) or standalone
+- **2 GB RAM** minimum
+- **10 GB disk** minimum
+- Linux, macOS, or Windows with WSL2
+
+## Architecture
+
+| Service    | Image                                      | Port     | Purpose             |
+|------------|--------------------------------------------|----------|---------------------|
+| PostgreSQL | `postgres:17-alpine`                       | Internal | Database            |
+| Redis      | `redis:alpine`                             | Internal | Cache & sessions    |
+| App        | `ismoilovdevml/gitlab-ci-dashboard:latest` | 3000     | Dashboard (Next.js) |
+
+PostgreSQL and Redis are isolated on an internal Docker network and are not exposed to the host. Only the app port (default 3000) is accessible.
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router) + React 19
 - **Language**: TypeScript 5.9
+- **Database**: PostgreSQL 17 + Prisma ORM
+- **Cache**: Redis
 - **Styling**: Tailwind CSS
-- **State Management**: Zustand with persistence
-- **Icons**: Lucide React
+- **State**: Zustand with persistence
 
-### Backend
-- **Runtime**: Node.js 20
-- **Database**: PostgreSQL 17
-- **Cache**: Redis (latest)
-- **ORM**: Prisma
-- **API**: Next.js API Routes
+## Security
 
-## 🛠️ Development
+- All database credentials are auto-generated with `openssl rand`
+- PostgreSQL and Redis are on internal Docker networks only
+- `.env` file permissions are set to `600` (owner read/write only)
+- Session tokens use a 64-character cryptographically random secret
+- GitLab tokens are encrypted at rest (AES-256-GCM) in Enterprise mode
 
-### Local Development
+## Documentation
 
-```bash
-# Clone repository
-git clone https://github.com/ismoilovdevml/gitlab-ci-dashboard.git
-cd gitlab-ci-dashboard
+- **Installation guide:** [cidash.dev/install](https://cidash.dev/install)
+- **Cloud vs Self-Hosted:** [cidash.dev/cloud-vs-self-hosted](https://cidash.dev/cloud-vs-self-hosted)
+- **Pricing & Licensing:** [cidash.dev/pricing](https://cidash.dev/pricing)
 
-# Install dependencies
-npm install
+## Support
 
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your database credentials
-
-# Start database services
-docker compose up -d postgres redis
-
-# Run database migrations
-npx prisma migrate dev
-
-# Start dev server
-npm run dev
-```
-
-Open `http://localhost:3000` in your browser.
-
-### Build
-
-```bash
-# Type checking
-npm run type-check
-
-# Linting
-npm run lint
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-```
-
-### Docker Build
-
-```bash
-# Build image
-docker compose build
-
-# Build without cache
-docker compose build --no-cache
-
-# Run all services
-docker compose up -d
-```
-
-
-If you have any questions or issues, please open an issue on GitHub.
+For questions, bug reports, or feature requests, contact us at [cidash.dev](https://cidash.dev).
