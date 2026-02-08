@@ -323,9 +323,48 @@ export async function removeLicenseKey(): Promise<void> {
 }
 
 /**
+ * Cloud mode: derive license status from the authenticated user's org plan.
+ * In cloud mode, the SaaS platform manages subscriptions — no local license key needed.
+ */
+async function getCloudLicenseStatus(): Promise<LicenseStatus> {
+  try {
+    const { getAuth } = await import('@/lib/auth/adapter');
+    const auth = await getAuth();
+    if (!auth?.organizationId) return FREE_LICENSE;
+
+    const org = await prisma.organization.findUnique({
+      where: { id: auth.organizationId },
+      select: { plan: true },
+    });
+
+    const tier = (org?.plan || 'free') as LicenseTier;
+    const tierConfig = TIER_FEATURES[tier];
+    if (!tierConfig) return FREE_LICENSE;
+
+    return {
+      valid: true,
+      tier,
+      maxProjects: tierConfig.maxProjects,
+      maxUsers: tierConfig.maxUsers,
+      features: tierConfig.features,
+      expiresAt: null,
+      daysRemaining: -1, // cloud subscriptions don't have local expiry
+    };
+  } catch (error) {
+    logger.error('Failed to get cloud license status', { error });
+    return FREE_LICENSE;
+  }
+}
+
+/**
  * Get current license status (cached)
  */
 export async function getLicenseStatus(): Promise<LicenseStatus> {
+  // Cloud mode: license is managed by the SaaS platform, not self-hosted keys
+  if (process.env.AUTH_MODE === 'supabase') {
+    return getCloudLicenseStatus();
+  }
+
   try {
     // Check cache first
     const cached = await cacheHelpers.get<LicenseStatus>(CACHE_KEY);
