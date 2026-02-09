@@ -1,5 +1,6 @@
 import { verify, JwtPayload } from 'jsonwebtoken';
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync, createHash } from 'crypto';
+import { hostname as osHostname } from 'os';
 import { cacheHelpers } from '@/lib/db/redis';
 import { createLogger } from '@/lib/logger';
 import prisma from '@/lib/db/prisma';
@@ -179,16 +180,35 @@ export function verifyLicenseOffline(licenseKey: string): LicenseStatus {
 }
 
 /**
- * Verify license key with optional online validation
+ * Verify license key with optional online validation.
+ * When online validation succeeds, its expiresAt/features/plan override the JWT values
+ * because the web app's DB is the source of truth (subscription renewals extend expiry).
  */
 export async function verifyLicense(licenseKey: string): Promise<LicenseStatus> {
-  // Step 1: Offline verification (always)
+  // Step 1: Offline verification (signature + exp with grace period)
   const offlineResult = verifyLicenseOffline(licenseKey);
-  if (!offlineResult.valid) {
-    return offlineResult;
+
+  // If signature is completely invalid (not just expired), check if it's expiry-only
+  if (!offlineResult.valid && !offlineResult.gracePeriod) {
+    const publicKey = process.env.LICENSE_PUBLIC_KEY?.replace(/\\n/g, '\n');
+    if (publicKey) {
+      try {
+        // Verify signature only, ignore expiry — online check will determine real expiry
+        verify(licenseKey, publicKey, {
+          algorithms: ['RS256'],
+          issuer: 'gitlab-ci-dashboard',
+          ignoreExpiration: true,
+        });
+        // Signature is valid but fully expired past grace — try online check below
+      } catch {
+        return offlineResult; // Signature itself is bad, reject
+      }
+    } else {
+      return offlineResult;
+    }
   }
 
-  // Step 2: Online validation (optional, if URL configured)
+  // Step 2: Online validation (if URL configured) — DB is source of truth
   const verificationUrl = process.env.LICENSE_VERIFICATION_URL;
   if (verificationUrl) {
     try {
@@ -208,8 +228,32 @@ export async function verifyLicense(licenseKey: string): Promise<LicenseStatus> 
             error: data.error || 'License revoked or invalid',
           };
         }
+
+        // Online succeeded — use DB values as authoritative (renewal extends expiry)
+        const dbExpiresAt = data.expiresAt ? new Date(data.expiresAt) : null;
+        const now = new Date();
+        const daysRemaining = dbExpiresAt
+          ? Math.ceil((dbExpiresAt.getTime() - now.getTime()) / 86400000)
+          : offlineResult.daysRemaining;
+
+        if (dbExpiresAt && dbExpiresAt < now) {
+          return {
+            ...FREE_LICENSE,
+            valid: false,
+            error: 'License expired. Please renew your subscription.',
+          };
+        }
+
+        return {
+          valid: true,
+          tier: (data.plan || offlineResult.tier) as LicenseTier,
+          maxProjects: data.maxProjects ?? offlineResult.maxProjects,
+          maxUsers: data.maxUsers ?? offlineResult.maxUsers,
+          features: data.features || offlineResult.features,
+          expiresAt: data.expiresAt || offlineResult.expiresAt,
+          daysRemaining,
+        };
       }
-      // If online check fails (network error), fall through to offline result
     } catch {
       logger.warn('Online license validation failed, using offline result');
     }
@@ -293,6 +337,74 @@ async function getLicenseKey(): Promise<string | null> {
   return process.env.LICENSE_KEY || null;
 }
 
+// ── Instance Identification ──────────────────────────────────────────
+
+const INSTANCE_ID_KEY = 'instance_id';
+const DASHBOARD_VERSION = process.env.npm_package_version || '1.3.0';
+
+/**
+ * Get or create a persistent instance ID for this dashboard installation.
+ * Stored in AppSetting so it survives restarts.
+ */
+async function getOrCreateInstanceId(): Promise<string> {
+  try {
+    const existing = await prisma.appSetting.findUnique({
+      where: { key: INSTANCE_ID_KEY },
+    });
+    if (existing?.value) return existing.value;
+  } catch {
+    // DB might not be ready yet
+  }
+
+  const instanceId = `inst_${randomBytes(16).toString('hex')}`;
+  try {
+    await prisma.appSetting.upsert({
+      where: { key: INSTANCE_ID_KEY },
+      update: { value: instanceId },
+      create: { key: INSTANCE_ID_KEY, value: instanceId },
+    });
+  } catch {
+    // Race condition or DB issue — use generated ID anyway
+  }
+  return instanceId;
+}
+
+/**
+ * Call the web app's activation endpoint to register this instance.
+ * Non-blocking — logs errors but never throws.
+ */
+async function callActivationEndpoint(licenseKey: string): Promise<void> {
+  const verificationUrl = process.env.LICENSE_VERIFICATION_URL;
+  if (!verificationUrl) return;
+
+  try {
+    const instanceId = await getOrCreateInstanceId();
+    const res = await fetch(`${verificationUrl}/api/license/activate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        licenseKey,
+        instanceId,
+        instanceName: process.env.DASHBOARD_INSTANCE_NAME || osHostname(),
+        hostname: osHostname(),
+        dashboardVersion: DASHBOARD_VERSION,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (res.ok) {
+      logger.info('License activation registered with cloud');
+    } else {
+      const text = await res.text().catch(() => 'no body');
+      logger.warn('Activation endpoint returned error', { status: res.status, body: text });
+    }
+  } catch (error) {
+    logger.warn('Failed to call activation endpoint', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 /**
  * Save license key to database
  */
@@ -305,6 +417,9 @@ export async function saveLicenseKey(licenseKey: string): Promise<void> {
   });
   await invalidateLicenseCache();
   auditLog('license.activated', { encrypted: !!getEncryptionKey() });
+
+  // Register this instance with the web app (non-blocking)
+  callActivationEndpoint(licenseKey).catch(() => {});
 }
 
 /**
@@ -511,3 +626,57 @@ export const TIER_FEATURES: Record<LicenseTier, {
     ],
   },
 };
+
+// ── Periodic Background Revalidation ─────────────────────────────────
+
+const REVALIDATION_INTERVAL = 30 * 60 * 1000; // 30 minutes
+let revalidationTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Start periodic background license revalidation.
+ * Runs every 30 minutes to ensure license status stays in sync with the web app's DB.
+ * Call once during app startup.
+ */
+export function startLicenseRevalidation(): void {
+  if (revalidationTimer) return; // Already running
+
+  revalidationTimer = setInterval(async () => {
+    try {
+      const licenseKey = await getLicenseKey();
+      if (!licenseKey) return;
+
+      const verificationUrl = process.env.LICENSE_VERIFICATION_URL;
+      if (!verificationUrl) return;
+
+      logger.info('Running periodic license revalidation');
+      await invalidateLicenseCache(); // Force fresh check
+      const status = await verifyLicense(licenseKey);
+
+      // Update cache with fresh result
+      await cacheHelpers.set(CACHE_KEY, status, CACHE_TTL).catch(() => {});
+
+      if (!status.valid) {
+        logger.warn('Periodic revalidation: license no longer valid', { error: status.error });
+      }
+    } catch (error) {
+      logger.warn('Periodic revalidation failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, REVALIDATION_INTERVAL);
+
+  // Don't prevent Node.js process from exiting
+  if (revalidationTimer.unref) {
+    revalidationTimer.unref();
+  }
+}
+
+/**
+ * Stop periodic license revalidation.
+ */
+export function stopLicenseRevalidation(): void {
+  if (revalidationTimer) {
+    clearInterval(revalidationTimer);
+    revalidationTimer = null;
+  }
+}
