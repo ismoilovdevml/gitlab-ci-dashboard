@@ -51,8 +51,9 @@ jobs:
     - name: Run tests
       run: npm run test
 
-    - name: Build application
-      run: npm run build
+    # Builds with a canary GitLab token and fails if it reaches the client bundle
+    - name: Build and check client bundle
+      run: npm run check:bundle
       env:
         NODE_ENV: production
 
