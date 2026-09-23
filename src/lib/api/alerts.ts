@@ -1,54 +1,29 @@
-// API client for alert management
+// Browser client for alert channel settings.
 
 import { csrfFetch } from '@/lib/api/csrf-client';
 
-export interface ChannelConfig {
-  telegram: {
-    enabled: boolean;
-    botToken: string;
-    chatId: string;
-  };
-  slack: {
-    enabled: boolean;
-    webhookUrl: string;
-    channel: string;
-  };
-  discord: {
-    enabled: boolean;
-    webhookUrl: string;
-  };
-  email: {
-    enabled: boolean;
-    smtpHost: string;
-    smtpPort: string;
-    username: string;
-    password: string;
-    from: string;
-    to: string;
-  };
-  webhook: {
-    enabled: boolean;
-    url: string;
-    headers: Record<string, string>;
-  };
-}
-
 export type AlertChannel = 'telegram' | 'slack' | 'discord' | 'email' | 'webhook';
 
-export interface AlertHistory {
-  id: string;
-  timestamp: string;
-  projectName: string;
-  pipelineId: number;
-  status: string;
-  message: string;
-  channel: AlertChannel;
-  sent: boolean;
+/** Channels the server can send a test message through. */
+export const TESTABLE_CHANNELS: readonly AlertChannel[] = ['telegram', 'slack', 'discord'];
+
+export interface StoredChannel {
+  type: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
 }
 
-// Channels API
+async function errorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: unknown };
+    return typeof body.error === 'string' ? body.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export const channelsApi = {
-  async getAll() {
+  async getAll(): Promise<StoredChannel[]> {
     const res = await fetch('/api/channels');
     if (!res.ok) throw new Error('Failed to fetch channels');
     return res.json();
@@ -67,111 +42,19 @@ export const channelsApi = {
     return res.json();
   },
 
-  async delete(type: AlertChannel) {
-    const res = await csrfFetch(`/api/channels?type=${type}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Failed to delete channel');
-    return res.json();
-  },
-
-  async upsert(type: AlertChannel, enabled: boolean, config: unknown) {
-    return channelsApi.save(type, enabled, config);
-  },
-};
-
-// History API
-export const historyApi = {
-  async getRecent(limit = 50): Promise<AlertHistory[]> {
-    const res = await fetch(`/api/history?limit=${limit}`);
-    if (!res.ok) throw new Error('Failed to fetch history');
-    const data = await res.json();
-    return data.data || data;
-  },
-
-  async getAll(limit = 50, cursor?: string): Promise<{
-    data: AlertHistory[];
-    pagination: {
-      hasMore: boolean;
-      nextCursor: string | null;
-      limit: number;
-    };
-  }> {
-    const params = new URLSearchParams({ limit: limit.toString() });
-    if (cursor) params.append('cursor', cursor);
-
-    const res = await fetch(`/api/history?${params}`);
-    if (!res.ok) throw new Error('Failed to fetch history');
-    return res.json();
-  },
-
-  async getFiltered(params: {
-    limit?: number;
-    cursor?: string;
-    search?: string;
-    status?: string;
-    channel?: string;
-    startDate?: string;
-    endDate?: string;
-  }) {
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) queryParams.append(key, value.toString());
-    });
-
-    const res = await fetch(`/api/history?${queryParams.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch history');
-    return res.json();
-  },
-
-  async getAnalytics(days = 30) {
-    const res = await fetch(`/api/history/analytics?days=${days}`);
-    if (!res.ok) throw new Error('Failed to fetch analytics');
-    return res.json();
-  },
-
-  async export(format: 'csv' | 'json', params?: {
-    search?: string;
-    status?: string;
-    channel?: string;
-    startDate?: string;
-    endDate?: string;
-  }) {
-    const queryParams = new URLSearchParams({ format });
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value);
-      });
-    }
-
-    const res = await fetch(`/api/history/export?${queryParams.toString()}`);
-    if (!res.ok) throw new Error('Failed to export history');
-    return res.blob();
-  },
-
-  async add(entry: Omit<AlertHistory, 'id' | 'timestamp'>) {
-    const res = await csrfFetch('/api/history', {
+  /**
+   * Ask the server to send a test message through the saved channel. Only the
+   * type is sent; the server reads the stored config, so the browser never
+   * contacts the chat service itself.
+   */
+  async test(type: AlertChannel): Promise<void> {
+    const res = await csrfFetch('/api/channels/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry),
+      body: JSON.stringify({ type }),
     });
-    if (!res.ok) throw new Error('Failed to add history');
-    return res.json();
-  },
-
-  async delete(id: string) {
-    const res = await csrfFetch(`/api/history?id=${id}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Failed to delete history item');
-    return res.json();
-  },
-
-  async clear() {
-    const res = await csrfFetch('/api/history', {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Failed to clear history');
-    return res.json();
+    if (!res.ok) {
+      throw new Error(await errorMessage(res, 'Failed to send the test message'));
+    }
   },
 };

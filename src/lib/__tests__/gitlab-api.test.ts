@@ -5,6 +5,7 @@ import GitLabAPI, {
   GITLAB_NOT_CONFIGURED_MESSAGE,
   GITLAB_PROXY_BASE_URL,
   invalidateCache,
+  parsePagination,
   resetGitLabAPI,
 } from '@/lib/gitlab-api';
 import { areSegmentsSafe, matchProxyRoute, PROXY_ALLOWLIST } from '@/lib/gitlab/proxy-allowlist';
@@ -70,6 +71,7 @@ const METHOD_CALLS: Record<string, unknown[]> = {
   getProjectBranchesCount: [7],
   getProjectTagsCount: [7],
   getPipelines: [7],
+  getPipelinePage: [7, { page: 2, status: 'failed', updatedAfter: NOW }],
   getAllActivePipelines: [],
   getPipeline: [7, 11],
   retryPipeline: [7, 11],
@@ -208,6 +210,89 @@ describe('GitLabAPI (browser client via the server proxy)', () => {
 
     it.each([0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1])('rejects id %p', (id) => {
       expect(() => apiPath('projects', id)).toThrow('Invalid GitLab id');
+    });
+  });
+
+  describe('getPipelinePage', () => {
+    function withResponse(headers: Record<string, string>) {
+      const api = new GitLabAPI();
+      const seen: InternalAxiosRequestConfig[] = [];
+      const http = (api as unknown as { api: AxiosInstance }).api;
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+        seen.push(config);
+        return { data: [ITEM], status: 200, statusText: 'OK', headers, config };
+      };
+      return { api, seen };
+    }
+
+    it('sends the filters to GitLab and returns the pagination headers', async () => {
+      const { api, seen } = withResponse({
+        'x-page': '2',
+        'x-per-page': '20',
+        'x-total': '55',
+        'x-total-pages': '3',
+        'x-next-page': '3',
+      });
+
+      const result = await api.getPipelinePage(7, { page: 2, status: 'failed', updatedAfter: NOW });
+
+      expect(seen[0].url).toBe('projects/7/pipelines');
+      expect(seen[0].params).toEqual({
+        page: 2,
+        per_page: 20,
+        order_by: 'updated_at',
+        status: 'failed',
+        updated_after: NOW,
+      });
+      expect(result).toEqual({
+        pipelines: [ITEM],
+        page: 2,
+        perPage: 20,
+        total: 55,
+        totalPages: 3,
+        nextPage: 3,
+      });
+    });
+
+    it('omits unset filters and is not served from the cache', async () => {
+      const { api, seen } = withResponse({});
+
+      await api.getPipelinePage(7);
+      await api.getPipelinePage(7);
+
+      expect(seen).toHaveLength(2);
+      expect(seen[0].params).toEqual({ page: 1, per_page: 20, order_by: 'updated_at' });
+    });
+  });
+
+  describe('parsePagination', () => {
+    it('reports unknown totals when GitLab omits the count', () => {
+      expect(parsePagination({ 'x-page': '4', 'x-per-page': '20', 'x-next-page': '5' }, 4, 20)).toEqual({
+        page: 4,
+        perPage: 20,
+        total: null,
+        totalPages: null,
+        nextPage: 5,
+      });
+    });
+
+    it('treats an empty next-page header as the last page', () => {
+      expect(parsePagination({ 'x-total': '41', 'x-total-pages': '3', 'x-next-page': '' }, 3, 20)).toMatchObject({
+        total: 41,
+        totalPages: 3,
+        nextPage: null,
+      });
+    });
+
+    it('falls back to the requested page and ignores malformed values', () => {
+      expect(parsePagination({ 'x-page': 'abc', 'x-total': '-1', 'x-total-pages': '1.5' }, 2, 10)).toEqual({
+        page: 2,
+        perPage: 10,
+        total: null,
+        totalPages: null,
+        nextPage: null,
+      });
+      expect(parsePagination(undefined, 1, 20).total).toBeNull();
     });
   });
 

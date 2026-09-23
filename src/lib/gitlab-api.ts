@@ -422,6 +422,47 @@ export interface InsightsSummary {
   change_failure_rate: number;
 }
 
+export interface PipelinePageOptions {
+  page?: number;
+  perPage?: number;
+  status?: Pipeline['status'];
+  /** ISO 8601 timestamp. */
+  updatedAfter?: string;
+}
+
+export interface Pagination {
+  page: number;
+  perPage: number;
+  /** Null when GitLab omits the count (it does for large result sets). */
+  total: number | null;
+  totalPages: number | null;
+  nextPage: number | null;
+}
+
+export interface PipelinePage extends Pagination {
+  pipelines: Pipeline[];
+}
+
+function headerInt(headers: unknown, name: string): number | null {
+  const bag = headers as Record<string, unknown> | undefined;
+  const raw = bag?.[name];
+  if (typeof raw !== 'string' && typeof raw !== 'number') return null;
+  const value = Number(raw);
+  return raw !== '' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+/** Reads GitLab's offset-pagination headers (axios lower-cases header names). */
+export function parsePagination(headers: unknown, page: number, perPage: number): Pagination {
+  const nextPage = headerInt(headers, 'x-next-page');
+  return {
+    page: headerInt(headers, 'x-page') || page,
+    perPage: headerInt(headers, 'x-per-page') || perPage,
+    total: headerInt(headers, 'x-total'),
+    totalPages: headerInt(headers, 'x-total-pages'),
+    nextPage: nextPage && nextPage > 0 ? nextPage : null,
+  };
+}
+
 class GitLabAPI {
   private api: AxiosInstance;
 
@@ -535,6 +576,27 @@ class GitLabAPI {
       },
       CacheTTL.MEDIUM // 2 minutes cache for pipelines
     );
+  }
+
+  /**
+   * One page of a project's pipelines, filtered by GitLab, with the pagination
+   * headers. Not cached: it backs a browsable list with a refresh button.
+   */
+  async getPipelinePage(
+    projectId: number,
+    options: PipelinePageOptions = {}
+  ): Promise<PipelinePage> {
+    const { page = 1, perPage = 20, status, updatedAfter } = options;
+    const response = await this.api.get<Pipeline[]>(apiPath('projects', projectId, 'pipelines'), {
+      params: {
+        per_page: perPage,
+        page,
+        order_by: 'updated_at',
+        ...(status ? { status } : {}),
+        ...(updatedAfter ? { updated_after: updatedAfter } : {}),
+      },
+    });
+    return { pipelines: response.data, ...parsePagination(response.headers, page, perPage) };
   }
 
   async getAllActivePipelines(): Promise<Pipeline[]> {
