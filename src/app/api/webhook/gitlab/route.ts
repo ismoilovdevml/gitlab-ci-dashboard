@@ -4,6 +4,7 @@ import prisma from '@/lib/db/prisma';
 import { createLogger, logSecurityEvent } from '@/lib/logger';
 import { gitlabWebhookQuerySchema } from '@/lib/validation';
 import { deriveOrgWebhookSecret } from '@/lib/gitlab/webhook-secret';
+import { sendDiscordAlert, sendSlackAlert, sendTelegramAlert } from '@/lib/notifications/senders';
 
 const log = createLogger('GitLabWebhook');
 
@@ -291,35 +292,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Format message based on event type
-    const { title, message, url, status } = formatEventMessage(payload);
+    const alert = formatEventMessage(payload);
 
     // Send alerts through all enabled channels
     for (const channel of channels) {
       try {
         if (channel.type === 'telegram') {
-          await sendTelegramAlert(
-            channel.config as { botToken: string; chatId: string },
-            title,
-            message,
-            url,
-            status
-          );
+          await sendTelegramAlert(channel.config as { botToken: string; chatId: string }, alert);
         } else if (channel.type === 'slack') {
-          await sendSlackAlert(
-            channel.config as { webhookUrl: string },
-            title,
-            message,
-            url,
-            status
-          );
+          await sendSlackAlert(channel.config as { webhookUrl: string }, alert);
         } else if (channel.type === 'discord') {
-          await sendDiscordAlert(
-            channel.config as { webhookUrl: string },
-            title,
-            message,
-            url,
-            status
-          );
+          await sendDiscordAlert(channel.config as { webhookUrl: string }, alert);
         }
 
         await prisma.alertHistory.create({
@@ -512,161 +495,6 @@ function getPipelineId(payload: WebhookPayload): number {
     return payload.deployment_id;
   }
   return 0;
-}
-
-// Helper function to send Telegram alert
-async function sendTelegramAlert(
-  config: { botToken: string; chatId: string },
-  title: string,
-  message: string,
-  url: string,
-  status: string
-) {
-  const statusEmoji = {
-    success: '✅',
-    failed: '❌',
-    running: '🏃',
-    canceled: '🚫',
-    pending: '⏳',
-    created: '🆕',
-    updated: '🔄',
-    opened: '📂',
-    merged: '🔀',
-    closed: '✅',
-    push: '📤',
-  }[status] || '•';
-
-  const text = `${statusEmoji} *${title}*\n\n${message}\n\n🔗 [View Details](${url})`;
-
-  const response = await fetch(
-    `https://api.telegram.org/bot${config.botToken}/sendMessage`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: config.chatId,
-        text,
-        parse_mode: 'Markdown',
-        disable_web_page_preview: false,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.description || 'Telegram API error');
-  }
-}
-
-// Helper function to send Slack alert
-async function sendSlackAlert(
-  config: { webhookUrl: string },
-  title: string,
-  message: string,
-  url: string,
-  status: string
-) {
-  const statusEmoji = {
-    success: '✅',
-    failed: '❌',
-    running: '🏃',
-    canceled: '🚫',
-    pending: '⏳',
-    created: '🆕',
-    updated: '🔄',
-    opened: '📂',
-    merged: '🔀',
-    closed: '✅',
-    push: '📤',
-  }[status] || '•';
-
-  const response = await fetch(config.webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text: `${statusEmoji} ${title}`,
-      blocks: [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `*${title}*\n\n${message}`,
-          },
-        },
-        {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: 'View Details' },
-              url,
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Slack webhook failed');
-  }
-}
-
-// Helper function to send Discord alert
-async function sendDiscordAlert(
-  config: { webhookUrl: string },
-  title: string,
-  message: string,
-  url: string,
-  status: string
-) {
-  const statusEmoji = {
-    success: '✅',
-    failed: '❌',
-    running: '🏃',
-    canceled: '🚫',
-    pending: '⏳',
-    created: '🆕',
-    updated: '🔄',
-    opened: '📂',
-    merged: '🔀',
-    closed: '✅',
-    push: '📤',
-  }[status] || '•';
-
-  const color = {
-    success: 3066993,  // green
-    failed: 15158332,  // red
-    running: 3447003,  // blue
-    canceled: 10070709, // gray
-    pending: 16776960, // yellow
-    created: 5763719,  // green
-    updated: 3447003,  // blue
-    opened: 3447003,   // blue
-    merged: 5793266,   // purple
-    closed: 10070709,  // gray
-    push: 3447003,     // blue
-  }[status] || 9807270;
-
-  const response = await fetch(config.webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      embeds: [
-        {
-          title: `${statusEmoji} ${title}`,
-          description: message,
-          url,
-          color,
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Discord webhook failed');
-  }
 }
 
 // GET endpoint to verify webhook is working
