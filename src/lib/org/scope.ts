@@ -93,13 +93,11 @@ export async function createOrganization(params: {
   name: string;
   slug: string;
   ownerId: string;
-  plan?: string;
 }) {
   const org = await prisma.organization.create({
     data: {
       name: params.name,
       slug: params.slug,
-      plan: params.plan || 'free',
       ownerId: params.ownerId,
       members: {
         create: {

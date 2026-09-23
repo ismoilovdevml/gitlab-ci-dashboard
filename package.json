@@ -19,7 +19,7 @@
     "test:coverage": "jest --coverage",
     "seed": "tsx prisma/seed.ts",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push",
+    "db:migrate": "tsx prisma/migrate.ts",
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
