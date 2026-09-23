@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serialize } from 'cookie';
+import { stringifySetCookie } from 'cookie';
 import { cookies } from 'next/headers';
 import { deleteSession } from '@/lib/auth';
 import { requireCsrf } from '@/lib/csrf';
@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Clear session cookie
-    const cookie = serialize(SESSION_COOKIE_NAME, '', {
+    const cookie = stringifySetCookie({
+      name: SESSION_COOKIE_NAME,
+      value: '',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

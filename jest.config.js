@@ -33,5 +33,20 @@ const customJestConfig = {
   },
 }
 
+// ESM-only dependencies that Jest (CommonJS) must compile. next/jest only lets custom config
+// append ignore patterns, so its node_modules pattern is rewritten after it is resolved.
+const esmOnlyPackages = ['cookie']
+
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(customJestConfig)
+module.exports = async () => {
+  const config = await createJestConfig(customJestConfig)()
+  const extra = esmOnlyPackages.join('|')
+  config.transformIgnorePatterns = config.transformIgnorePatterns.map((pattern) => {
+    if (pattern === '/node_modules/') return `/node_modules/(?!(${extra})/)`
+    if (pattern.startsWith('/node_modules/(?!.pnpm)(?!(')) {
+      return pattern.replace('(?!(', `(?!(${extra}|`)
+    }
+    return pattern
+  })
+  return config
+}
