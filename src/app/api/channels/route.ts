@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { cacheHelpers } from '@/lib/db/redis';
 
+// Channel configs are per organization; a shared key would serve one org's channels to another.
+function channelsCacheKey(organizationId: string | null): string {
+  return `alert:channels:${organizationId ?? 'default'}`;
+}
+
 // GET /api/channels - Get all alert channels
 export async function GET() {
   try {
@@ -11,7 +16,7 @@ export async function GET() {
     }
 
     const channels = await cacheHelpers.getOrSet(
-      'alert:channels',
+      channelsCacheKey(auth.organizationId),
       async () => {
         return await db.alertChannel.findMany({
           orderBy: { updatedAt: 'desc' },
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Invalidate cache
-    await cacheHelpers.invalidate('alert:channels');
+    await cacheHelpers.invalidate(channelsCacheKey(auth.organizationId));
 
     return NextResponse.json(channel);
   } catch (error) {
@@ -110,7 +115,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Invalidate cache
-    await cacheHelpers.invalidate('alert:channels');
+    await cacheHelpers.invalidate(channelsCacheKey(auth.organizationId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

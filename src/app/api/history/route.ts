@@ -5,6 +5,11 @@ import { redis, cacheHelpers } from '@/lib/db/redis';
 const HISTORY_CACHE_PREFIX = 'history:';
 const CACHE_TTL = 60; // 1 minute
 
+// History is per organization, so every cache key carries the org id.
+function orgCachePrefix(organizationId: string | null): string {
+  return `${HISTORY_CACHE_PREFIX}${organizationId ?? 'default'}:`;
+}
+
 // GET /api/history?limit=50&cursor=abc123&search=project&status=success&channel=telegram&startDate=2024-01-01&endDate=2024-12-31
 // Supports cursor-based pagination, search, and filters
 export async function GET(request: NextRequest) {
@@ -28,7 +33,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(isNaN(parsedLimit) ? 50 : parsedLimit, 1), 100);
 
     // Build cache key from query params
-    const cacheKey = `${HISTORY_CACHE_PREFIX}${search || ''}_${status || ''}_${channel || ''}_${startDate || ''}_${endDate || ''}_${cursor || ''}_${limit}`;
+    const cacheKey = `${orgCachePrefix(auth.organizationId)}${search || ''}_${status || ''}_${channel || ''}_${startDate || ''}_${endDate || ''}_${cursor || ''}_${limit}`;
 
     // Try to get from cache
     try {
@@ -150,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     // Clear cache on new entry using SCAN (non-blocking)
     try {
-      await cacheHelpers.invalidate(`${HISTORY_CACHE_PREFIX}*`);
+      await cacheHelpers.invalidate(`${orgCachePrefix(auth.organizationId)}*`);
     } catch (cacheError) {
       console.warn('Cache clear failed:', cacheError);
     }
@@ -188,7 +193,7 @@ export async function DELETE(request: NextRequest) {
 
     // Clear cache using SCAN (non-blocking)
     try {
-      await cacheHelpers.invalidate(`${HISTORY_CACHE_PREFIX}*`);
+      await cacheHelpers.invalidate(`${orgCachePrefix(auth.organizationId)}*`);
     } catch (cacheError) {
       console.warn('Cache clear failed:', cacheError);
     }
