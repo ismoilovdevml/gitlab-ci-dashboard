@@ -8,7 +8,6 @@ import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useConfigLoader } from '@/hooks/useConfigLoader';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
-// import { usePipelineAlerts } from '@/hooks/usePipelineAlerts'; // Disabled - using webhooks now
 
 // Lazy load heavy components
 const PipelinesTab = lazy(() => import('@/components/PipelinesTab'));
@@ -30,7 +29,6 @@ export default function Home() {
   useUserPreferences();
 
   // Enable pipeline alerts monitoring (DISABLED - using webhooks now for instant alerts)
-  // usePipelineAlerts();
 
   useEffect(() => {
     // Set theme attribute and class for proper styling
