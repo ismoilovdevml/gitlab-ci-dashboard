@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import PwaProvider from '@/components/PwaProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -42,7 +43,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <PwaProvider>{children}</PwaProvider>
+      </body>
     </html>
   )
 }
