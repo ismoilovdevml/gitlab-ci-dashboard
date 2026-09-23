@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import packageJson from '../../../../package.json';
+import { logger } from '@/lib/logger';
 
 const GITHUB_REPO = 'ismoilovdevml/gitlab-ci-dashboard';
 
@@ -35,7 +36,7 @@ export async function GET() {
       releaseNotes: data.body
     });
   } catch (error) {
-    console.error('Version check failed:', error);
+    logger.error('Version check failed', { error });
     return NextResponse.json({
       currentVersion: packageJson.version,
       latestVersion: packageJson.version,

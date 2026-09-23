@@ -1,5 +1,6 @@
 import { redis } from './db/redis';
 import { Runner } from './gitlab-api';
+import { logger } from './logger';
 
 const ANALYTICS_CACHE_KEY = 'analytics:dashboard';
 const CACHE_TTL = 300; // 5 minutes
@@ -52,7 +53,7 @@ export async function getCachedAnalytics(): Promise<AnalyticsCacheData | null> {
 
     return data;
   } catch (error) {
-    console.error('Failed to get cached analytics:', error);
+    logger.error('Failed to get cached analytics', { error });
     return null;
   }
 }
@@ -70,7 +71,7 @@ export async function setCachedAnalytics(data: Omit<AnalyticsCacheData, 'timesta
       JSON.stringify(cacheData)
     );
   } catch (error) {
-    console.error('Failed to cache analytics:', error);
+    logger.error('Failed to cache analytics', { error });
   }
 }
 
@@ -78,6 +79,6 @@ export async function clearAnalyticsCache(): Promise<void> {
   try {
     await redis.del(ANALYTICS_CACHE_KEY);
   } catch (error) {
-    console.error('Failed to clear analytics cache:', error);
+    logger.error('Failed to clear analytics cache', { error });
   }
 }

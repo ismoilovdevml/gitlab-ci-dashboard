@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { cookies } from 'next/headers';
 import { requireCsrf } from '@/lib/csrf';
+import { logger } from '@/lib/logger';
 
 const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
 
@@ -12,7 +13,6 @@ export async function GET() {
     const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (!sessionToken) {
-      console.error('[Preferences API] No session cookie found');
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
@@ -37,7 +37,7 @@ export async function GET() {
       notifyPipelineSuccess: user.notifyPipelineSuccess,
     });
   } catch (error) {
-    console.error('Failed to get user preferences:', error);
+    logger.error('Failed to get user preferences', { error });
     return NextResponse.json(
       { error: 'Failed to get preferences' },
       { status: 500 }
@@ -55,7 +55,6 @@ export async function PUT(request: NextRequest) {
     const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (!sessionToken) {
-      console.error('[Preferences API] No session cookie found for PUT');
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
@@ -90,8 +89,6 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    console.log('[Preferences API] Updated preferences for user:', session.userId);
-
     return NextResponse.json({
       success: true,
       preferences: {
@@ -103,7 +100,7 @@ export async function PUT(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Failed to update user preferences:', error);
+    logger.error('Failed to update user preferences', { error });
     return NextResponse.json(
       { error: 'Failed to update preferences' },
       { status: 500 }

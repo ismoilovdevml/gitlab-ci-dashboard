@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { logger } from '../logger';
 
 const globalForRedis = globalThis as unknown as {
   redis: Redis | undefined;
@@ -22,7 +23,7 @@ const getRedisURL = (): string => {
     process.env.NEXT_PHASE !== 'phase-production-build'
   ) {
     if (!password || !host || !port) {
-      console.warn(
+      logger.warn(
         'Redis configuration missing. Set REDIS_URL or REDIS_PASSWORD, REDIS_HOST, REDIS_PORT environment variables.'
       );
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { redis } from '@/lib/db/redis';
+import { logger } from '@/lib/logger';
 
 // Keyed under the org's history prefix so history writes invalidate it (see history/route.ts).
 function analyticsCacheKey(organizationId: string | null, days: number): string {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(JSON.parse(cached));
       }
     } catch (cacheError) {
-      console.warn('Cache read failed:', cacheError);
+      logger.warn('Cache read failed', { error: cacheError });
     }
 
     const startDate = new Date();
@@ -128,12 +129,12 @@ export async function GET(request: NextRequest) {
     try {
       await redis.setex(analyticsCacheKey(auth.organizationId, days), CACHE_TTL, JSON.stringify(analytics));
     } catch (cacheError) {
-      console.warn('Cache write failed:', cacheError);
+      logger.warn('Cache write failed', { error: cacheError });
     }
 
     return NextResponse.json(analytics);
   } catch (error) {
-    console.error('Failed to fetch analytics:', error);
+    logger.error('Failed to fetch analytics', { error });
     return NextResponse.json(
       { error: 'Failed to fetch analytics' },
       { status: 500 }

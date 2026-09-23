@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { randomBytes } from 'crypto';
 import prisma from '@/lib/db/prisma';
+import { logger } from '@/lib/logger';
 
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
@@ -145,7 +146,7 @@ export async function deleteSession(token: string) {
     }
     return true;
   } catch (error) {
-    console.error('Failed to delete session:', error);
+    logger.error('Failed to delete session', { error });
     throw new Error('Failed to invalidate session');
   }
 }

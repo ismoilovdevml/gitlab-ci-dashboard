@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { redis, cacheHelpers } from '@/lib/db/redis';
 import { requireCsrf } from '@/lib/csrf';
+import { logger } from '@/lib/logger';
 
 const HISTORY_CACHE_PREFIX = 'history:';
 const CACHE_TTL = 60; // 1 minute
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(JSON.parse(cached));
       }
     } catch (cacheError) {
-      console.warn('Cache read failed:', cacheError);
+      logger.warn('Cache read failed', { error: cacheError });
     }
 
     // Build where clause for filters
@@ -111,12 +112,12 @@ export async function GET(request: NextRequest) {
     try {
       await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(response));
     } catch (cacheError) {
-      console.warn('Cache write failed:', cacheError);
+      logger.warn('Cache write failed', { error: cacheError });
     }
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Failed to fetch history:', error);
+    logger.error('Failed to fetch history', { error });
     return NextResponse.json(
       { error: 'Failed to fetch history' },
       { status: 500 }
@@ -161,12 +162,12 @@ export async function POST(request: NextRequest) {
     try {
       await cacheHelpers.invalidate(`${orgCachePrefix(auth.organizationId)}*`);
     } catch (cacheError) {
-      console.warn('Cache clear failed:', cacheError);
+      logger.warn('Cache clear failed', { error: cacheError });
     }
 
     return NextResponse.json(entry);
   } catch (error) {
-    console.error('Failed to create history entry:', error);
+    logger.error('Failed to create history entry', { error });
     return NextResponse.json(
       { error: 'Failed to create history entry' },
       { status: 500 }
@@ -202,12 +203,12 @@ export async function DELETE(request: NextRequest) {
     try {
       await cacheHelpers.invalidate(`${orgCachePrefix(auth.organizationId)}*`);
     } catch (cacheError) {
-      console.warn('Cache clear failed:', cacheError);
+      logger.warn('Cache clear failed', { error: cacheError });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete history:', error);
+    logger.error('Failed to delete history', { error });
     return NextResponse.json(
       { error: 'Failed to delete history' },
       { status: 500 }
