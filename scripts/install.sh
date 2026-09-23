@@ -9,7 +9,8 @@
 #   curl -fsSL .../scripts/install.sh | DASHBOARD_PORT=8080 INSTALL_DIR=/opt/cidash bash
 #
 #   INSTALL_DIR     where to install            (default: ./gitlab-ci-dashboard)
-#   DASHBOARD_PORT  host port for the dashboard (default: 3000, or the value in an existing .env)
+#   DASHBOARD_PORT  published port: PORT, IPV4:PORT or [IPV6]:PORT, e.g. 127.0.0.1:3000
+#                   (default: 3000 on all interfaces, or the value in an existing .env)
 #   INSTALL_REF     git branch/tag to fetch     (default: main)
 #   SKIP_START=1    only prepare files; do not check Docker, pull or start
 #   INSTALL_BASE_URL  raw file base URL (default: raw.githubusercontent.com for INSTALL_REF;
@@ -88,7 +89,7 @@ main() {
     port="$existing_port"
     if [ -n "$requested_port" ] && [ "$requested_port" != "$existing_port" ]; then
       warn "DASHBOARD_PORT=$requested_port ignored: existing .env sets DASHBOARD_PORT=$existing_port"
-      warn "Edit $env_file (DASHBOARD_PORT and NEXT_PUBLIC_APP_URL) to change it"
+      warn "Edit DASHBOARD_PORT in $env_file to change it"
     fi
   elif [ -f "$env_file" ]; then
     port="${requested_port:-3000}"
@@ -99,7 +100,9 @@ main() {
   else
     port="${requested_port:-3000}"
   fi
-  validate_port "$port"
+  validate_port_spec "$port"
+  local url
+  url="http://$(reach_host "$port"):${port##*:}"
 
   # Make the published host port configurable in the downloaded compose file.
   if ! grep -q 'DASHBOARD_PORT' "$TMP_DIR/docker-compose.yml"; then
@@ -119,6 +122,10 @@ main() {
   header "Configuring secrets"
   if [ -f "$env_file" ]; then
     success "Keeping existing .env (never overwritten)"
+    if [ -z "$(env_get GITLAB_WEBHOOK_SECRET "$env_file")" ]; then
+      warn "GITLAB_WEBHOOK_SECRET is not set in $env_file, so GitLab webhooks are not authenticated."
+      warn "Add GITLAB_WEBHOOK_SECRET=<output of 'openssl rand -hex 32'> to it, then run: docker compose up -d"
+    fi
   else
     ENV_FILE="$env_file" DASHBOARD_PORT="$port" QUIET=1 \
       bash "$TMP_DIR/generate-env.sh" production
@@ -141,10 +148,10 @@ main() {
     "${COMPOSE[@]}" up -d || fatal "Failed to start. Inspect with: cd $install_dir && ${COMPOSE[*]} logs"
     success "Containers started"
 
-    wait_for_http "http://localhost:$port/login" 180
+    wait_for_http "$url/login" 180
   fi
 
-  print_summary "$install_dir" "$port" "$env_file" "$env_created" "$skip_start" "${COMPOSE[*]}"
+  print_summary "$install_dir" "$url" "$env_file" "$env_created" "$skip_start" "${COMPOSE[*]}"
 }
 
 # ---------------------------------------------------------------------------
@@ -192,13 +199,58 @@ detect_compose() {
   success "Compose: ${COMPOSE[*]}"
 }
 
-validate_port() {
-  case "$1" in
-    '' | *[!0-9]*) fatal "DASHBOARD_PORT must be a number, got '$1'" ;;
+# valid_bind_host HOST -> success for an IPv4 address or a bracketed IPv6 address.
+valid_bind_host() {
+  local h="$1" octet count=0
+  case "$h" in
+    \[*\])
+      h="${h#\[}"
+      h="${h%\]}"
+      case "$h" in
+        *[!0-9A-Fa-f:.]* | '') return 1 ;;
+        *:*) return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *[!0-9.]* | '' | .* | *. | *..*) return 1 ;;
   esac
-  if [ "$1" -lt 1 ] || [ "$1" -gt 65535 ]; then
-    fatal "DASHBOARD_PORT must be between 1 and 65535, got '$1'"
+  local IFS=.
+  for octet in $h; do
+    count=$((count + 1))
+    [ "${#octet}" -le 3 ] && [ "$octet" -le 255 ] || return 1
+  done
+  [ "$count" -eq 4 ]
+}
+
+# validate_port_spec SPEC -> fatal unless SPEC is PORT, IPV4:PORT or [IPV6]:PORT
+# (the host part of a Compose "HOST:PORT:3000" mapping).
+validate_port_spec() {
+  local spec="$1" num="$1" ok=1
+  case "$spec" in
+    *:*)
+      valid_bind_host "${spec%:*}" || ok=0
+      num="${spec##*:}"
+      ;;
+  esac
+  case "$num" in
+    '' | *[!0-9]*) num=0 ;;
+  esac
+  if [ "$ok" != 1 ] || [ "$num" -lt 1 ] || [ "$num" -gt 65535 ]; then
+    fatal "DASHBOARD_PORT must be PORT, IPV4:PORT or [IPV6]:PORT (port 1-65535), got '$spec'"
   fi
+}
+
+# reach_host SPEC -> host to use from this machine to reach the published port.
+reach_host() {
+  case "$1" in
+    *:*)
+      case "${1%:*}" in
+        0.0.0.0 | '[::]') printf 'localhost' ;;
+        *) printf '%s' "${1%:*}" ;;
+      esac
+      ;;
+    *) printf 'localhost' ;;
+  esac
 }
 
 # ---------------------------------------------------------------------------
@@ -241,7 +293,7 @@ wait_for_http() {
   local url="$1" timeout="$2" waited=0
   printf 'Waiting for %s (up to %ss; first start runs database setup)' "$url" "$timeout"
   while [ "$waited" -lt "$timeout" ]; do
-    if curl -fsS -o /dev/null --max-time 5 "$url" 2>/dev/null; then
+    if curl -gfsS -o /dev/null --max-time 5 "$url" 2>/dev/null; then
       printf '\n'
       success "Dashboard is responding"
       return 0
@@ -257,13 +309,13 @@ wait_for_http() {
 }
 
 print_summary() {
-  local dir="$1" port="$2" env_file="$3" created="$4" skipped="$5" compose_cmd="$6"
+  local dir="$1" url="$2" env_file="$3" created="$4" skipped="$5" compose_cmd="$6"
   local user pass
   user="$(env_get ADMIN_USERNAME "$env_file")"
   pass="$(env_get ADMIN_PASSWORD "$env_file")"
 
   header "Done"
-  printf '  %sDashboard URL:%s  http://localhost:%s\n' "$BOLD" "$NC" "$port"
+  printf '  %sDashboard URL:%s  %s\n' "$BOLD" "$NC" "$url"
   printf '  %sUsername:%s       %s\n' "$BOLD" "$NC" "${user:-admin}"
   if [ "$created" = "1" ]; then
     printf '  %sPassword:%s       %s\n' "$BOLD" "$NC" "$pass"
