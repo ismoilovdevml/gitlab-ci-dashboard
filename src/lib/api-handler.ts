@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { logger, logError, logSecurityEvent } from './logger';
 import { rateLimit } from './rate-limit';
-import { validateCSRFToken } from './csrf';
+import { requireCsrf } from './csrf';
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export interface ApiError {
   error: string;
@@ -41,14 +43,6 @@ function getClientIp(request: NextRequest): string {
   }
 
   return 'unknown';
-}
-
-/**
- * Get session ID from request
- */
-function getSessionId(request: NextRequest): string | undefined {
-  const sessionCookie = request.cookies.get('gitlab_dashboard_session');
-  return sessionCookie?.value;
 }
 
 /**
@@ -143,42 +137,8 @@ function handleCSRFValidation(
   requireCSRF: boolean
 ): NextResponse | null {
   if (!requireCSRF) return null;
-
-  // Skip CSRF for GET requests
-  if (request.method === 'GET') return null;
-
-  const csrfToken = request.headers.get('x-csrf-token');
-  const sessionId = getSessionId(request);
-
-  if (!csrfToken) {
-    logSecurityEvent('Missing CSRF token', {
-      path: request.nextUrl.pathname,
-      method: request.method,
-    });
-
-    return createErrorResponse(
-      'CSRF token is required',
-      403,
-      undefined,
-      'CSRF_TOKEN_MISSING'
-    );
-  }
-
-  if (!validateCSRFToken(csrfToken, sessionId)) {
-    logSecurityEvent('Invalid CSRF token', {
-      path: request.nextUrl.pathname,
-      method: request.method,
-    });
-
-    return createErrorResponse(
-      'Invalid CSRF token',
-      403,
-      undefined,
-      'CSRF_TOKEN_INVALID'
-    );
-  }
-
-  return null;
+  if (SAFE_METHODS.has(request.method)) return null;
+  return requireCsrf(request);
 }
 
 /**

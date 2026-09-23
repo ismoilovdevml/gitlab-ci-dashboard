@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createIncident, resolveIncident } from '@/lib/dora-metrics';
 import { logger } from '@/lib/logger';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
+import { requireCsrf } from '@/lib/csrf';
 
 export async function POST(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -54,6 +58,9 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

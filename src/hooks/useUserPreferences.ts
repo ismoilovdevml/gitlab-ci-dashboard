@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import axios from 'axios';
+import { withCsrf } from '@/lib/api/csrf-client';
 
 export function useUserPreferences() {
   const {
@@ -67,15 +68,18 @@ export function useUserPreferences() {
           notifyPipelineSuccess,
         });
 
-        await axios.put('/api/user/preferences', {
-          theme,
-          autoRefresh,
-          refreshInterval,
-          notifyPipelineFailures,
-          notifyPipelineSuccess,
-        }, {
-          withCredentials: true,
-        });
+        await withCsrf((headers) =>
+          axios.put('/api/user/preferences', {
+            theme,
+            autoRefresh,
+            refreshInterval,
+            notifyPipelineFailures,
+            notifyPipelineSuccess,
+          }, {
+            withCredentials: true,
+            headers,
+          })
+        );
 
         console.log('[UserPreferences] ✅ Saved to database');
       } catch (error) {

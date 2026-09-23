@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { cacheHelpers } from '@/lib/db/redis';
 import { getCurrentUser } from '@/lib/auth';
-import { validateCSRFToken } from '@/lib/csrf';
+import { requireCsrf } from '@/lib/csrf';
 
 // GET /api/config - Get user's GitLab configuration
 export async function GET(request: NextRequest) {
@@ -54,17 +54,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // SECURITY FIX: CSRF validation
-    const csrfToken = request.headers.get('x-csrf-token');
-    const cookieStore = await import('next/headers').then(m => m.cookies());
-    const sessionToken = (await cookieStore).get('gitlab_dashboard_session')?.value;
-
-    if (!csrfToken || !validateCSRFToken(csrfToken, sessionToken)) {
-      return NextResponse.json(
-        { error: 'Invalid CSRF token' },
-        { status: 403 }
-      );
-    }
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
 
     const body = await request.json();
 

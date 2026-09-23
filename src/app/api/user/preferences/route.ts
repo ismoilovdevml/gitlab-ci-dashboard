@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { cookies } from 'next/headers';
+import { requireCsrf } from '@/lib/csrf';
 
 const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
 
@@ -47,6 +48,9 @@ export async function GET() {
 // PUT /api/user/preferences - Update user preferences
 export async function PUT(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { csrfFetch } from '@/lib/api/csrf-client';
 import {
   History,
   Search,
@@ -161,7 +162,7 @@ export default function AlertHistory() {
     if (!confirm('Are you sure you want to clear all history? This cannot be undone.')) return;
 
     try {
-      await fetch('/api/history', { method: 'DELETE' });
+      await csrfFetch('/api/history', { method: 'DELETE' });
       setHistory([]);
       loadAnalytics();
       addNotification({
@@ -185,7 +186,7 @@ export default function AlertHistory() {
 
   const handleDeleteItem = async (id: string) => {
     try {
-      await fetch(`/api/history?id=${id}`, { method: 'DELETE' });
+      await csrfFetch(`/api/history?id=${id}`, { method: 'DELETE' });
       setHistory(history.filter(h => h.id !== id));
       loadAnalytics();
       addNotification({

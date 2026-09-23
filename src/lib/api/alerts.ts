@@ -1,5 +1,7 @@
 // API client for alert management
 
+import { csrfFetch } from '@/lib/api/csrf-client';
+
 export interface ChannelConfig {
   telegram: {
     enabled: boolean;
@@ -54,7 +56,7 @@ export const channelsApi = {
 
   async save(type: AlertChannel, enabled: boolean, config: unknown) {
     console.log('[channelsApi.save] Request:', { type, enabled, config });
-    const res = await fetch('/api/channels', {
+    const res = await csrfFetch('/api/channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, enabled, config }),
@@ -71,7 +73,7 @@ export const channelsApi = {
   },
 
   async delete(type: AlertChannel) {
-    const res = await fetch(`/api/channels?type=${type}`, {
+    const res = await csrfFetch(`/api/channels?type=${type}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete channel');
@@ -79,7 +81,7 @@ export const channelsApi = {
   },
 
   async test(channel: AlertChannel) {
-    const res = await fetch('/api/channels/test', {
+    const res = await csrfFetch('/api/channels/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ channel }),
@@ -163,7 +165,7 @@ export const historyApi = {
   },
 
   async add(entry: Omit<AlertHistory, 'id' | 'timestamp'>) {
-    const res = await fetch('/api/history', {
+    const res = await csrfFetch('/api/history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry),
@@ -173,7 +175,7 @@ export const historyApi = {
   },
 
   async delete(id: string) {
-    const res = await fetch(`/api/history?id=${id}`, {
+    const res = await csrfFetch(`/api/history?id=${id}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete history item');
@@ -181,7 +183,7 @@ export const historyApi = {
   },
 
   async clear() {
-    const res = await fetch('/api/history', {
+    const res = await csrfFetch('/api/history', {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to clear history');

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { cacheHelpers } from '@/lib/db/redis';
+import { requireCsrf } from '@/lib/csrf';
 
 // Channel configs are per organization; a shared key would serve one org's channels to another.
 function channelsCacheKey(organizationId: string | null): string {
@@ -38,6 +39,9 @@ export async function GET() {
 // POST /api/channels - Create or update channel
 export async function POST(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -88,6 +92,9 @@ export async function POST(request: NextRequest) {
 // DELETE /api/channels?type=telegram
 export async function DELETE(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
