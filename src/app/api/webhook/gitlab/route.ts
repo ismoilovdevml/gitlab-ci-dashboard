@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 import prisma from '@/lib/db/prisma';
 import { createLogger, logSecurityEvent } from '@/lib/logger';
 import { gitlabWebhookQuerySchema } from '@/lib/validation';
+import { deriveOrgWebhookSecret } from '@/lib/gitlab/webhook-secret';
 
 const log = createLogger('GitLabWebhook');
 
@@ -173,16 +174,6 @@ type WebhookPayload =
   | WikiPayload
   | DeploymentPayload
   | ReleasePayload;
-
-/**
- * Per-organization webhook secret, derived from GITLAB_WEBHOOK_SECRET so no
- * extra storage is needed. One org's secret does not reveal another's.
- */
-function deriveOrgWebhookSecret(globalSecret: string, organizationId: string): string {
-  return createHmac('sha256', globalSecret)
-    .update(`gitlab-webhook-org:${organizationId}`)
-    .digest('hex');
-}
 
 function tokensMatch(expected: string, received: string): boolean {
   const a = Buffer.from(expected, 'utf-8');
