@@ -45,6 +45,27 @@ export const userGitLabConfigUpdateSchema = z.object({
   notifyPipelineSuccess: z.boolean().optional(),
 });
 
+/**
+ * Body of POST /api/gitlab (org GitLab connection). The URL is normalised
+ * separately with normalizeGitLabBaseUrl.
+ */
+export const orgGitLabConnectionSchema = z.object({
+  url: z.string().trim().min(1).max(2048),
+  token: z.string().trim().min(1).max(1024),
+  configId: z.string().trim().min(1).max(128).optional(),
+});
+
+/** Query params of POST /api/webhook/gitlab. */
+export const gitlabWebhookQuerySchema = z.object({
+  org: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9_-]+$/)
+    .optional(),
+});
+
 // ==========================================
 // Alert Channel Schemas
 // ==========================================
