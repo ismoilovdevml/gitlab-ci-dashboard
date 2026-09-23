@@ -1,10 +1,27 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth';
+import { logError, logger } from '@/lib/logger';
+
+const MIN_ADMIN_PASSWORD_LENGTH = 12;
 
 // POST /api/setup - Create initial admin user (one-time setup)
 export async function POST() {
   try {
+    // This endpoint is public, so there must be no fallback password anyone could guess.
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword || adminPassword.length < MIN_ADMIN_PASSWORD_LENGTH) {
+      logger.error('Setup refused: ADMIN_PASSWORD is not set or too short', {
+        minLength: MIN_ADMIN_PASSWORD_LENGTH,
+      });
+      return NextResponse.json(
+        {
+          error: `ADMIN_PASSWORD must be set to at least ${MIN_ADMIN_PASSWORD_LENGTH} characters before running setup.`,
+        },
+        { status: 500 }
+      );
+    }
+
     // Check if any users exist
     const userCount = await prisma.user.count();
 
@@ -15,9 +32,7 @@ export async function POST() {
       );
     }
 
-    // Get admin credentials from environment or request
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123Secure';
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
 
     // Hash password
@@ -48,7 +63,7 @@ export async function POST() {
       email: admin.email,
     });
   } catch (error) {
-    console.error('Setup error:', error);
+    logError(error, { route: '/api/setup' });
     return NextResponse.json(
       { error: 'Failed to create admin user' },
       { status: 500 }
