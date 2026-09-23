@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { createPgAdapter } from './adapter';
 import { validateAdminPassword } from './admin-password';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: createPgAdapter() });
 
 async function main() {
   console.log('🌱 Starting database seed...');

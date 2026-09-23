@@ -1,6 +1,9 @@
 import { randomBytes } from 'crypto';
 import { generateSessionToken, hashPassword, verifyPassword } from '../auth';
 
+// These helpers never touch the database; keep the pg driver out of the jsdom environment.
+jest.mock('@/lib/db/prisma', () => ({ prisma: {}, default: {} }));
+
 // Mock crypto module
 jest.mock('crypto', () => ({
   randomBytes: jest.fn(),

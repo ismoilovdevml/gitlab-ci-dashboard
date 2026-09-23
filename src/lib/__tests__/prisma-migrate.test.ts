@@ -115,9 +115,28 @@ describe('waitForDatabase', () => {
     { name: 'PrismaClientInitializationError' }
   );
 
+  // Shape thrown by PrismaClient 7 with @prisma/adapter-pg for a wrong password.
+  const adapterAuthError = Object.assign(
+    new Error(
+      '\nInvalid `prisma.$queryRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `28P01`. ' +
+        'Message: `password authentication failed for user "gcd"`'
+    ),
+    {
+      name: 'PrismaClientKnownRequestError',
+      code: 'P2010',
+      meta: {
+        driverAdapterError: {
+          name: 'DriverAdapterError',
+          cause: { originalCode: '28P01', kind: 'AuthenticationFailed', user: 'gcd' },
+        },
+      },
+    }
+  );
+
   it.each([
     ['message', authError],
     ['error code', Object.assign(new Error('auth'), { errorCode: 'P1000' })],
+    ['driver adapter error kind', adapterAuthError],
   ])('fails immediately on authentication errors (detected by %s)', async (_label, error) => {
     const deps = {
       query: jest.fn().mockRejectedValue(error) as unknown as MigrateDeps['query'],
@@ -127,6 +146,24 @@ describe('waitForDatabase', () => {
     await expect(waitForDatabase(deps, 30, 10)).rejects.toThrow(/^Cannot connect to the database: /);
     expect(deps.query).toHaveBeenCalledTimes(1);
     expect(deps.sleep).not.toHaveBeenCalled();
+  });
+
+  it('keeps retrying when the driver adapter reports the server as unreachable', async () => {
+    const unreachable = Object.assign(new Error("Raw query failed. Code: `N/A`. Message: `Can't reach database server`"), {
+      code: 'P2010',
+      meta: { driverAdapterError: { cause: { kind: 'DatabaseNotReachable', host: 'db', port: 5432 } } },
+    });
+    const deps = {
+      query: jest
+        .fn()
+        .mockRejectedValueOnce(unreachable)
+        .mockResolvedValue([{ '?column?': 1 }]) as unknown as MigrateDeps['query'],
+      sleep: jest.fn(async () => undefined),
+      log: jest.fn(),
+    };
+    await waitForDatabase(deps, 30, 10);
+    expect(deps.query).toHaveBeenCalledTimes(2);
+    expect(deps.sleep).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -170,17 +207,8 @@ describe('runMigrations', () => {
     await runMigrations(deps, opts);
 
     expect(cliCalls).toEqual([
-      ['db', 'push', '--schema', 'legacy.prisma', '--skip-generate'],
-      [
-        'migrate',
-        'diff',
-        '--from-schema-datasource',
-        'legacy.prisma',
-        '--to-schema-datamodel',
-        'legacy.prisma',
-        '--script',
-        '--exit-code',
-      ],
+      ['db', 'push', '--schema', 'legacy.prisma'],
+      ['migrate', 'diff', '--from-config-datasource', '--to-schema', 'legacy.prisma', '--script', '--exit-code'],
       ['migrate', 'resolve', '--applied', BASELINE_MIGRATION, '--schema', 'schema.prisma'],
       ['migrate', 'deploy', '--schema', 'schema.prisma'],
     ]);
