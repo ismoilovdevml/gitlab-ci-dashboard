@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serialize } from 'cookie';
+import { stringifySetCookie } from 'cookie';
 import prisma from '@/lib/db/prisma';
 import { verifyPassword, createSession } from '@/lib/auth';
 import { errorResponse } from '@/lib/api-handler';
@@ -110,7 +110,9 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
     request.headers.get('x-forwarded-proto') === 'https' ||
     request.url.startsWith('https://');
 
-  const cookie = serialize(SESSION_COOKIE_NAME, session.token, {
+  const cookie = stringifySetCookie({
+    name: SESSION_COOKIE_NAME,
+    value: session.token,
     httpOnly: true,
     secure: isHttps,
     sameSite: 'lax',

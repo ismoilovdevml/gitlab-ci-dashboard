@@ -3,13 +3,18 @@ import { logger } from './logger';
 
 let redis: Redis | null = null;
 
+const legacyRetryStrategy = (times: number): number => Math.min(times * 50, 2000);
+
 function getRedis(): Redis {
   if (!redis) {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
       throw new Error('REDIS_URL is not defined');
     }
-    redis = new Redis(redisUrl);
+    // ioredis 6 defaults to exponential backoff capped at 5s, which with the default
+    // maxRetriesPerRequest (20) holds a request ~70s when Redis is down. Keep the
+    // v5 linear backoff so callers fail (and fall back) within ~10s.
+    redis = new Redis(redisUrl, { retryStrategy: legacyRetryStrategy });
   }
   return redis;
 }
