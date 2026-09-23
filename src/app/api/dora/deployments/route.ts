@@ -5,7 +5,7 @@ import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const { auth } = await getOrgPrisma();
+    const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     await trackDeployment(
+      db,
       projectId,
       projectName,
       pipelineId,

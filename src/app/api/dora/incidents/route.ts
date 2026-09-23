@@ -5,7 +5,7 @@ import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const { auth } = await getOrgPrisma();
+    const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const incidentId = await createIncident(
+      db,
       projectId,
       projectName,
       title,
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { auth } = await getOrgPrisma();
+    const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -68,7 +69,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    await resolveIncident(incidentId, rootCause);
+    await resolveIncident(db, incidentId, rootCause);
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,11 @@
-import prisma from './db/prisma';
+import type prisma from './db/prisma';
 import { logger } from './logger';
+
+/**
+ * Org-scoped Prisma client from getOrgPrisma()/getScopedPrisma(). Callers must pass the
+ * scoped client so reads and writes stay inside the caller's organization.
+ */
+export type DbClient = typeof prisma;
 
 export interface DoraMetrics {
   projectId: number;
@@ -106,6 +112,7 @@ function calculateMedian(values: number[]): number {
  * Calculate DORA metrics for a project
  */
 export async function calculateDoraMetrics(
+  db: DbClient,
   projectId: number,
   projectName: string,
   startDate: Date,
@@ -114,7 +121,7 @@ export async function calculateDoraMetrics(
 ): Promise<DoraMetrics> {
   try {
     // Calculate deployment frequency
-    const deployments = await prisma.deployment.findMany({
+    const deployments = await db.deployment.findMany({
       where: {
         projectId,
         startedAt: {
@@ -146,7 +153,7 @@ export async function calculateDoraMetrics(
     const medianLeadTime = calculateMedian(leadTimes);
 
     // Calculate mean time to recovery
-    const incidents = await prisma.incident.findMany({
+    const incidents = await db.incident.findMany({
       where: {
         projectId,
         detectedAt: {
@@ -175,7 +182,7 @@ export async function calculateDoraMetrics(
 
     // Save to database
     // Upsert DORA metric — find existing record or create new
-    const existing = await prisma.doraMetric.findFirst({
+    const existing = await db.doraMetric.findFirst({
       where: { projectId, period, periodStart: startDate },
     });
 
@@ -191,12 +198,12 @@ export async function calculateDoraMetrics(
     };
 
     if (existing) {
-      await prisma.doraMetric.update({
+      await db.doraMetric.update({
         where: { id: existing.id },
         data: { ...metricData, calculatedAt: new Date() },
       });
     } else {
-      await prisma.doraMetric.create({
+      await db.doraMetric.create({
         data: {
           projectId,
           projectName,
@@ -246,6 +253,7 @@ export async function calculateDoraMetrics(
  * Track deployment from pipeline
  */
 export async function trackDeployment(
+  db: DbClient,
   projectId: number,
   projectName: string,
   pipelineId: number,
@@ -262,7 +270,7 @@ export async function trackDeployment(
       ? Math.round((finishedAt.getTime() - startedAt.getTime()) / 1000)
       : null;
 
-    await prisma.deployment.create({
+    await db.deployment.create({
       data: {
         projectId,
         projectName,
@@ -293,6 +301,7 @@ export async function trackDeployment(
  * Create incident
  */
 export async function createIncident(
+  db: DbClient,
   projectId: number,
   projectName: string,
   title: string,
@@ -302,7 +311,7 @@ export async function createIncident(
   createdBy: string | null
 ): Promise<string> {
   try {
-    const incident = await prisma.incident.create({
+    const incident = await db.incident.create({
       data: {
         projectId,
         projectName,
@@ -332,11 +341,12 @@ export async function createIncident(
  * Resolve incident
  */
 export async function resolveIncident(
+  db: DbClient,
   incidentId: string,
   rootCause?: string
 ): Promise<void> {
   try {
-    const incident = await prisma.incident.findUnique({
+    const incident = await db.incident.findFirst({
       where: { id: incidentId },
     });
 
@@ -349,7 +359,7 @@ export async function resolveIncident(
       (resolvedAt.getTime() - incident.detectedAt.getTime()) / 1000
     );
 
-    await prisma.incident.update({
+    await db.incident.update({
       where: { id: incidentId },
       data: {
         status: 'resolved',
@@ -373,13 +383,14 @@ export async function resolveIncident(
  * Get DORA metrics for multiple projects
  */
 export async function getDoraMetricsSummary(
+  db: DbClient,
   projectIds: number[],
   period: string = 'monthly'
 ): Promise<DoraMetrics[]> {
   const metrics: DoraMetrics[] = [];
 
   for (const projectId of projectIds) {
-    const latestMetric = await prisma.doraMetric.findFirst({
+    const latestMetric = await db.doraMetric.findFirst({
       where: { projectId, period },
       orderBy: { periodStart: 'desc' },
     });

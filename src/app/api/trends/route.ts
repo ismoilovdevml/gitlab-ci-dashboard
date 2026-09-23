@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTrendAnalysis, getMultipleTrends } from '@/lib/trend-analysis';
 import { logger } from '@/lib/logger';
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 
 export async function GET(request: NextRequest) {
   try {
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const metric = searchParams.get('metric');
     const metrics = searchParams.get('metrics');
@@ -16,6 +22,7 @@ export async function GET(request: NextRequest) {
       // Multiple metrics
       const metricList = metrics.split(',');
       const trends = await getMultipleTrends(
+        db,
         metricList,
         projectId ? parseInt(projectId, 10) : undefined,
         startDate ? new Date(startDate) : undefined,
@@ -31,6 +38,7 @@ export async function GET(request: NextRequest) {
     if (metric) {
       // Single metric
       const trend = await getTrendAnalysis(
+        db,
         metric,
         projectId ? parseInt(projectId, 10) : undefined,
         startDate ? new Date(startDate) : undefined,
