@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPI } from '@/lib/gitlab-api';
+import { csrfFetch } from '@/lib/api/csrf-client';
 
 interface AlertChannelDB {
   type: string;
@@ -341,7 +342,7 @@ async function saveAlertHistory(alert: {
   sent: boolean;
 }) {
   try {
-    await fetch('/api/history', {
+    await csrfFetch('/api/history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(alert),

@@ -1,25 +1,27 @@
-import { NextResponse } from 'next/server';
-import { generateCSRFToken } from '@/lib/csrf';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import { generateCSRFToken, CSRF_TOKEN_MAX_AGE_MS, SESSION_COOKIE_NAME } from '@/lib/csrf';
+import { logError } from '@/lib/logger';
 
 /**
  * GET /api/csrf
- * Generate and return a CSRF token for the current session
+ * Issue a CSRF token bound to the caller's session.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get('gitlab_dashboard_session')?.value;
+    const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+    if (!sessionToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // Generate CSRF token with session ID
-    const csrfToken = generateCSRFToken(sessionToken);
-
-    return NextResponse.json({
-      csrfToken,
-      expiresIn: 3600000, // 1 hour in milliseconds
-    });
+    return NextResponse.json(
+      {
+        csrfToken: generateCSRFToken(sessionToken),
+        expiresIn: CSRF_TOKEN_MAX_AGE_MS,
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error) {
-    console.error('Failed to generate CSRF token:', error);
+    logError(error, { path: '/api/csrf' });
     return NextResponse.json(
       { error: 'Failed to generate CSRF token' },
       { status: 500 }

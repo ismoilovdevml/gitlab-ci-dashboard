@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import bcrypt from 'bcryptjs';
 import { logger } from '@/lib/logger';
+import { requireCsrf } from '@/lib/csrf';
 
 const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
 
 export async function POST(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     // Get session from cookie
     const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 

@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import axios from 'axios';
+import { withCsrf, clearCsrfToken } from '@/lib/api/csrf-client';
 import UpdateModal from './UpdateModal';
 
 interface SidebarProps {
@@ -97,7 +98,8 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
-      await axios.post('/api/auth/logout');
+      await withCsrf((headers) => axios.post('/api/auth/logout', null, { headers }));
+      clearCsrfToken();
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);

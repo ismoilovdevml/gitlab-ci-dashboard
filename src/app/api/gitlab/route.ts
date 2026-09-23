@@ -7,6 +7,7 @@ import {
   testGitLabConnection,
 } from '@/lib/gitlab/token';
 import { logger } from '@/lib/logger';
+import { requireCsrf } from '@/lib/csrf';
 
 // GET /api/gitlab — list GitLab connections for the org
 export async function GET() {
@@ -31,6 +32,9 @@ export async function GET() {
 // POST /api/gitlab — add or update a GitLab connection
 export async function POST(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     const { auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -82,6 +86,9 @@ export async function POST(request: NextRequest) {
 // DELETE /api/gitlab — remove a GitLab connection
 export async function DELETE(request: NextRequest) {
   try {
+    const csrfError = requireCsrf(request);
+    if (csrfError) return csrfError;
+
     const { auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
