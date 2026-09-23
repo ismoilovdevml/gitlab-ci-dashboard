@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import prisma from '@/lib/db/prisma';
 import { createLogger, logSecurityEvent } from '@/lib/logger';
+import { gitlabWebhookQuerySchema } from '@/lib/validation';
 
 const log = createLogger('GitLabWebhook');
 
@@ -173,50 +174,109 @@ type WebhookPayload =
   | DeploymentPayload
   | ReleasePayload;
 
-// Validate GitLab webhook token
-async function validateWebhookToken(request: NextRequest): Promise<boolean> {
-  const webhookToken = request.headers.get('X-Gitlab-Token');
-
-  // Get expected token from database or environment
-  const expectedToken = process.env.GITLAB_WEBHOOK_SECRET;
-
-  // If no secret is configured, allow all requests (but log warning)
-  if (!expectedToken) {
-    log.warn('GITLAB_WEBHOOK_SECRET not configured - webhook validation disabled');
-    return true;
-  }
-
-  // Validate token using constant-time comparison to prevent timing attacks
-  if (!webhookToken) {
-    logSecurityEvent('GitLab webhook rejected: missing X-Gitlab-Token header');
-    return false;
-  }
-
-  try {
-    const expected = Buffer.from(expectedToken, 'utf-8');
-    const received = Buffer.from(webhookToken, 'utf-8');
-    if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
-      logSecurityEvent('GitLab webhook rejected: invalid X-Gitlab-Token header');
-      return false;
-    }
-  } catch {
-    logSecurityEvent('GitLab webhook rejected: token validation failed');
-    return false;
-  }
-
-  return true;
+/**
+ * Per-organization webhook secret, derived from GITLAB_WEBHOOK_SECRET so no
+ * extra storage is needed. One org's secret does not reveal another's.
+ */
+function deriveOrgWebhookSecret(globalSecret: string, organizationId: string): string {
+  return createHmac('sha256', globalSecret)
+    .update(`gitlab-webhook-org:${organizationId}`)
+    .digest('hex');
 }
 
-// POST /api/webhook/gitlab - Receive GitLab webhook
+function tokensMatch(expected: string, received: string): boolean {
+  const a = Buffer.from(expected, 'utf-8');
+  const b = Buffer.from(received, 'utf-8');
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/**
+ * Organizations whose channels may be notified. `null` stands for channels
+ * created without an organization (single-tenant installs).
+ */
+type ScopeResult =
+  | { ok: true; organizationIds: Array<string | null> }
+  | { ok: false; status: number; error: string };
+
+const UNAUTHORIZED: ScopeResult = {
+  ok: false,
+  status: 401,
+  error: 'Unauthorized - Invalid webhook token',
+};
+
+/**
+ * Authenticate the request and decide which organization it belongs to.
+ *
+ * - `?org=<id>`: must carry that org's derived secret; only that org is notified.
+ *   The global secret is not accepted here because in a multi-org install it
+ *   may be known to members of every org.
+ * - No `org` (legacy URL): checked against GITLAB_WEBHOOK_SECRET. With at most
+ *   one organization the install is single-tenant, so that org and unowned
+ *   channels are notified. With several orgs the owner cannot be determined, so
+ *   only unowned channels are notified.
+ */
+async function resolveWebhookScope(request: NextRequest): Promise<ScopeResult> {
+  const globalSecret = process.env.GITLAB_WEBHOOK_SECRET;
+  const received = request.headers.get('X-Gitlab-Token');
+
+  const query = gitlabWebhookQuerySchema.safeParse({
+    org: request.nextUrl.searchParams.get('org') ?? undefined,
+  });
+  if (!query.success) {
+    return { ok: false, status: 400, error: 'Invalid org parameter' };
+  }
+  const orgId = query.data.org;
+
+  if (orgId) {
+    if (!globalSecret) {
+      log.warn('Per-organization webhook received but GITLAB_WEBHOOK_SECRET is not configured');
+      return { ok: false, status: 503, error: 'Webhook secret not configured' };
+    }
+    if (!received) {
+      logSecurityEvent('GitLab webhook rejected: missing X-Gitlab-Token header', { orgId });
+      return UNAUTHORIZED;
+    }
+    if (!tokensMatch(deriveOrgWebhookSecret(globalSecret, orgId), received)) {
+      logSecurityEvent('GitLab webhook rejected: invalid X-Gitlab-Token header', { orgId });
+      return UNAUTHORIZED;
+    }
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { id: true },
+    });
+    if (!org) {
+      return { ok: false, status: 404, error: 'Organization not found' };
+    }
+    return { ok: true, organizationIds: [org.id] };
+  }
+
+  if (!globalSecret) {
+    log.warn('GITLAB_WEBHOOK_SECRET not configured - webhook validation disabled');
+  } else if (!received) {
+    logSecurityEvent('GitLab webhook rejected: missing X-Gitlab-Token header');
+    return UNAUTHORIZED;
+  } else if (!tokensMatch(globalSecret, received)) {
+    logSecurityEvent('GitLab webhook rejected: invalid X-Gitlab-Token header');
+    return UNAUTHORIZED;
+  }
+
+  const orgs = await prisma.organization.findMany({ select: { id: true }, take: 2 });
+  if (orgs.length <= 1) {
+    return { ok: true, organizationIds: [null, ...orgs.map((o) => o.id)] };
+  }
+
+  log.warn(
+    'Webhook without org parameter in a multi-organization install; only channels without an organization are notified'
+  );
+  return { ok: true, organizationIds: [null] };
+}
+
+// POST /api/webhook/gitlab[?org=<organizationId>] - Receive GitLab webhook
 export async function POST(request: NextRequest) {
   try {
-    // Validate webhook token first
-    const isValid = await validateWebhookToken(request);
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Invalid webhook token' },
-        { status: 401 }
-      );
+    const scope = await resolveWebhookScope(request);
+    if (!scope.ok) {
+      return NextResponse.json({ error: scope.error }, { status: scope.status });
     }
 
     const payload: WebhookPayload = await request.json();
@@ -224,11 +284,14 @@ export async function POST(request: NextRequest) {
     log.info('Webhook received', {
       event: payload.object_kind,
       projectId: payload.project?.id,
+      organizationIds: scope.organizationIds,
     });
 
-    // Get all enabled channels
     const channels = await prisma.alertChannel.findMany({
-      where: { enabled: true },
+      where: {
+        enabled: true,
+        OR: scope.organizationIds.map((organizationId) => ({ organizationId })),
+      },
     });
 
     if (channels.length === 0) {
@@ -268,9 +331,9 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Save to history
         await prisma.alertHistory.create({
           data: {
+            organizationId: channel.organizationId,
             projectName: payload.project?.name || 'Unknown',
             pipelineId: getPipelineId(payload),
             status: payload.object_kind,
@@ -284,9 +347,9 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         log.error('Failed to send alert', { channel: channel.type, error });
 
-        // Save failed attempt
         await prisma.alertHistory.create({
           data: {
+            organizationId: channel.organizationId,
             projectName: payload.project?.name || 'Unknown',
             pipelineId: getPipelineId(payload),
             status: payload.object_kind,

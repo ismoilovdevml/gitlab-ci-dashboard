@@ -10,6 +10,7 @@ jest.mock('@/lib/db/prisma', () => ({
   default: {
     alertChannel: { findMany: jest.fn() },
     alertHistory: { create: jest.fn() },
+    organization: { findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() },
   },
 }));
 
