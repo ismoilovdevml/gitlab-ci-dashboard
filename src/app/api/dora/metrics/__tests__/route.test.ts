@@ -19,11 +19,6 @@ jest.mock('@/lib/logger', () => ({
   logger: { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() },
 }));
 
-// If the route still consulted the license module, this denial would surface as a 403.
-jest.mock('@/lib/license', () => ({
-  requireFeature: jest.fn().mockResolvedValue({ error: 'Upgrade required', requiredPlan: 'pro' }),
-}));
-
 const mockSummary = getDoraMetricsSummary as jest.Mock;
 const mockCalculate = calculateDoraMetrics as jest.Mock;
 const mockGetOrgPrisma = getOrgPrisma as jest.Mock;
