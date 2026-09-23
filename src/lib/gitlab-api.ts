@@ -1,5 +1,33 @@
-import { AxiosInstance } from 'axios';
-import { createGitLabHttpClient } from './gitlab/http';
+import axios, { AxiosInstance } from 'axios';
+import { withCsrf } from './api/csrf-client';
+
+/**
+ * Server-side proxy for the GitLab REST API (`src/app/api/gitlab/v4`). The
+ * browser never sees the GitLab URL or token; the proxy adds them.
+ */
+export const GITLAB_PROXY_BASE_URL = '/api/gitlab/v4';
+
+// Mirrors the proxy's `:tag` placeholder. Segments are never percent-encoded:
+// the proxy rejects any `%`, so anything outside this set could not be sent anyway.
+const PATH_SEGMENT = /^[A-Za-z0-9_.-]{1,128}$/;
+
+/** Build a proxy path from ids and literal segments, e.g. `projects/12/jobs`. */
+export function apiPath(...segments: Array<string | number>): string {
+  return segments
+    .map((segment) => {
+      if (typeof segment === 'number') {
+        if (!Number.isSafeInteger(segment) || segment < 1) {
+          throw new Error(`Invalid GitLab id: ${segment}`);
+        }
+        return String(segment);
+      }
+      if (!PATH_SEGMENT.test(segment) || segment === '.' || segment === '..') {
+        throw new Error('Invalid GitLab path segment');
+      }
+      return segment;
+    })
+    .join('/');
+}
 
 // Cache TTL constants (in seconds)
 export const CacheTTL = {
@@ -396,29 +424,27 @@ export interface InsightsSummary {
 
 class GitLabAPI {
   private api: AxiosInstance;
-  private baseUrl: string;
-  private token: string;
 
-  /** @throws GitLabUrlError when `baseUrl` is not a valid http(s) base URL. */
-  constructor(baseUrl: string, token: string) {
-    const http = createGitLabHttpClient(baseUrl, token);
-    this.baseUrl = http.baseUrl;
-    this.token = token;
-    this.api = http.client;
+  constructor() {
+    this.api = axios.create({
+      baseURL: GITLAB_PROXY_BASE_URL,
+      allowAbsoluteUrls: false,
+    });
   }
 
-  // Get config
-  getConfig() {
-    return {
-      gitlabUrl: this.baseUrl,
-      token: this.token,
-    };
+  private async post<T>(path: string): Promise<T> {
+    const response = await withCsrf((headers) => this.api.post<T>(path, undefined, { headers }));
+    return response.data;
+  }
+
+  private async delete(path: string): Promise<void> {
+    await withCsrf((headers) => this.api.delete(path, { headers }));
   }
 
   // Health check - no cache
   async checkConnection(): Promise<boolean> {
     try {
-      const response = await this.api.get('/projects', {
+      const response = await this.api.get(apiPath('projects'), {
         params: {
           per_page: 1,
           page: 1,
@@ -435,7 +461,7 @@ class GitLabAPI {
     return cachedFetch(
       `gitlab:projects:${page}:${perPage}`,
       async () => {
-        const response = await this.api.get('/projects', {
+        const response = await this.api.get(apiPath('projects'), {
           params: {
             membership: true,
             order_by: 'last_activity_at',
@@ -451,17 +477,15 @@ class GitLabAPI {
   }
 
   async starProject(projectId: number): Promise<Project> {
-    const response = await this.api.post(`/projects/${projectId}/star`);
-    return response.data;
+    return this.post(apiPath('projects', projectId, 'star'));
   }
 
   async unstarProject(projectId: number): Promise<Project> {
-    const response = await this.api.post(`/projects/${projectId}/unstar`);
-    return response.data;
+    return this.post(apiPath('projects', projectId, 'unstar'));
   }
 
   async getProject(projectId: number): Promise<Project> {
-    const response = await this.api.get(`/projects/${projectId}`, {
+    const response = await this.api.get(apiPath('projects', projectId), {
       params: {
         statistics: true,
       },
@@ -471,7 +495,7 @@ class GitLabAPI {
 
   async getProjectBranchesCount(projectId: number): Promise<number> {
     try {
-      const response = await this.api.get(`/projects/${projectId}/repository/branches`, {
+      const response = await this.api.get(apiPath('projects', projectId, 'repository', 'branches'), {
         params: { per_page: 1 },
       });
       // Get total count from pagination headers
@@ -484,7 +508,7 @@ class GitLabAPI {
 
   async getProjectTagsCount(projectId: number): Promise<number> {
     try {
-      const response = await this.api.get(`/projects/${projectId}/repository/tags`, {
+      const response = await this.api.get(apiPath('projects', projectId, 'repository', 'tags'), {
         params: { per_page: 1 },
       });
       // Get total count from pagination headers
@@ -500,7 +524,7 @@ class GitLabAPI {
     return cachedFetch(
       `gitlab:pipelines:${projectId}:${page}:${perPage}`,
       async () => {
-        const response = await this.api.get(`/projects/${projectId}/pipelines`, {
+        const response = await this.api.get(apiPath('projects', projectId, 'pipelines'), {
           params: {
             per_page: perPage,
             page,
@@ -521,7 +545,7 @@ class GitLabAPI {
         const projects = await this.getProjects(1, 20);
         const pipelinePromises = projects.map(project =>
           // Direct API call without cache for fresh data
-          this.api.get(`/projects/${project.id}/pipelines`, {
+          this.api.get(apiPath('projects', project.id, 'pipelines'), {
             params: {
               per_page: 10,
               page: 1,
@@ -541,18 +565,16 @@ class GitLabAPI {
   }
 
   async getPipeline(projectId: number, pipelineId: number): Promise<Pipeline> {
-    const response = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}`);
+    const response = await this.api.get(apiPath('projects', projectId, 'pipelines', pipelineId));
     return response.data;
   }
 
   async retryPipeline(projectId: number, pipelineId: number): Promise<Pipeline> {
-    const response = await this.api.post(`/projects/${projectId}/pipelines/${pipelineId}/retry`);
-    return response.data;
+    return this.post(apiPath('projects', projectId, 'pipelines', pipelineId, 'retry'));
   }
 
   async cancelPipeline(projectId: number, pipelineId: number): Promise<Pipeline> {
-    const response = await this.api.post(`/projects/${projectId}/pipelines/${pipelineId}/cancel`);
-    return response.data;
+    return this.post(apiPath('projects', projectId, 'pipelines', pipelineId, 'cancel'));
   }
 
   // Jobs
@@ -560,7 +582,7 @@ class GitLabAPI {
     return cachedFetch(
       `gitlab:jobs:${projectId}:${pipelineId}`,
       async () => {
-        const response = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/jobs`);
+        const response = await this.api.get(apiPath('projects', projectId, 'pipelines', pipelineId, 'jobs'));
         return response.data;
       },
       CacheTTL.REALTIME // 10 seconds cache for jobs to catch running jobs in real-time
@@ -568,28 +590,25 @@ class GitLabAPI {
   }
 
   async getJob(projectId: number, jobId: number): Promise<Job> {
-    const response = await this.api.get(`/projects/${projectId}/jobs/${jobId}`);
+    const response = await this.api.get(apiPath('projects', projectId, 'jobs', jobId));
     return response.data;
   }
 
   async getJobTrace(projectId: number, jobId: number): Promise<string> {
-    const response = await this.api.get(`/projects/${projectId}/jobs/${jobId}/trace`);
+    const response = await this.api.get(apiPath('projects', projectId, 'jobs', jobId, 'trace'));
     return response.data;
   }
 
   async retryJob(projectId: number, jobId: number): Promise<Job> {
-    const response = await this.api.post(`/projects/${projectId}/jobs/${jobId}/retry`);
-    return response.data;
+    return this.post(apiPath('projects', projectId, 'jobs', jobId, 'retry'));
   }
 
   async cancelJob(projectId: number, jobId: number): Promise<Job> {
-    const response = await this.api.post(`/projects/${projectId}/jobs/${jobId}/cancel`);
-    return response.data;
+    return this.post(apiPath('projects', projectId, 'jobs', jobId, 'cancel'));
   }
 
   async playJob(projectId: number, jobId: number): Promise<Job> {
-    const response = await this.api.post(`/projects/${projectId}/jobs/${jobId}/play`);
-    return response.data;
+    return this.post(apiPath('projects', projectId, 'jobs', jobId, 'play'));
   }
 
   // Runners - optimized with batch processing
@@ -599,7 +618,7 @@ class GitLabAPI {
       async () => {
         try {
           // Try to get all runners (requires admin access)
-          const response = await this.api.get('/runners/all', {
+          const response = await this.api.get(apiPath('runners', 'all'), {
             params: {
               per_page: perPage,
               page,
@@ -612,7 +631,7 @@ class GitLabAPI {
             runners,
             async (runner) => {
               try {
-                const detailResponse = await this.api.get(`/runners/${runner.id}`);
+                const detailResponse = await this.api.get(apiPath('runners', runner.id));
                 return detailResponse.data as Runner;
               } catch {
                 return runner;
@@ -635,7 +654,7 @@ class GitLabAPI {
               projects,
               async (project) => {
                 try {
-                  const res = await this.api.get(`/projects/${project.id}/runners`, {
+                  const res = await this.api.get(apiPath('projects', project.id, 'runners'), {
                     params: { per_page: 10 }
                   });
                   return res.data as Runner[];
@@ -660,7 +679,7 @@ class GitLabAPI {
               uniqueRunners,
               async (runner) => {
                 try {
-                  const detailResponse = await this.api.get(`/runners/${runner.id}`);
+                  const detailResponse = await this.api.get(apiPath('runners', runner.id));
                   return detailResponse.data as Runner;
                 } catch {
                   return runner;
@@ -681,7 +700,7 @@ class GitLabAPI {
   }
 
   async getRunner(runnerId: number): Promise<Runner> {
-    const response = await this.api.get(`/runners/${runnerId}`);
+    const response = await this.api.get(apiPath('runners', runnerId));
     return response.data;
   }
 
@@ -690,7 +709,7 @@ class GitLabAPI {
       `gitlab:runner:${runnerId}:jobs:${page}:${perPage}`,
       async () => {
         try {
-          const response = await this.api.get(`/runners/${runnerId}/jobs`, {
+          const response = await this.api.get(apiPath('runners', runnerId, 'jobs'), {
             params: {
               per_page: perPage,
               page,
@@ -730,7 +749,7 @@ class GitLabAPI {
 
   // Artifacts
   async getJobArtifacts(projectId: number, page = 1, perPage = 20): Promise<JobArtifact[]> {
-    const response = await this.api.get(`/projects/${projectId}/jobs`, {
+    const response = await this.api.get(apiPath('projects', projectId, 'jobs'), {
       params: {
         per_page: perPage,
         page,
@@ -757,21 +776,13 @@ class GitLabAPI {
     );
   }
 
-  async downloadArtifact(projectId: number, jobId: number): Promise<Blob> {
-    const response = await this.api.get(`/projects/${projectId}/jobs/${jobId}/artifacts`, {
-      responseType: 'blob',
-      maxRedirects: 5, // Follow redirects to CDN
-    });
-    return response.data;
-  }
-
   async deleteArtifacts(projectId: number, jobId: number): Promise<void> {
-    await this.api.delete(`/projects/${projectId}/jobs/${jobId}/artifacts`);
+    await this.delete(apiPath('projects', projectId, 'jobs', jobId, 'artifacts'));
   }
 
   // Container Registry
   async getContainerRepositories(projectId: number): Promise<ContainerRepository[]> {
-    const response = await this.api.get(`/projects/${projectId}/registry/repositories`);
+    const response = await this.api.get(apiPath('projects', projectId, 'registry', 'repositories'));
     return response.data;
   }
 
@@ -797,7 +808,7 @@ class GitLabAPI {
       `gitlab:container:tags:${projectId}:${repositoryId}`,
       async () => {
         const response = await this.api.get(
-          `/projects/${projectId}/registry/repositories/${repositoryId}/tags`
+          apiPath('projects', projectId, 'registry', 'repositories', repositoryId, 'tags')
         );
         return response.data;
       },
@@ -810,13 +821,13 @@ class GitLabAPI {
     repositoryId: number,
     tagName: string
   ): Promise<void> {
-    await this.api.delete(
-      `/projects/${projectId}/registry/repositories/${repositoryId}/tags/${tagName}`
+    await this.delete(
+      apiPath('projects', projectId, 'registry', 'repositories', repositoryId, 'tags', tagName)
     );
   }
 
   async deleteContainerRepository(projectId: number, repositoryId: number): Promise<void> {
-    await this.api.delete(`/projects/${projectId}/registry/repositories/${repositoryId}`);
+    await this.delete(apiPath('projects', projectId, 'registry', 'repositories', repositoryId));
   }
 
   // CI/CD Insights
@@ -966,7 +977,7 @@ class GitLabAPI {
 
         for (const project of projects) {
           try {
-            const jobs = await this.api.get(`/projects/${project.id}/jobs`, {
+            const jobs = await this.api.get(apiPath('projects', project.id, 'jobs'), {
               params: {
                 per_page: 30, // Reduced from 50
                 scope: ['success', 'failed'],
@@ -1221,89 +1232,41 @@ class GitLabAPI {
 }
 
 let gitlabApiInstance: GitLabAPI | null = null;
-let cachedUrl: string | null = null;
-let cachedToken: string | null = null;
 
-// Helper to fetch config from API (browser only)
-async function fetchConfigFromAPI(): Promise<{ url: string; token: string } | null> {
-  if (typeof window === 'undefined') return null;
+export const GITLAB_NOT_CONFIGURED_MESSAGE = 'GitLab token not configured. Please configure it in Settings.';
 
+/** Client for the GitLab proxy. Does not check that GitLab is configured. */
+export function getGitLabAPI(): GitLabAPI {
+  if (!gitlabApiInstance) {
+    gitlabApiInstance = new GitLabAPI();
+  }
+  return gitlabApiInstance;
+}
+
+/**
+ * Client for the GitLab proxy, after checking (via the masked GET /api/config)
+ * that the current user has a GitLab token configured.
+ */
+export async function getGitLabAPIAsync(): Promise<GitLabAPI> {
+  let tokenConfigured = false;
   try {
-    // Use unmask=true to get real token for API calls (not for display)
-    const response = await fetch('/api/config?unmask=true');
-    if (!response.ok) return null;
-
-    const config = await response.json();
-    return {
-      url: config.url || 'https://gitlab.com',
-      token: config.token || '',
-    };
+    const response = await fetch('/api/config', { credentials: 'same-origin', cache: 'no-store' });
+    if (response.ok) {
+      const config = (await response.json()) as { tokenConfigured?: unknown };
+      tokenConfigured = config.tokenConfigured === true;
+    }
   } catch {
-    return null;
-  }
-}
-
-export function getGitLabAPI(customUrl?: string, customToken?: string): GitLabAPI {
-  const url = customUrl ||
-               process.env.GITLAB_URL ||
-               process.env.NEXT_PUBLIC_GITLAB_URL ||
-               'https://gitlab.com';
-
-  const token = customToken ||
-                process.env.GITLAB_TOKEN ||
-                process.env.NEXT_PUBLIC_GITLAB_TOKEN ||
-                '';
-
-  // Recreate instance if URL or token changed
-  if (!gitlabApiInstance || cachedUrl !== url || cachedToken !== token) {
-    if (!token) {
-      throw new Error('GitLab token not configured');
-    }
-
-    gitlabApiInstance = new GitLabAPI(url, token);
-    cachedUrl = url;
-    cachedToken = token;
+    tokenConfigured = false;
   }
 
-  return gitlabApiInstance;
-}
-
-// Async version that fetches from database API
-export async function getGitLabAPIAsync(customUrl?: string, customToken?: string): Promise<GitLabAPI> {
-  let url = customUrl;
-  let token = customToken;
-
-  // If not provided, try to fetch from API
-  if (!url || !token) {
-    const config = await fetchConfigFromAPI();
-    if (config) {
-      url = url || config.url;
-      token = token || config.token;
-    }
+  if (!tokenConfigured) {
+    throw new Error(GITLAB_NOT_CONFIGURED_MESSAGE);
   }
-
-  // Fallback to env vars
-  url = url || process.env.GITLAB_URL || process.env.NEXT_PUBLIC_GITLAB_URL || 'https://gitlab.com';
-  token = token || process.env.GITLAB_TOKEN || process.env.NEXT_PUBLIC_GITLAB_TOKEN || '';
-
-  // Recreate instance if URL or token changed
-  if (!gitlabApiInstance || cachedUrl !== url || cachedToken !== token) {
-    if (!token) {
-      throw new Error('GitLab token not configured. Please configure it in Settings.');
-    }
-
-    gitlabApiInstance = new GitLabAPI(url, token);
-    cachedUrl = url;
-    cachedToken = token;
-  }
-
-  return gitlabApiInstance;
+  return getGitLabAPI();
 }
 
 export function resetGitLabAPI() {
   gitlabApiInstance = null;
-  cachedUrl = null;
-  cachedToken = null;
 }
 
 export default GitLabAPI;

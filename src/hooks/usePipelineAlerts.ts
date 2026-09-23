@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { getGitLabAPI } from '@/lib/gitlab-api';
+import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { csrfFetch } from '@/lib/api/csrf-client';
 
 interface AlertChannelDB {
@@ -88,7 +88,7 @@ export function usePipelineAlerts() {
           }
         });
 
-        const api = getGitLabAPI();
+        const api = await getGitLabAPIAsync();
 
         for (const project of projects) {
           try {

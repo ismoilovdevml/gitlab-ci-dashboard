@@ -117,20 +117,11 @@ export default function ArtifactsTab() {
     setDownloadingIds(prev => new Set(prev).add(group.jobId));
 
     try {
-      const api = await getGitLabAPIAsync();
-      const config = api.getConfig();
-
-      // Use backend API to download artifact
+      // The download route reads the GitLab credentials server-side.
       const filename = group.artifacts[0]?.filename || `artifacts-${group.jobId}.zip`;
       const response = await fetch(
         `/api/artifacts/download?projectId=${group.projectId}&jobId=${group.jobId}&filename=${encodeURIComponent(filename)}`,
-        {
-          method: 'GET',
-          headers: {
-            'x-gitlab-url': config.gitlabUrl,
-            'x-gitlab-token': config.token,
-          },
-        }
+        { method: 'GET', credentials: 'same-origin' }
       );
 
       if (!response.ok) {
