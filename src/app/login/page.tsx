@@ -67,10 +67,10 @@ export default function LoginPage() {
 
       {/* Floating Icons */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-        <GitBranch className="absolute top-20 left-20 w-8 h-8 text-orange-400 animate-float" style={{ animationDelay: '0s', animationDuration: '6s' }} />
-        <Activity className="absolute top-40 right-32 w-10 h-10 text-blue-400 animate-float" style={{ animationDelay: '1s', animationDuration: '7s' }} />
-        <Zap className="absolute bottom-32 left-32 w-6 h-6 text-purple-400 animate-float" style={{ animationDelay: '2s', animationDuration: '5s' }} />
-        <GitBranch className="absolute bottom-20 right-20 w-7 h-7 text-orange-400 animate-float" style={{ animationDelay: '3s', animationDuration: '8s' }} />
+        <GitBranch className="absolute top-20 left-20 w-8 h-8 text-orange-400 motion-safe:animate-float" style={{ animationDelay: '0s', animationDuration: '6s' }} />
+        <Activity className="absolute top-40 right-32 w-10 h-10 text-blue-400 motion-safe:animate-float" style={{ animationDelay: '1s', animationDuration: '7s' }} />
+        <Zap className="absolute bottom-32 left-32 w-6 h-6 text-purple-400 motion-safe:animate-float" style={{ animationDelay: '2s', animationDuration: '5s' }} />
+        <GitBranch className="absolute bottom-20 right-20 w-7 h-7 text-orange-400 motion-safe:animate-float" style={{ animationDelay: '3s', animationDuration: '8s' }} />
       </div>
 
       <div className={`w-full max-w-md relative z-10 transition-all duration-1000 opacity-100 translate-y-0 starting:opacity-0 starting:translate-y-8`}>
@@ -171,43 +171,6 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px) translateX(0px);
-          }
-          25% {
-            transform: translateY(-20px) translateX(10px);
-          }
-          50% {
-            transform: translateY(-10px) translateX(-10px);
-          }
-          75% {
-            transform: translateY(-30px) translateX(5px);
-          }
-        }
-
-        @keyframes shake {
-          0%, 100% {
-            transform: translateX(0);
-          }
-          10%, 30%, 50%, 70%, 90% {
-            transform: translateX(-4px);
-          }
-          20%, 40%, 60%, 80% {
-            transform: translateX(4px);
-          }
-        }
-
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-      `}</style>
     </div>
   );
 }
