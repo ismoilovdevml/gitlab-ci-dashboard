@@ -5,7 +5,6 @@ import Sidebar from '@/components/Sidebar';
 import Overview from '@/components/Overview';
 import NotificationToast from '@/components/NotificationToast';
 import ApiRateLimitIndicator from '@/components/ApiRateLimitIndicator';
-import { LicenseBanner } from '@/components/LicenseBanner';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useConfigLoader } from '@/hooks/useConfigLoader';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -120,7 +119,6 @@ export default function Home() {
     }`}>
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="flex-1 overflow-auto">
-        <LicenseBanner />
         <div className="max-w-7xl mx-auto p-8">
           {renderContent()}
         </div>

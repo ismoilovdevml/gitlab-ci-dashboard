@@ -6,7 +6,7 @@ import { useDashboardStore } from '@/store/dashboard-store';
 import { useTheme } from '@/hooks/useTheme';
 import { channelsApi, historyApi } from '@/lib/api/alerts';
 import WebhookSetup from './WebhookSetup';
-import EnterpriseHistory from './EnterpriseHistory';
+import AlertHistory from './AlertHistory';
 import { TelegramIcon, SlackIcon, DiscordIcon, EmailIcon, WebhookIcon } from './icons/BrandIcons';
 
 type AlertChannel = 'telegram' | 'slack' | 'discord' | 'email' | 'webhook';
@@ -696,7 +696,7 @@ export default function AlertingTab() {
       )}
 
       {/* History Tab */}
-      {activeTab === 'history' && <EnterpriseHistory />}
+      {activeTab === 'history' && <AlertHistory />}
     </div>
   );
 }
