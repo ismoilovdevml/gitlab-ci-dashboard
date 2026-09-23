@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTrendAnalysis, getMultipleTrends } from '@/lib/trend-analysis';
-import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('pipeline_analytics');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const searchParams = request.nextUrl.searchParams;
     const metric = searchParams.get('metric');
     const metrics = searchParams.get('metrics');

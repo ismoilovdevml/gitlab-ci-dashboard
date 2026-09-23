@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { cacheHelpers } from '@/lib/db/redis';
-import { requireFeature } from '@/lib/license';
 
 // GET /api/channels - Get all alert channels
 export async function GET() {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -38,10 +33,6 @@ export async function GET() {
 // POST /api/channels - Create or update channel
 export async function POST(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -92,10 +83,6 @@ export async function POST(request: NextRequest) {
 // DELETE /api/channels?type=telegram
 export async function DELETE(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createIncident, resolveIncident } from '@/lib/dora-metrics';
-import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('dora_metrics');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,10 +53,6 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('dora_metrics');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -94,10 +85,6 @@ export async function PATCH(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('dora_metrics');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

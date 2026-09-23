@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { redis, cacheHelpers } from '@/lib/db/redis';
-import { requireFeature } from '@/lib/license';
 
 const HISTORY_CACHE_PREFIX = 'history:';
 const CACHE_TTL = 60; // 1 minute
@@ -10,10 +9,6 @@ const CACHE_TTL = 60; // 1 minute
 // Supports cursor-based pagination, search, and filters
 export async function GET(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -126,10 +121,6 @@ export async function GET(request: NextRequest) {
 // POST /api/history - Add history entry
 export async function POST(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -177,10 +168,6 @@ export async function POST(request: NextRequest) {
 // DELETE /api/history?id=xyz - Delete single entry or clear all
 export async function DELETE(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
