@@ -9,7 +9,7 @@ const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
 // API routes that don't require authentication
 const PUBLIC_API_ROUTES = ['/api/auth/login', '/api/webhook/gitlab', '/api/setup', '/api/version'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
   const isAuthenticated = !!sessionCookie?.value;

@@ -1,3 +1,6 @@
+// next-pwa generates the service worker through a webpack plugin, so production builds
+// run with `next build --webpack` (see package.json). The plugin is disabled in
+// development, where `next dev --turbopack` is used instead.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
@@ -41,11 +44,8 @@ const withPWA = require('@ducanh2912/next-pwa').default({
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
+  // Keep `next dev` from writing AGENTS.md/CLAUDE.md into the repository root.
+  agentRules: false,
   typescript: {
     // !! WARN !!
     // Dangerously allow production builds to successfully complete even if
