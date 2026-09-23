@@ -55,21 +55,16 @@ export const channelsApi = {
   },
 
   async save(type: AlertChannel, enabled: boolean, config: unknown) {
-    console.log('[channelsApi.save] Request:', { type, enabled, config });
     const res = await csrfFetch('/api/channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, enabled, config }),
     });
-    console.log('[channelsApi.save] Response status:', res.status);
     if (!res.ok) {
       const errorText = await res.text();
-      console.error('[channelsApi.save] Error:', errorText);
       throw new Error(`Failed to save channel: ${errorText}`);
     }
-    const data = await res.json();
-    console.log('[channelsApi.save] Success:', data);
-    return data;
+    return res.json();
   },
 
   async delete(type: AlertChannel) {
@@ -77,16 +72,6 @@ export const channelsApi = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete channel');
-    return res.json();
-  },
-
-  async test(channel: AlertChannel) {
-    const res = await csrfFetch('/api/channels/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel }),
-    });
-    if (!res.ok) throw new Error(`Failed to test ${channel}`);
     return res.json();
   },
 
