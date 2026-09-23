@@ -50,11 +50,3 @@ export async function requireAdmin(): Promise<AuthContext> {
   }
   return auth;
 }
-
-/**
- * Get current user (convenience wrapper, matches old API).
- */
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  const auth = await getAuth();
-  return auth?.user ?? null;
-}

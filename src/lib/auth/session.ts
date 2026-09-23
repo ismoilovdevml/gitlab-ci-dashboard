@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { randomBytes } from 'crypto';
 import prisma from '@/lib/db/prisma';
@@ -6,21 +5,6 @@ import { logger } from '@/lib/logger';
 
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
-
-/**
- * Hash password using bcrypt
- */
-export async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  return bcrypt.hash(password, salt);
-}
-
-/**
- * Verify password against hash
- */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
 
 /**
  * Generate cryptographically secure random session token
@@ -134,7 +118,6 @@ export async function getSession() {
 
 /**
  * Delete session (logout)
- * Fixed: Added error handling for session fixation prevention
  */
 export async function deleteSession(token: string) {
   try {
@@ -195,26 +178,4 @@ export async function getCurrentUser() {
 export async function isAdmin(): Promise<boolean> {
   const user = await getCurrentUser();
   return user?.role === 'admin';
-}
-
-/**
- * Require authentication (throw error if not authenticated)
- */
-export async function requireAuth() {
-  const session = await getSession();
-  if (!session) {
-    throw new Error('Unauthorized');
-  }
-  return session;
-}
-
-/**
- * Require admin role (throw error if not admin)
- */
-export async function requireAdmin() {
-  const session = await requireAuth();
-  if (session.user.role !== 'admin') {
-    throw new Error('Forbidden');
-  }
-  return session;
 }
