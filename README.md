@@ -33,7 +33,8 @@ The installer:
 
 1. checks that Docker, Docker Compose and the Docker daemon are available;
 2. downloads `docker-compose.yml` and `.env.example` into `./gitlab-ci-dashboard`;
-3. generates `.env` with random secrets (an existing `.env` is never overwritten);
+3. generates `.env` with random secrets, including `TOKEN_ENCRYPTION_KEY` and
+   `GITLAB_WEBHOOK_SECRET` (an existing `.env` is never overwritten);
 4. pulls the images and starts PostgreSQL, Redis and the dashboard;
 5. prints the URL and the admin username and password.
 
@@ -46,7 +47,7 @@ curl -fsSL https://raw.githubusercontent.com/ismoilovdevml/gitlab-ci-dashboard/m
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `INSTALL_DIR` | `./gitlab-ci-dashboard` | Where the files are installed |
-| `DASHBOARD_PORT` | `3000` (or the value in an existing `.env`) | Host port for the dashboard |
+| `DASHBOARD_PORT` | `3000` (or the value in an existing `.env`) | Host port for the dashboard: `port` or `host:port` (for example `127.0.0.1:3000`) |
 | `INSTALL_REF` | `main` | Git branch or tag to download files from |
 | `SKIP_START=1` | unset | Only prepare the files; do not check Docker, pull or start |
 
@@ -84,7 +85,8 @@ docker compose up -d
 docker compose logs -f app
 ```
 
-The admin user is created on first start from `ADMIN_USERNAME` / `ADMIN_PASSWORD`. If
+On every start the container applies pending database migrations before the app starts. The
+admin user is created on first start from `ADMIN_USERNAME` / `ADMIN_PASSWORD`. If
 `ADMIN_PASSWORD` is missing, shorter than 12 characters or still starts with `CHANGE_ME`, no admin
 is created — see [Troubleshooting](DEPLOY.md#troubleshooting).
 
@@ -102,14 +104,13 @@ All settings live in `.env` next to `docker-compose.yml`. After editing it, appl
 | `POSTGRES_DB` | no | `gitlab_dashboard` | PostgreSQL database name |
 | `REDIS_PASSWORD` | yes | — | Redis password |
 | `NODE_ENV` | no | `production` | Node.js environment; keep `production` |
-| `DASHBOARD_PORT` | no | `3000` | Host port the dashboard is published on |
-| `NEXT_PUBLIC_APP_URL` | no | `http://localhost:3000` | Public URL of the dashboard. Passed to the container but not currently read by the app |
+| `DASHBOARD_PORT` | no | `3000` | Host port the dashboard is published on: `port` or `host:port` (`127.0.0.1:3000` to listen on localhost only) |
 | `ADMIN_USERNAME` | no | `admin` | Username of the initial admin |
 | `ADMIN_PASSWORD` | yes | — | Password of the initial admin, at least 12 characters, not the `CHANGE_ME` placeholder. Used only when the admin is first created |
 | `ADMIN_EMAIL` | no | `admin@example.com` | Email of the initial admin |
 | `SESSION_SECRET` | yes | — | Signs sessions and CSRF tokens. Use a long random value (`openssl rand -hex 32`) |
 | `TOKEN_ENCRYPTION_KEY` | recommended | — | Encrypts GitLab tokens stored in the database (AES-256-GCM). If unset, tokens are stored in plain text. `openssl rand -hex 32` |
-| `GITLAB_WEBHOOK_SECRET` | recommended | — | Expected `X-Gitlab-Token` of incoming GitLab webhooks. If unset, webhook requests are not authenticated |
+| `GITLAB_WEBHOOK_SECRET` | recommended | — | Webhook secret for the install; per-organization webhook secrets are derived from it. Required for per-organization webhooks; if unset, the plain webhook URL accepts unauthenticated requests |
 
 `DATABASE_URL` and `REDIS_URL` are built by `docker-compose.yml` from the values above; you do not
 set them yourself unless you run the app outside Compose.
@@ -119,41 +120,54 @@ longer be decrypted and have to be entered again.
 
 ## GitLab access token
 
-The GitLab URL and token are set in the dashboard under **Settings**, not in `.env`. Create a
-personal (or group/project) access token in GitLab under **User settings > Access tokens**:
+The GitLab URL and token are set in the dashboard under **Settings**, not in `.env`. The token
+stays on the server: it is stored in PostgreSQL (encrypted with `TOKEN_ENCRYPTION_KEY`) and never
+sent back to the browser. The browser calls the dashboard's `/api/gitlab/v4/...` proxy, which adds
+the token and forwards only an allowlisted set of GitLab API endpoints.
+
+Enter the final GitLab URL, for example `https://gitlab.example.com`. Redirects are refused, so a
+URL that redirects (`http://` to `https://`, or to another host or path) fails the connection test.
+
+Create a personal (or group/project) access token in GitLab under **User settings > Access
+tokens**:
 
 | Scope | What works |
 |-------|------------|
 | `read_api` | Everything read-only: pipelines, jobs, logs, projects, runners, artifacts, registry, analytics |
 | `api` | Additionally: retry and cancel pipelines and jobs, delete artifacts, delete registry tags and repositories, star and unstar projects |
 
-Use `read_api` if you only need monitoring. The token is stored encrypted when
-`TOKEN_ENCRYPTION_KEY` is set.
+Use `read_api` if you only need monitoring.
 
 ## Webhooks and alerts
 
-Alerts are sent when GitLab calls the dashboard's webhook endpoint:
+Alerts are sent when GitLab calls the dashboard's webhook endpoint. Webhooks need
+`GITLAB_WEBHOOK_SECRET` in `.env`. The installer generates it; on a manual install set it yourself
+(`openssl rand -hex 32`) and run `docker compose up -d`.
 
-1. Set a secret in `.env` and apply it:
-   ```bash
-   echo "GITLAB_WEBHOOK_SECRET=$(openssl rand -hex 32)" >> .env
-   docker compose up -d
-   ```
-   The installer does not generate this value; add it yourself. If `.env` already contains a
-   `GITLAB_WEBHOOK_SECRET` line (for example the placeholder from `.env.example`), edit that line
-   instead of appending a second one.
-2. In the dashboard, open **Alerting** and add a Slack, Telegram or Discord channel.
-3. In GitLab, open the project's **Settings > Webhooks** and add a webhook:
-   - **URL:** `https://<your-dashboard-host>/api/webhook/gitlab`
-   - **Secret token:** the value of `GITLAB_WEBHOOK_SECRET`
-   - **Trigger:** Pipeline events (other events such as job, push, merge request, tag, deployment
-     and release are also accepted)
+1. In the dashboard, open **Alerting** and add a Slack, Telegram or Discord channel.
+2. In **Alerting**, open the webhook setup. Organization admins see the webhook URL and secret
+   token for their organization:
+   - **URL:** `https://<your-dashboard-host>/api/webhook/gitlab?org=<organization id>`
+   - **Secret token:** derived from `GITLAB_WEBHOOK_SECRET` for that organization. Only that
+     organization's channels are notified.
 
-GitLab must be able to reach the dashboard; `localhost` URLs do not work for webhooks.
+   An admin who is not a member of any organization sees the plain URL and `GITLAB_WEBHOOK_SECRET`
+   instead.
+3. In GitLab, open the project's **Settings > Webhooks**, paste the URL and secret token, select
+   **Pipeline events** (job, push, merge request, tag, deployment and release events are also
+   accepted) and save.
+
+Single-organization installs can also use the plain URL `https://<your-dashboard-host>/api/webhook/gitlab`
+with `GITLAB_WEBHOOK_SECRET` itself as the secret token. With more than one organization, the plain
+URL only notifies channels that belong to no organization, so use the per-organization URL.
+
+The URL shown in the dashboard is built from the address you opened it with (behind a proxy, from
+`X-Forwarded-Proto` and `Host`). GitLab must be able to reach it; `localhost` does not work.
 
 ## Upgrading
 
-Back up the database first, then pull the new images and recreate the containers:
+Back up the database first, then pull the new images and recreate the containers. Database
+migrations run automatically when the container starts:
 
 ```bash
 docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > backup-$(date +%F).dump
@@ -162,12 +176,12 @@ docker compose up -d
 ```
 
 Re-running the installer does the same and also refreshes `docker-compose.yml`. Restore
-instructions are in [DEPLOY.md](DEPLOY.md#backups).
+instructions and notes for very old installs are in [DEPLOY.md](DEPLOY.md#upgrades).
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the local development setup, checks and pull request
-process.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the local development setup (including
+`npm run db:migrate` and how to add a migration), checks and the pull request process.
 
 ## Security
 
