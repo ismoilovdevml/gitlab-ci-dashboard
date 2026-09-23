@@ -22,7 +22,7 @@ cd gitlab-ci-dashboard
 cp .env.example .env              # fill in the required values
 docker compose up -d postgres redis
 npm install
-npm run db:generate && npm run db:push
+npm run db:generate && npm run db:migrate
 npm run seed                      # creates the admin user from ADMIN_PASSWORD
 npm run dev                       # http://localhost:3000
 ```
@@ -38,6 +38,18 @@ npm run dev                       # http://localhost:3000
 4. Commit with [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`,
    `docs:`, `refactor:`, `test:`, `chore:`, `ci:`.
 5. Open a PR that says `Closes #<issue>` and fill in the template.
+
+## Database changes
+
+The schema is managed with Prisma migrations; containers apply them on startup.
+
+1. Edit `prisma/schema.prisma`.
+2. Create a migration: `npx prisma migrate dev --name <short_name>` (needs a local
+   Postgres user that can create a shadow database).
+3. Commit the new directory under `prisma/migrations/`. Never edit a migration that has
+   already been released; add a new one instead.
+
+Do not use `prisma db push` against a database you want to keep.
 
 ## Code style
 
