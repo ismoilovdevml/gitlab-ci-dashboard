@@ -9,13 +9,6 @@ const nextConfig = {
   output: 'standalone',
   // Keep `next dev` from writing AGENTS.md/CLAUDE.md into the repository root.
   agentRules: false,
-  typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
-    ignoreBuildErrors: true,
-  },
 }
 
 module.exports = withSerwist(nextConfig)
