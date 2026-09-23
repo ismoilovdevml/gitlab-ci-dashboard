@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server';
-import { proxy } from '../proxy';
+import { isPublicStaticPath, proxy } from '../proxy';
 
 const BASE = 'http://localhost:3000';
 const SESSION_COOKIE = 'gitlab_dashboard_session';
@@ -74,6 +74,89 @@ describe('proxy', () => {
         expect(isPassThrough(res)).toBe(true);
       }
     );
+  });
+
+  describe('PWA static files', () => {
+    const publicFiles = [
+      '/sw.js',
+      '/swe-worker-5c72df51bb1f6ee0.js',
+      '/workbox-4754cb34.js',
+      '/manifest.json',
+      '/manifest.webmanifest',
+      '/icons/icon-192x192.png',
+      '/favicon.ico',
+      '/robots.txt',
+      '/serwist/sw.js',
+      '/serwist/sw.js.map',
+      '/serwist/chunks/abc-123.js',
+    ];
+
+    it.each(publicFiles)('serves %s without a session', (path) => {
+      const res = proxy(makeRequest(path));
+      expect(isPassThrough(res)).toBe(true);
+    });
+
+    it.each(publicFiles)('serves %s with a session', (path) => {
+      expect(isPassThrough(proxy(makeRequest(path, { cookie: 'token' })))).toBe(true);
+    });
+
+    it.each([
+      '/sw.js/../api/channels',
+      '/workbox-evil/../api/channels',
+      '/icons/../api/channels',
+      '/serwist/../api/channels',
+      '/api/sw.js',
+      '/api/manifest.json',
+      '/api/workbox-abc.js',
+      '/api/channels/sw.js',
+      '/api/serwist/sw.js',
+      '/api/icons/x.png',
+    ])('keeps %s behind auth', async (path) => {
+      const res = proxy(makeRequest(path));
+      expect(res.status).toBe(401);
+      await expect(res.json()).resolves.toEqual({ error: 'Unauthorized' });
+    });
+
+    it.each([
+      '/workbox-evil/../settings',
+      '/sw.js/../settings',
+      '/sw.js/settings',
+      '/sw.jsx',
+      '/sw.js.map',
+      '/manifest.json/settings',
+      '/workbox-.js',
+      '/workbox-abc.js/settings',
+      '/swe-worker-.js',
+      '/icons',
+      '/icons/',
+      '/icons/a/b.png',
+      '/serwist',
+      '/serwist/',
+      '/settings/sw.js',
+      '/~offline',
+    ])('keeps page %s behind auth', (path) => {
+      const res = proxy(makeRequest(path));
+      expect(res.status).toBe(307);
+      expect(res.headers.get('location')).toBe(`${BASE}/login`);
+    });
+
+    // The URL parser collapses dot segments before the proxy sees them; the matcher must also
+    // reject raw, unnormalised paths in case that ever changes.
+    it.each([
+      '/sw.js/../api/channels',
+      '/workbox-evil/../settings',
+      '/icons/..',
+      '/icons/../settings',
+      '/serwist/../api/channels',
+      '/serwist/./sw.js',
+      '/serwist/sw.js/../../api/channels',
+      '/sw.js%2f..%2fapi%2fchannels',
+      '/sw.js?x=1',
+      '/SW.JS',
+      '//sw.js',
+    ])('rejects raw path %s', (path) => {
+      expect(isPublicStaticPath(path)).toBe(false);
+    });
   });
 
   describe('with a session cookie', () => {
