@@ -81,19 +81,6 @@ services:
       - "${DASHBOARD_PORT:-3000}:3000"
     networks:
       - gitlab-dashboard-network
-    # Run migrations and seed before starting app
-    command: >
-      sh -c "
-        echo '🔍 Waiting for database...' &&
-        while ! nc -z postgres 5432; do sleep 1; done &&
-        echo '✅ Database ready!' &&
-        echo '🔄 Running migrations...' &&
-        npx prisma db push --skip-generate &&
-        echo '🌱 Creating admin user from .env...' &&
-        npx tsx prisma/seed.ts || echo '⚠️  Admin already exists or seed failed' &&
-        echo '🚀 Starting app...' &&
-        node server.js
-      "
 
 volumes:
   postgres_data:

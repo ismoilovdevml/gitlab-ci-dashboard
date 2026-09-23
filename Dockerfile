@@ -47,8 +47,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy node_modules (needed for seeding with tsx and bcryptjs)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# Copy Prisma schema
+# Copy Prisma schema, migrations and the migrate/seed scripts
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chmod=0755 /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 
 USER nextjs
 
@@ -57,5 +58,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Default command (can be overridden by docker-compose)
+# Migrates the database and seeds the admin user before any command, including a
+# `command:` override from older compose files.
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 CMD ["node", "server.js"]
