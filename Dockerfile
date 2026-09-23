@@ -49,6 +49,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Copy Prisma schema, migrations and the migrate/seed scripts
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chmod=0755 /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 
 USER nextjs

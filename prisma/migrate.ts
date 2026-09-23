@@ -64,9 +64,18 @@ export function describeError(error: unknown): string {
   return code ? `${reason} (${code})` : reason;
 }
 
+// With a driver adapter, connection failures arrive as P2010 carrying the adapter's error kind.
+function driverErrorKind(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const meta = (error as { meta?: { driverAdapterError?: { cause?: { kind?: unknown } } } }).meta;
+  const kind = meta?.driverAdapterError?.cause?.kind;
+  return typeof kind === 'string' ? kind : undefined;
+}
+
 function isNonRetryable(error: unknown): boolean {
   const code = errorCode(error);
   if (code && NON_RETRYABLE_CONNECT_ERRORS.has(code)) return true;
+  if (driverErrorKind(error) === 'AuthenticationFailed') return true;
   // Connection failures surface as PrismaClientInitializationError without a code.
   const message = error instanceof Error ? error.message : '';
   return message.includes('Authentication failed against database server');
@@ -153,7 +162,7 @@ async function baselineLegacyInstall(
   // Additive only: without --accept-data-loss Prisma refuses to drop anything.
   runPrisma(
     deps,
-    ['db', 'push', '--schema', legacySchemaPath, '--skip-generate'],
+    ['db', 'push', '--schema', legacySchemaPath],
     'Could not bring the database to the pre-migrate schema without data loss. ' +
       'Back up the database and see the upgrade notes'
   );
@@ -161,9 +170,8 @@ async function baselineLegacyInstall(
   const diffCode = deps.prisma([
     'migrate',
     'diff',
-    '--from-schema-datasource',
-    legacySchemaPath,
-    '--to-schema-datamodel',
+    '--from-config-datasource',
+    '--to-schema',
     legacySchemaPath,
     '--script',
     '--exit-code',
@@ -204,6 +212,8 @@ export async function runMigrations(deps: MigrateDeps, options: MigrateOptions =
 function prismaCli(args: string[]): number {
   const cli = require.resolve('prisma/build/index.js');
   const result = spawnSync(process.execPath, [cli, ...args], {
+    // prisma.config.ts (datasource URL, schema) is looked up in the working directory.
+    cwd: path.join(__dirname, '..'),
     stdio: 'inherit',
     env: { ...process.env, PRISMA_HIDE_UPDATE_MESSAGE: '1' },
   });
@@ -220,7 +230,8 @@ async function main(): Promise<void> {
   }
 
   const { PrismaClient } = await import('@prisma/client');
-  const client = new PrismaClient({ log: [] });
+  const { createPgAdapter } = await import('./adapter');
+  const client = new PrismaClient({ adapter: createPgAdapter(), log: [] });
   try {
     await runMigrations({
       query: <T,>(sql: string) => client.$queryRawUnsafe<T[]>(sql),
