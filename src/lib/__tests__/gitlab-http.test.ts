@@ -5,14 +5,9 @@ import http from 'http';
 import { AddressInfo } from 'net';
 import { createGitLabHttpClient } from '@/lib/gitlab/http';
 import { GitLabUrlError } from '@/lib/gitlab/url';
-import { GitLabClient } from '@/lib/gitlab-client';
 
 jest.mock('@/lib/logger', () => ({
   logger: { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() },
-}));
-jest.mock('@/lib/cache', () => ({
-  cacheWithTTL: jest.fn((_key: string, fn: () => unknown) => fn()),
-  invalidateCacheByTag: jest.fn(),
 }));
 
 const TOKEN = 'glpat-secret-token';
@@ -51,7 +46,7 @@ function json(res: http.ServerResponse, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
-describe('GitLab HTTP clients: URL validation and redirect policy', () => {
+describe('GitLab HTTP client: URL validation and redirect policy', () => {
   let attacker: TestServer;
   let gitlab: TestServer;
 
@@ -76,7 +71,6 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
   afterEach(async () => {
     await attacker.close();
     await gitlab.close();
-    delete (globalThis as { window?: unknown }).window;
   });
 
   describe('invalid base URL', () => {
@@ -84,10 +78,6 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
 
     it.each(invalid)('createGitLabHttpClient rejects %p', (url) => {
       expect(() => createGitLabHttpClient(url, TOKEN)).toThrow(GitLabUrlError);
-    });
-
-    it.each(invalid)('GitLabClient rejects %p', (url) => {
-      expect(() => new GitLabClient({ url, token: TOKEN })).toThrow(GitLabUrlError);
     });
 
     it('normalises the base URL and keeps a relative root', () => {
@@ -100,9 +90,9 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
     });
   });
 
-  describe('server (node http adapter)', () => {
-    it('GitLabClient does not follow a cross-origin redirect', async () => {
-      const client = new GitLabClient({ url: gitlab.url, token: TOKEN });
+  describe('redirects and origin pinning', () => {
+    it('does not follow a cross-origin redirect', async () => {
+      const { client } = createGitLabHttpClient(gitlab.url, TOKEN);
 
       await expect(client.get('/user')).rejects.toThrow();
 
@@ -118,7 +108,7 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
     });
 
     it('never sends the token to an absolute URL passed as the endpoint', async () => {
-      const client = new GitLabClient({ url: gitlab.url, token: TOKEN });
+      const { client } = createGitLabHttpClient(gitlab.url, TOKEN);
 
       await client.get(`${attacker.url}/steal`).catch(() => undefined);
 
@@ -141,45 +131,6 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
 
       expect(res.data).toEqual({ ok: true });
       expect(gitlab.requests[0]).toEqual({ path: '/api/v4/version', token: TOKEN });
-    });
-  });
-
-  describe('browser (fetch adapter with manual redirects)', () => {
-    beforeEach(() => {
-      (globalThis as { window?: unknown }).window = { fetch: globalThis.fetch };
-    });
-
-    it('uses the fetch adapter with redirect: manual', () => {
-      const { client } = createGitLabHttpClient(gitlab.url, TOKEN);
-      expect(client.defaults.adapter).toBe('fetch');
-      expect(client.defaults.fetchOptions).toEqual({ redirect: 'manual' });
-    });
-
-    it('does not follow a cross-origin redirect', async () => {
-      const { client } = createGitLabHttpClient(gitlab.url, TOKEN);
-
-      await expect(client.get('/projects')).rejects.toThrow();
-
-      expect(gitlab.requests).toHaveLength(1);
-      expect(attacker.requests).toHaveLength(0);
-    });
-
-    it('rejects an opaque redirect (status 0) instead of resolving it', async () => {
-      // Browsers answer a redirect: 'manual' fetch with an opaque status-0 response.
-      const { client } = createGitLabHttpClient(gitlab.url, TOKEN);
-      client.interceptors.request.use((config) => {
-        config.adapter = async () => ({
-          data: '',
-          status: 0,
-          statusText: '',
-          headers: {},
-          config,
-          request: {},
-        });
-        return config;
-      });
-
-      await expect(client.get('/projects')).rejects.toThrow(GitLabUrlError);
     });
   });
 });

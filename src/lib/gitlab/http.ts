@@ -4,18 +4,12 @@ import { GitLabUrlError, isSameOrigin, normalizeGitLabBaseUrl } from './url';
 /**
  * Axios instance for the GitLab REST API that can never send the
  * PRIVATE-TOKEN header to an origin other than the configured one.
- *
- * Imported by both server code and browser bundles, so it must stay free of
- * Node-only modules.
+ * Server-only: GitLab is reached through the API routes, never from the browser.
  */
 export interface GitLabHttpClient {
   /** Normalised GitLab base URL, e.g. `https://gitlab.example.com/gitlab`. */
   baseUrl: string;
   client: AxiosInstance;
-}
-
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.fetch === 'function';
 }
 
 export function createGitLabHttpClient(
@@ -31,11 +25,8 @@ export function createGitLabHttpClient(
     ...options,
     baseURL: `${baseUrl}/api/v4`,
     allowAbsoluteUrls: false,
-    // Node http adapter: return 3xx as-is instead of following it.
+    // Return 3xx as-is instead of following it.
     maxRedirects: 0,
-    // XHR follows redirects transparently and keeps custom headers, so in the
-    // browser use fetch with manual redirects (yields an opaque status-0 response).
-    ...(isBrowser() ? { adapter: 'fetch' as const, fetchOptions: { redirect: 'manual' as const } } : {}),
     headers: {
       ...options.headers,
       'PRIVATE-TOKEN': token,
@@ -50,8 +41,7 @@ export function createGitLabHttpClient(
   });
 
   client.interceptors.response.use((response) => {
-    // axios resolves status 0 (opaque redirect) as success; treat any redirect as an error.
-    if (response.status === 0 || (response.status >= 300 && response.status < 400)) {
+    if (response.status >= 300 && response.status < 400) {
       throw new GitLabUrlError('GitLab responded with a redirect; redirects are not followed');
     }
     return response;
