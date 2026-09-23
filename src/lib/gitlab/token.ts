@@ -5,8 +5,20 @@ import { logger } from '@/lib/logger';
 const ALGORITHM = 'aes-256-gcm';
 const TOKEN_SALT = 'gitlab-ci-dashboard-token-v1';
 
+let legacyKeyWarned = false;
+
 function getTokenEncryptionKey(): Buffer | null {
-  const secret = process.env.TOKEN_ENCRYPTION_KEY || process.env.LICENSE_ENCRYPTION_KEY;
+  let secret = process.env.TOKEN_ENCRYPTION_KEY;
+  if (!secret && process.env.LICENSE_ENCRYPTION_KEY) {
+    // Older installs encrypted tokens with LICENSE_ENCRYPTION_KEY; keep reading them.
+    secret = process.env.LICENSE_ENCRYPTION_KEY;
+    if (!legacyKeyWarned) {
+      legacyKeyWarned = true;
+      logger.warn(
+        'LICENSE_ENCRYPTION_KEY is deprecated for GitLab token encryption; set TOKEN_ENCRYPTION_KEY to the same value'
+      );
+    }
+  }
   if (!secret) return null;
   return scryptSync(secret, TOKEN_SALT, 32);
 }
@@ -52,7 +64,7 @@ export function decryptToken(stored: string): string {
 }
 
 /**
- * Store a GitLab token for an organization (cloud mode).
+ * Store a GitLab token for an organization.
  * Encrypts the token at rest.
  */
 export async function storeOrgGitLabToken(opts: {
@@ -159,7 +171,7 @@ export async function testGitLabConnection(url: string, token: string): Promise<
     }
 
     return { success: false, error: `GitLab returned status ${res.status}` };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Connection failed — check the URL' };
   }
 }
