@@ -2,42 +2,64 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { cacheHelpers } from '@/lib/db/redis';
 import { requireCsrf } from '@/lib/csrf';
-import { logger } from '@/lib/logger';
+import { createLogger, logSecurityEvent } from '@/lib/logger';
+import { alertChannelSaveSchema, alertChannelTypeSchema } from '@/lib/validation';
+import { buildChannelConfig, ChannelSaveError, toMaskedChannel, type MaskedChannel } from '@/lib/notifications';
+import { canManageAlertChannels } from '@/lib/notifications/access';
+import type { AuthContext } from '@/lib/auth/types';
+import type { Prisma } from '@prisma/client';
+
+const log = createLogger('Channels');
+
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 // Channel configs are per organization; a shared key would serve one org's channels to another.
+// Only masked configs are cached, so secrets never reach Redis through this route.
 function channelsCacheKey(organizationId: string | null): string {
-  return `alert:channels:${organizationId ?? 'default'}`;
+  return `alert:channels:masked:${organizationId ?? 'default'}`;
 }
 
-// GET /api/channels - Get all alert channels
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: NO_STORE });
+}
+
+async function forbidUnlessManager(auth: AuthContext, action: string): Promise<NextResponse | null> {
+  if (await canManageAlertChannels(auth)) return null;
+  logSecurityEvent(`Alert channel ${action} by non-admin`, {
+    userId: auth.user.id,
+    organizationId: auth.organizationId,
+  });
+  return json({ error: 'Forbidden - organization admin role required' }, 403);
+}
+
+// GET /api/channels - Alert channels with secrets masked, and whether the caller may change them
 export async function GET() {
   try {
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return json({ error: 'Unauthorized' }, 401);
     }
 
-    const channels = await cacheHelpers.getOrSet(
-      channelsCacheKey(auth.organizationId),
-      async () => {
-        return await db.alertChannel.findMany({
-          orderBy: { updatedAt: 'desc' },
-        });
-      },
-      60 // Cache for 60 seconds
-    );
+    const [channels, canManage] = await Promise.all([
+      cacheHelpers.getOrSet<MaskedChannel[]>(
+        channelsCacheKey(auth.organizationId),
+        async () => {
+          const rows = await db.alertChannel.findMany({ orderBy: { updatedAt: 'desc' } });
+          return rows.map(toMaskedChannel);
+        },
+        60
+      ),
+      canManageAlertChannels(auth),
+    ]);
 
-    return NextResponse.json(channels);
+    return json({ channels, canManage });
   } catch (error) {
-    logger.error('Failed to fetch channels', { error });
-    return NextResponse.json(
-      { error: 'Failed to fetch channels' },
-      { status: 500 }
-    );
+    log.error('Failed to fetch channels', { error });
+    return json({ error: 'Failed to fetch channels' }, 500);
   }
 }
 
-// POST /api/channels - Create or update channel
+// POST /api/channels - Create or update a channel. Masked or blank secrets keep the stored value.
 export async function POST(request: NextRequest) {
   try {
     const csrfError = requireCsrf(request);
@@ -45,48 +67,51 @@ export async function POST(request: NextRequest) {
 
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return json({ error: 'Unauthorized' }, 401);
     }
 
-    const body = await request.json();
-    const { type, enabled, config } = body;
+    const forbidden = await forbidUnlessManager(auth, 'change');
+    if (forbidden) return forbidden;
 
-    if (!type || !config) {
-      return NextResponse.json(
-        { error: 'Missing required fields: type, config' },
-        { status: 400 }
+    const body: unknown = await request.json().catch(() => null);
+    const parsed = alertChannelSaveSchema.safeParse(body);
+    if (!parsed.success) {
+      return json({ error: 'Invalid request: type and config are required' }, 400);
+    }
+    const { type, config: submitted } = parsed.data;
+
+    const existing = await db.alertChannel.findFirst({ where: { type } });
+
+    let saved: { enabled: boolean; config: Record<string, unknown> };
+    try {
+      saved = buildChannelConfig(
+        type,
+        parsed.data.enabled ?? existing?.enabled ?? false,
+        submitted,
+        existing?.config ?? null
       );
+    } catch (error) {
+      if (error instanceof ChannelSaveError) {
+        return json({ error: error.message }, 400);
+      }
+      throw error;
     }
 
-    // Check if channel exists
-    const existing = await db.alertChannel.findFirst({
-      where: { type },
-    });
+    const channel = existing
+      ? await db.alertChannel.update({
+          where: { id: existing.id },
+          data: { enabled: saved.enabled, config: saved.config as Prisma.InputJsonObject },
+        })
+      : await db.alertChannel.create({
+          data: { type, enabled: saved.enabled, config: saved.config as Prisma.InputJsonObject },
+        });
 
-    let channel;
-    if (existing) {
-      // Update existing channel
-      channel = await db.alertChannel.update({
-        where: { id: existing.id },
-        data: { enabled, config, updatedAt: new Date() },
-      });
-    } else {
-      // Create new channel
-      channel = await db.alertChannel.create({
-        data: { type, enabled: enabled ?? false, config },
-      });
-    }
-
-    // Invalidate cache
     await cacheHelpers.invalidate(channelsCacheKey(auth.organizationId));
 
-    return NextResponse.json(channel);
+    return json(toMaskedChannel(channel));
   } catch (error) {
-    logger.error('Failed to save channel', { error });
-    return NextResponse.json(
-      { error: 'Failed to save channel' },
-      { status: 500 }
-    );
+    log.error('Failed to save channel', { error });
+    return json({ error: 'Failed to save channel' }, 500);
   }
 }
 
@@ -98,39 +123,27 @@ export async function DELETE(request: NextRequest) {
 
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return json({ error: 'Unauthorized' }, 401);
     }
 
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
+    const forbidden = await forbidUnlessManager(auth, 'delete');
+    if (forbidden) return forbidden;
 
-    if (!type) {
-      return NextResponse.json(
-        { error: 'Missing channel type' },
-        { status: 400 }
-      );
+    const type = alertChannelTypeSchema.safeParse(request.nextUrl.searchParams.get('type'));
+    if (!type.success) {
+      return json({ error: 'Missing or unknown channel type' }, 400);
     }
 
-    // Find channel by type first
-    const channel = await db.alertChannel.findFirst({
-      where: { type },
-    });
-
+    const channel = await db.alertChannel.findFirst({ where: { type: type.data } });
     if (channel) {
-      await db.alertChannel.delete({
-        where: { id: channel.id },
-      });
+      await db.alertChannel.delete({ where: { id: channel.id } });
     }
 
-    // Invalidate cache
     await cacheHelpers.invalidate(channelsCacheKey(auth.organizationId));
 
-    return NextResponse.json({ success: true });
+    return json({ success: true });
   } catch (error) {
-    logger.error('Failed to delete channel', { error });
-    return NextResponse.json(
-      { error: 'Failed to delete channel' },
-      { status: 500 }
-    );
+    log.error('Failed to delete channel', { error });
+    return json({ error: 'Failed to delete channel' }, 500);
   }
 }

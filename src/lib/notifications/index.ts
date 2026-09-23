@@ -8,6 +8,7 @@ import {
 } from './senders';
 
 export * from './senders';
+export * from './channel-config';
 
 /** Channel types that alerts are delivered to (see the GitLab webhook route). */
 export const DELIVERABLE_CHANNEL_TYPES = ['telegram', 'slack', 'discord'] as const;
@@ -43,6 +44,10 @@ function webhookUrl(config: Record<string, unknown>): string {
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
     throw new ChannelConfigError('Webhook URL must use http or https');
+  }
+  // Configs saved before save-time validation existed may still carry these.
+  if (url.username || url.password) {
+    throw new ChannelConfigError('Webhook URL must not contain credentials');
   }
   return url.toString();
 }

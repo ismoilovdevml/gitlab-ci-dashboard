@@ -7,11 +7,31 @@ export type AlertChannel = 'telegram' | 'slack' | 'discord' | 'email' | 'webhook
 /** Channels the server can send a test message through. */
 export const TESTABLE_CHANNELS: readonly AlertChannel[] = ['telegram', 'slack', 'discord'];
 
+/**
+ * Channel as returned by the server. Secret fields (bot token, webhook URLs,
+ * SMTP credentials) are masked, e.g. `***abcd`; sending a secret back blank
+ * keeps the stored value.
+ */
 export interface StoredChannel {
   type: string;
   enabled: boolean;
   config: Record<string, unknown>;
 }
+
+export interface ChannelList {
+  channels: StoredChannel[];
+  /** Whether the caller may create, change or delete channels (organization owner/admin). */
+  canManage: boolean;
+}
+
+/** Config fields the server never returns in clear text. */
+export const SECRET_FIELDS: Record<AlertChannel, readonly string[]> = {
+  telegram: ['botToken'],
+  slack: ['webhookUrl'],
+  discord: ['webhookUrl'],
+  email: ['username', 'password'],
+  webhook: ['url'],
+};
 
 async function errorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -23,21 +43,21 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
 }
 
 export const channelsApi = {
-  async getAll(): Promise<StoredChannel[]> {
+  async getAll(): Promise<ChannelList> {
     const res = await fetch('/api/channels');
     if (!res.ok) throw new Error('Failed to fetch channels');
     return res.json();
   },
 
-  async save(type: AlertChannel, enabled: boolean, config: unknown) {
+  /** Save a channel. Leave a secret field blank to keep the stored value. */
+  async save(type: AlertChannel, enabled: boolean, config: Record<string, unknown>): Promise<StoredChannel> {
     const res = await csrfFetch('/api/channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, enabled, config }),
     });
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Failed to save channel: ${errorText}`);
+      throw new Error(await errorMessage(res, 'Failed to save channel configuration'));
     }
     return res.json();
   },

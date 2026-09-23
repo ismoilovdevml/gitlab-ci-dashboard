@@ -70,45 +70,109 @@ export const gitlabWebhookQuerySchema = z.object({
 // Alert Channel Schemas
 // ==========================================
 
+/**
+ * An http(s) URL without embedded credentials, normalised by the URL parser.
+ * Alerts are POSTed to these URLs from the server.
+ */
+export const httpUrlSchema = z
+  .string()
+  .trim()
+  .min(1, 'URL is required')
+  .max(2048)
+  .transform((value, ctx) => {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'Must be a valid URL' });
+      return z.NEVER;
+    }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      ctx.addIssue({ code: 'custom', message: 'URL must use http or https' });
+      return z.NEVER;
+    }
+    if (url.username || url.password) {
+      ctx.addIssue({ code: 'custom', message: 'URL must not contain credentials' });
+      return z.NEVER;
+    }
+    return url.toString();
+  });
+
+export const ALERT_CHANNEL_TYPES = ['telegram', 'slack', 'discord', 'email', 'webhook'] as const;
+export const alertChannelTypeSchema = z.enum(ALERT_CHANNEL_TYPES);
+
 export const telegramConfigSchema = z.object({
-  botToken: z.string().min(10),
-  chatId: z.string().min(1),
+  botToken: z
+    .string()
+    .trim()
+    .regex(/^\d{3,20}:[A-Za-z0-9_-]{20,100}$/, 'Bot token must look like 123456789:ABC...'),
+  // Numeric chat/group/channel id, or @username of a public channel.
+  chatId: z
+    .string()
+    .trim()
+    .regex(/^(-?\d{1,20}|@[A-Za-z][A-Za-z0-9_]{3,31})$/, 'Chat ID must be a number or @channelname'),
 });
 
 export const slackConfigSchema = z.object({
-  webhookUrl: z.string().url(),
-  channel: z.string().optional(),
+  webhookUrl: httpUrlSchema,
+  channel: z.string().trim().max(80).optional(),
 });
 
 export const discordConfigSchema = z.object({
-  webhookUrl: z.string().url(),
+  webhookUrl: httpUrlSchema,
 });
 
+const emailListSchema = z
+  .string()
+  .trim()
+  .min(1, 'At least one recipient is required')
+  .max(2048)
+  .transform((value, ctx) => {
+    const addresses = value.split(',').map((a) => a.trim()).filter(Boolean);
+    for (const address of addresses) {
+      if (!z.string().email().safeParse(address).success) {
+        ctx.addIssue({ code: 'custom', message: `Invalid recipient: ${address}` });
+        return z.NEVER;
+      }
+    }
+    return addresses.join(', ');
+  });
+
 export const emailConfigSchema = z.object({
-  smtpHost: z.string(),
-  smtpPort: z.number().min(1).max(65535),
-  smtpUser: z.string(),
-  smtpPassword: z.string(),
-  from: z.string().email(),
-  to: z.array(z.string().email()),
+  smtpHost: z
+    .string()
+    .trim()
+    .min(1, 'SMTP host is required')
+    .max(253)
+    .regex(/^[A-Za-z0-9.-]+$/, 'SMTP host must be a hostname or IP address'),
+  smtpPort: z.coerce.number().int().min(1).max(65535),
+  username: z.string().trim().max(256).optional(),
+  password: z.string().max(1024).optional(),
+  from: z.string().trim().email(),
+  to: emailListSchema,
 });
 
 export const webhookConfigSchema = z.object({
-  url: z.string().url(),
-  method: z.enum(['GET', 'POST', 'PUT']).default('POST'),
-  headers: z.record(z.string(), z.string()).optional(),
+  url: httpUrlSchema,
 });
 
-export const alertChannelSchema = z.object({
-  type: z.enum(['telegram', 'slack', 'discord', 'email', 'webhook']),
-  enabled: z.boolean().default(false),
-  config: z.union([
-    telegramConfigSchema,
-    slackConfigSchema,
-    discordConfigSchema,
-    emailConfigSchema,
-    webhookConfigSchema,
-  ]),
+/** Stored config shape per channel type, validated on save. */
+export const alertChannelSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('telegram'), enabled: z.boolean().default(false), config: telegramConfigSchema }),
+  z.object({ type: z.literal('slack'), enabled: z.boolean().default(false), config: slackConfigSchema }),
+  z.object({ type: z.literal('discord'), enabled: z.boolean().default(false), config: discordConfigSchema }),
+  z.object({ type: z.literal('email'), enabled: z.boolean().default(false), config: emailConfigSchema }),
+  z.object({ type: z.literal('webhook'), enabled: z.boolean().default(false), config: webhookConfigSchema }),
+]);
+
+/**
+ * Body of POST /api/channels before secrets are merged with the stored channel.
+ * The config is checked against alertChannelSchema after the merge.
+ */
+export const alertChannelSaveSchema = z.object({
+  type: alertChannelTypeSchema,
+  enabled: z.boolean().optional(),
+  config: z.record(z.string(), z.unknown()),
 });
 
 // ==========================================
@@ -193,5 +257,6 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type GitLabConfigInput = z.infer<typeof gitlabConfigSchema>;
 export type UserGitLabConfigUpdateInput = z.infer<typeof userGitLabConfigUpdateSchema>;
 export type AlertChannelInput = z.infer<typeof alertChannelSchema>;
+export type AlertChannelType = z.infer<typeof alertChannelTypeSchema>;
 export type PipelineActionInput = z.infer<typeof pipelineActionSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
