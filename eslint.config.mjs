@@ -1,18 +1,30 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [{
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "public/sw*.js", "public/workbox-*.js", "public/swe-worker-*.js"]
-}, ...compat.config({
-  extends: ["next/core-web-vitals", "next/typescript"],
-})];
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  {
+    // React Compiler diagnostics introduced by eslint-plugin-react-hooks 7. They flag
+    // existing component patterns, not regressions; kept visible until those are refactored.
+    rules: {
+      "react-hooks/immutability": "warn",
+      "react-hooks/preserve-manual-memoization": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
+  globalIgnores([
+    "node_modules/**",
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "public/sw*.js",
+    "public/workbox-*.js",
+    "public/swe-worker-*.js",
+  ]),
+]);
 
 export default eslintConfig;
