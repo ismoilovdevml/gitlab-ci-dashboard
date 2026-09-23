@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from '@/lib/auth/adapter';
-import { checkOrgAccess } from '@/lib/org/scope';
+import { isOrgAdmin } from '@/lib/org/admin';
 import { deriveOrgWebhookSecret } from '@/lib/gitlab/webhook-secret';
 import { createLogger, logSecurityEvent } from '@/lib/logger';
 
 const log = createLogger('WebhookSetup');
 
 const WEBHOOK_PATH = '/api/webhook/gitlab';
-const ORG_ADMIN_ROLES = ['owner', 'admin'];
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
 // Host header values we are willing to echo back into a URL.
@@ -61,9 +60,7 @@ export async function GET(request: NextRequest) {
 
     const { user, organizationId } = auth;
 
-    const isAdmin = organizationId
-      ? await checkOrgAccess(user.id, organizationId, ORG_ADMIN_ROLES)
-      : user.role === 'admin';
+    const isAdmin = await isOrgAdmin(auth);
 
     if (!isAdmin) {
       logSecurityEvent('Webhook secret requested by non-admin', {

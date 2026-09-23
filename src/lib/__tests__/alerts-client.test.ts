@@ -60,3 +60,53 @@ describe('channelsApi.test', () => {
     await expect(channelsApi.test('discord')).rejects.toThrow('Failed to send the test message');
   });
 });
+
+describe('channelsApi.save / getAll', () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    mockFetch.mockReset();
+    clearCsrfToken();
+    global.fetch = mockFetch as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('returns the masked channel list and the manage flag', async () => {
+    const list = { canManage: false, channels: [{ type: 'slack', enabled: true, config: { webhookUrl: '***abcd' } }] };
+    mockFetch.mockResolvedValue(jsonResponse(200, list));
+
+    await expect(channelsApi.getAll()).resolves.toEqual(list);
+    expect(mockFetch).toHaveBeenCalledWith('/api/channels');
+  });
+
+  it('posts the channel with the CSRF header and returns the stored channel', async () => {
+    const stored = { type: 'slack', enabled: true, config: { webhookUrl: '***abcd', channel: '#ci' } };
+    mockFetch.mockImplementation(async (url: string) =>
+      url === '/api/csrf' ? jsonResponse(200, { csrfToken: 'csrf-1', expiresIn: 3600000 }) : jsonResponse(200, stored)
+    );
+
+    await expect(channelsApi.save('slack', true, { webhookUrl: '', channel: '#ci' })).resolves.toEqual(stored);
+
+    const [url, init] = mockFetch.mock.calls.find(([u]) => u === '/api/channels') as [string, RequestInit];
+    expect(url).toBe('/api/channels');
+    expect(JSON.parse(init.body as string)).toEqual({
+      type: 'slack',
+      enabled: true,
+      config: { webhookUrl: '', channel: '#ci' },
+    });
+    expect(new Headers(init.headers).get(CSRF_HEADER)).toBe('csrf-1');
+  });
+
+  it("throws the server's message on a rejected save", async () => {
+    mockFetch.mockImplementation(async (url: string) =>
+      url === '/api/csrf'
+        ? jsonResponse(200, { csrfToken: 'csrf-1', expiresIn: 3600000 })
+        : jsonResponse(403, { error: 'Forbidden - organization admin role required' })
+    );
+
+    await expect(channelsApi.save('slack', true, {})).rejects.toThrow('Forbidden - organization admin role required');
+  });
+});

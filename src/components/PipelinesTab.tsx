@@ -215,6 +215,11 @@ export default function PipelinesTab() {
     pagination !== null &&
     (pagination.nextPage !== null || (totalPages !== null && currentPage < totalPages));
   const showPagination = currentPage > 1 || hasNextPage;
+  // Rate, duration, failures and the chart come from the loaded page only; say so
+  // whenever that page is not every run the header total counts.
+  const statsArePageOnly =
+    pagination?.total != null ? pagination.total > pipelines.length : showPagination;
+  const pageSuffix = statsArePageOnly ? ' (this page)' : '';
   const pageButtonIdle =
     theme === 'light'
       ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
@@ -314,7 +319,7 @@ export default function PipelinesTab() {
                     <TrendingUp className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${theme === 'light' ? 'text-blue-700' : 'text-blue-400'}`}>Total Runs</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-blue-700' : 'text-blue-400'}`}>{pagination?.total == null && statsArePageOnly ? 'Runs (this page)' : 'Total Runs'}</p>
                     <p className={`text-2xl font-bold ${textPrimary}`}>{pagination?.total ?? stats.total}</p>
                   </div>
                 </div>
@@ -332,7 +337,7 @@ export default function PipelinesTab() {
                     <CheckCircle className="w-5 h-5 text-green-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${theme === 'light' ? 'text-green-700' : 'text-green-400'}`}>Success Rate</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-green-700' : 'text-green-400'}`}>Success Rate{pageSuffix}</p>
                     <p className={`text-2xl font-bold ${theme === 'light' ? 'text-green-600' : textPrimary}`}>{stats.successRate}%</p>
                   </div>
                 </div>
@@ -350,7 +355,7 @@ export default function PipelinesTab() {
                     <Clock className="w-5 h-5 text-purple-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${theme === 'light' ? 'text-purple-700' : 'text-purple-400'}`}>Avg Duration</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-purple-700' : 'text-purple-400'}`}>Avg Duration{pageSuffix}</p>
                     <p className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : textPrimary}`}>{formatDuration(stats.avgDuration)}</p>
                   </div>
                 </div>
@@ -368,7 +373,7 @@ export default function PipelinesTab() {
                     <XCircle className="w-5 h-5 text-red-500" />
                   </div>
                   <div>
-                    <p className={`text-xs ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Failed</p>
+                    <p className={`text-xs ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Failed{pageSuffix}</p>
                     <p className={`text-2xl font-bold ${theme === 'light' ? 'text-red-600' : textPrimary}`}>{stats.failed}</p>
                   </div>
                 </div>
@@ -381,7 +386,7 @@ export default function PipelinesTab() {
             <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-xs' : ''} `}>
               <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
                 <BarChart3 className="w-5 h-5 text-orange-500" />
-                Pipeline Status Distribution
+                Pipeline Status Distribution{pageSuffix}
               </h3>
               <div className="grid grid-cols-2 gap-6">
                 <ResponsiveContainer width="100%" height={250}>

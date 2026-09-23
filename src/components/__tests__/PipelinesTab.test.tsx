@@ -228,4 +228,37 @@ describe('PipelinesTab', () => {
     expect(mockGetPipelinePage).toHaveBeenCalledTimes(3);
     expect(lastOptions().page).toBe(2);
   });
+
+  describe('statistics scope', () => {
+    it('labels page-based stats when the header total covers more runs', async () => {
+      await renderLoaded();
+
+      expect(screen.getByText('Total Runs')).toBeInTheDocument();
+      expect(screen.getByText('45')).toBeInTheDocument();
+      expect(screen.getByText('Success Rate (this page)')).toBeInTheDocument();
+      expect(screen.getByText('Avg Duration (this page)')).toBeInTheDocument();
+      expect(screen.getByText('Failed (this page)')).toBeInTheDocument();
+      expect(screen.getByText(/Pipeline Status Distribution \(this page\)/)).toBeInTheDocument();
+    });
+
+    it('labels the run count as this page when GitLab omits the total', async () => {
+      mockGetPipelinePage.mockImplementation((projectId, options) =>
+        Promise.resolve(threePages(projectId, options, 'no-total'))
+      );
+      await renderLoaded();
+
+      expect(screen.getByText('Runs (this page)')).toBeInTheDocument();
+      expect(screen.queryByText('Total Runs')).not.toBeInTheDocument();
+      expect(screen.getByText('Success Rate (this page)')).toBeInTheDocument();
+    });
+
+    it('uses plain labels when one page holds every run', async () => {
+      mockGetPipelinePage.mockResolvedValue(page([makePipeline({ id: 11 })]));
+      await renderLoaded();
+
+      expect(screen.getByText('Total Runs')).toBeInTheDocument();
+      expect(screen.getAllByText('Success Rate').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/\(this page\)/)).not.toBeInTheDocument();
+    });
+  });
 });
