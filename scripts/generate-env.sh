@@ -11,7 +11,8 @@
 #
 # Environment knobs:
 #   ENV_FILE        target file               (default: ./.env)
-#   DASHBOARD_PORT  host port of the app      (default: 3000)
+#   DASHBOARD_PORT  published port: PORT, IPV4:PORT or [IPV6]:PORT
+#                   (default: 3000, i.e. all interfaces)
 #   QUIET=1         do not print credentials / next steps
 #
 # Works on Linux and macOS. Uses openssl when available, /dev/urandom otherwise.
@@ -49,13 +50,48 @@ random_hex() {
   fi
 }
 
-case "$DASHBOARD_PORT" in
-  '' | *[!0-9]*) echo "ERROR: DASHBOARD_PORT must be a number, got '$DASHBOARD_PORT'" >&2; exit 1 ;;
-esac
-if [ "$DASHBOARD_PORT" -lt 1 ] || [ "$DASHBOARD_PORT" -gt 65535 ]; then
-  echo "ERROR: DASHBOARD_PORT must be between 1 and 65535, got '$DASHBOARD_PORT'" >&2
-  exit 1
-fi
+# valid_bind_host HOST -> success for an IPv4 address or a bracketed IPv6 address.
+valid_bind_host() {
+  local h="$1" octet count=0
+  case "$h" in
+    \[*\])
+      h="${h#\[}"
+      h="${h%\]}"
+      case "$h" in
+        *[!0-9A-Fa-f:.]* | '') return 1 ;;
+        *:*) return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *[!0-9.]* | '' | .* | *. | *..*) return 1 ;;
+  esac
+  local IFS=.
+  for octet in $h; do
+    count=$((count + 1))
+    [ "${#octet}" -le 3 ] && [ "$octet" -le 255 ] || return 1
+  done
+  [ "$count" -eq 4 ]
+}
+
+# validate_port_spec SPEC -> exits unless SPEC is PORT, IPV4:PORT or [IPV6]:PORT.
+validate_port_spec() {
+  local spec="$1" num="$1" ok=1
+  case "$spec" in
+    *:*)
+      valid_bind_host "${spec%:*}" || ok=0
+      num="${spec##*:}"
+      ;;
+  esac
+  case "$num" in
+    '' | *[!0-9]*) num=0 ;;
+  esac
+  if [ "$ok" != 1 ] || [ "$num" -lt 1 ] || [ "$num" -gt 65535 ]; then
+    echo "ERROR: DASHBOARD_PORT must be PORT, IPV4:PORT or [IPV6]:PORT (port 1-65535), got '$spec'" >&2
+    exit 1
+  fi
+}
+
+validate_port_spec "$DASHBOARD_PORT"
 
 if [ -e "$ENV_FILE" ]; then
   echo "$ENV_FILE already exists - leaving it unchanged."
@@ -67,6 +103,7 @@ REDIS_PASS="$(random_alnum 32)"
 ADMIN_PASS="$(random_alnum 24)"
 SESSION_SECRET="$(random_alnum 64)"
 TOKEN_KEY="$(random_hex 32)"
+WEBHOOK_SECRET="$(random_hex 32)"
 
 # Write to a private temp file next to the target, then move it into place,
 # so a failure never leaves a half-written .env behind.
@@ -97,9 +134,9 @@ REDIS_PASSWORD=$REDIS_PASS
 # App Configuration
 # ==========================================
 NODE_ENV=$NODE_ENV_VALUE
+# Published port: PORT (all interfaces), IPV4:PORT or [IPV6]:PORT,
+# e.g. 127.0.0.1:3000 to expose it only behind a local reverse proxy
 DASHBOARD_PORT=$DASHBOARD_PORT
-NEXT_PUBLIC_APP_URL=http://localhost:$DASHBOARD_PORT
-NEXT_PUBLIC_GITLAB_URL=https://gitlab.com
 
 # ==========================================
 # Admin User (auto-created on first run)
@@ -114,6 +151,9 @@ ADMIN_EMAIL=admin@example.com
 SESSION_SECRET=$SESSION_SECRET
 # Encrypts GitLab tokens stored in the database (AES-256-GCM)
 TOKEN_ENCRYPTION_KEY=$TOKEN_KEY
+# Authenticates GitLab webhooks (X-Gitlab-Token). Per-organization webhook
+# secrets are derived from it, so changing it breaks existing webhooks.
+GITLAB_WEBHOOK_SECRET=$WEBHOOK_SECRET
 EOF
 
 chmod 600 "$TMP_FILE"
