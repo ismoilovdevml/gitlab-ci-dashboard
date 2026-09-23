@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { Search, RefreshCw, Filter, Calendar, TrendingUp, Clock, CheckCircle, XCircle, AlertCircle, BarChart3 } from 'lucide-react';
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -9,10 +9,19 @@ import JobCard from './JobCard';
 import LogViewer from './LogViewer';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
-import { Pipeline, Job } from '@/lib/gitlab-api';
+import type { Job, Pagination, Pipeline } from '@/lib/gitlab-api';
 import { formatDuration, formatPercentage } from '@/lib/utils';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTheme } from '@/hooks/useTheme';
+
+const PIPELINES_PER_PAGE = 20;
+
+/** Up to five page numbers around the current page. */
+function pageWindow(currentPage: number, totalPages: number): number[] {
+  const size = Math.min(5, totalPages);
+  const start = Math.min(Math.max(1, currentPage - 2), totalPages - size + 1);
+  return Array.from({ length: size }, (_, i) => start + i);
+}
 
 export default function PipelinesTab() {
   const { projects, setProjects } = useDashboardStore();
@@ -29,45 +38,41 @@ export default function PipelinesTab() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('7');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPipelines, setTotalPipelines] = useState(0);
-  const pipelinesPerPage = 20;
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  // Only the latest request may update the list; a slow earlier page must not overwrite it.
+  const latestRequest = useRef(0);
 
   const loadPipelines = async (page: number = currentPage) => {
     if (!selectedProject) return;
+    const requestId = ++latestRequest.current;
 
     try {
       setIsLoading(true);
       const api = await getGitLabAPIAsync();
 
-      // Calculate date filter
-      const createdAfter = new Date();
-      createdAfter.setDate(createdAfter.getDate() - parseInt(dateRange));
+      const updatedAfter = new Date();
+      updatedAfter.setDate(updatedAfter.getDate() - parseInt(dateRange, 10));
 
-      // Load pipelines with pagination
-      const pipelinesList = await api.getPipelines(selectedProject, page, pipelinesPerPage);
-
-      // Filter by status
-      let filteredPipelines = pipelinesList;
-      if (statusFilter !== 'all') {
-        filteredPipelines = pipelinesList.filter(p => p.status === statusFilter);
-      }
-
-      // Filter by date range
-      filteredPipelines = filteredPipelines.filter(p => {
-        const pipelineDate = new Date(p.created_at);
-        return pipelineDate >= createdAfter;
+      // Filter in GitLab so the pagination headers describe the filtered list.
+      const result = await api.getPipelinePage(selectedProject, {
+        page,
+        perPage: PIPELINES_PER_PAGE,
+        status: statusFilter === 'all' ? undefined : (statusFilter as Pipeline['status']),
+        updatedAfter: updatedAfter.toISOString(),
       });
+      if (requestId !== latestRequest.current) return;
 
-      setPipelines(filteredPipelines);
-      setTotalPipelines(filteredPipelines.length);
+      const { pipelines: pageItems, ...pageInfo } = result;
+      setPipelines(pageItems);
+      setPagination(pageInfo);
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Request was cancelled');
-      } else {
+      if (requestId === latestRequest.current) {
         console.error('Failed to load pipelines:', error);
       }
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequest.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -205,7 +210,15 @@ export default function PipelinesTab() {
     };
   }, [pipelines]);
 
-  const totalPages = Math.ceil(totalPipelines / pipelinesPerPage);
+  const totalPages = pagination?.totalPages ?? null;
+  const hasNextPage =
+    pagination !== null &&
+    (pagination.nextPage !== null || (totalPages !== null && currentPage < totalPages));
+  const showPagination = currentPage > 1 || hasNextPage;
+  const pageButtonIdle =
+    theme === 'light'
+      ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
+      : 'bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800';
 
   return (
     <div className="space-y-6">
@@ -302,7 +315,7 @@ export default function PipelinesTab() {
                   </div>
                   <div>
                     <p className={`text-xs ${theme === 'light' ? 'text-blue-700' : 'text-blue-400'}`}>Total Runs</p>
-                    <p className={`text-2xl font-bold ${textPrimary}`}>{stats.total}</p>
+                    <p className={`text-2xl font-bold ${textPrimary}`}>{pagination?.total ?? stats.total}</p>
                   </div>
                 </div>
               </div>
@@ -519,67 +532,50 @@ export default function PipelinesTab() {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-6">
+              {showPagination && (
+                <nav aria-label="Pipeline pages" className="flex items-center justify-center gap-2 mt-6">
                   <button
-                    onClick={() => goToPage(Math.max(1, currentPage - 1))}
+                    type="button"
+                    onClick={() => goToPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                      theme === 'light'
-                        ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
-                        : 'bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800'
-                    }`}
+                    className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-orange-500 ${pageButtonIdle}`}
                   >
                     Previous
                   </button>
 
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      return (
+                  {totalPages !== null && (
+                    <div className="flex items-center gap-2">
+                      {pageWindow(currentPage, totalPages).map((pageNum) => (
                         <button
+                          type="button"
                           key={pageNum}
                           onClick={() => goToPage(pageNum)}
-                          className={`w-10 h-10 rounded-lg transition-colors ${
-                            currentPage === pageNum
-                              ? 'bg-orange-500 text-white'
-                              : theme === 'light'
-                              ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
-                              : 'bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800'
+                          aria-label={`Page ${pageNum}`}
+                          aria-current={currentPage === pageNum ? 'page' : undefined}
+                          className={`w-10 h-10 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-orange-500 ${
+                            currentPage === pageNum ? 'bg-orange-500 text-white' : pageButtonIdle
                           }`}
                         >
                           {pageNum}
                         </button>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  )}
 
                   <button
-                    onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                      theme === 'light'
-                        ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
-                        : 'bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800'
-                    }`}
+                    type="button"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={!hasNextPage}
+                    className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-orange-500 ${pageButtonIdle}`}
                   >
                     Next
                   </button>
 
-                  <span className={`ml-4 ${textSecondary}`}>
-                    Page {currentPage} of {totalPages}
+                  <span className={`ml-4 ${textSecondary}`} aria-live="polite">
+                    {totalPages !== null ? `Page ${currentPage} of ${totalPages}` : `Page ${currentPage}`}
+                    {pagination?.total != null && ` · ${pagination.total} pipelines`}
                   </span>
-                </div>
+                </nav>
               )}
             </>
           ) : (
