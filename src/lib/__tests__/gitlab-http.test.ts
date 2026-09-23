@@ -5,7 +5,6 @@ import http from 'http';
 import { AddressInfo } from 'net';
 import { createGitLabHttpClient } from '@/lib/gitlab/http';
 import { GitLabUrlError } from '@/lib/gitlab/url';
-import GitLabAPI from '@/lib/gitlab-api';
 import { GitLabClient } from '@/lib/gitlab-client';
 
 jest.mock('@/lib/logger', () => ({
@@ -87,17 +86,14 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
       expect(() => createGitLabHttpClient(url, TOKEN)).toThrow(GitLabUrlError);
     });
 
-    it.each(invalid)('GitLabAPI rejects %p', (url) => {
-      expect(() => new GitLabAPI(url, TOKEN)).toThrow(GitLabUrlError);
-    });
-
     it.each(invalid)('GitLabClient rejects %p', (url) => {
       expect(() => new GitLabClient({ url, token: TOKEN })).toThrow(GitLabUrlError);
     });
 
     it('normalises the base URL and keeps a relative root', () => {
-      const api = new GitLabAPI('  https://gitlab.example.com/gitlab/  ', TOKEN);
-      expect(api.getConfig().gitlabUrl).toBe('https://gitlab.example.com/gitlab');
+      expect(createGitLabHttpClient('  https://gitlab.example.com/gitlab/  ', TOKEN).baseUrl).toBe(
+        'https://gitlab.example.com/gitlab'
+      );
       expect(createGitLabHttpClient('https://gitlab.example.com/gitlab/', TOKEN).client.defaults.baseURL).toBe(
         'https://gitlab.example.com/gitlab/api/v4'
       );
@@ -105,16 +101,6 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
   });
 
   describe('server (node http adapter)', () => {
-    it('GitLabAPI does not follow a cross-origin redirect', async () => {
-      const api = new GitLabAPI(gitlab.url, TOKEN);
-
-      await expect(api.checkConnection()).resolves.toBe(false);
-
-      expect(gitlab.requests).toHaveLength(1);
-      expect(gitlab.requests[0].token).toBe(TOKEN);
-      expect(attacker.requests).toHaveLength(0);
-    });
-
     it('GitLabClient does not follow a cross-origin redirect', async () => {
       const client = new GitLabClient({ url: gitlab.url, token: TOKEN });
 
@@ -169,10 +155,10 @@ describe('GitLab HTTP clients: URL validation and redirect policy', () => {
       expect(client.defaults.fetchOptions).toEqual({ redirect: 'manual' });
     });
 
-    it('GitLabAPI does not follow a cross-origin redirect', async () => {
-      const api = new GitLabAPI(gitlab.url, TOKEN);
+    it('does not follow a cross-origin redirect', async () => {
+      const { client } = createGitLabHttpClient(gitlab.url, TOKEN);
 
-      await expect(api.checkConnection()).resolves.toBe(false);
+      await expect(client.get('/projects')).rejects.toThrow();
 
       expect(gitlab.requests).toHaveLength(1);
       expect(attacker.requests).toHaveLength(0);
