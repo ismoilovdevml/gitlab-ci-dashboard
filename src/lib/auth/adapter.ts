@@ -1,10 +1,9 @@
-import { AuthUser, AuthContext, getAuthMode } from './types';
+import { AuthUser, AuthContext } from './types';
 import { getSessionAuth } from './session-adapter';
-import { getSupabaseAuth } from './supabase-adapter';
 import { getDefaultOrg } from '@/lib/org/scope';
 
 /**
- * Get the current authenticated user using the appropriate auth adapter.
+ * Get the current authenticated user from the session cookie.
  * Returns null if not authenticated.
  *
  * Usage in API routes:
@@ -13,15 +12,7 @@ import { getDefaultOrg } from '@/lib/org/scope';
  *   // auth.user, auth.organizationId available
  */
 export async function getAuth(): Promise<AuthContext | null> {
-  const mode = getAuthMode();
-
-  let user: AuthUser | null = null;
-
-  if (mode === 'supabase') {
-    user = await getSupabaseAuth();
-  } else {
-    user = await getSessionAuth();
-  }
+  const user: AuthUser | null = await getSessionAuth();
 
   if (!user) return null;
 
