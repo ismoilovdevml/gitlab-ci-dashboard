@@ -5,9 +5,12 @@ import {
   getOrgGitLabConfigs,
   deleteOrgGitLabConfig,
   testGitLabConnection,
+  GitLabConfigNotFoundError,
 } from '@/lib/gitlab/token';
+import { GitLabUrlError, normalizeGitLabBaseUrl } from '@/lib/gitlab/url';
 import { logger } from '@/lib/logger';
 import { requireCsrf } from '@/lib/csrf';
+import { formatValidationError, orgGitLabConnectionSchema } from '@/lib/validation';
 
 // GET /api/gitlab — list GitLab connections for the org
 export async function GET() {
@@ -44,14 +47,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No organization context' }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { url, token, configId } = body;
-
-    if (!url || !token) {
-      return NextResponse.json({ error: 'URL and token are required' }, { status: 400 });
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // Test connection first
+    const parsed = orgGitLabConnectionSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid GitLab connection', details: formatValidationError(parsed.error) },
+        { status: 400 }
+      );
+    }
+    const { token, configId } = parsed.data;
+
+    let url: string;
+    try {
+      url = normalizeGitLabBaseUrl(parsed.data.url);
+    } catch (error) {
+      const message = error instanceof GitLabUrlError ? error.message : 'Invalid GitLab URL';
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
     const test = await testGitLabConnection(url, token);
     if (!test.success) {
       return NextResponse.json(
@@ -60,13 +79,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Store encrypted
-    const config = await storeOrgGitLabToken({
-      organizationId: auth.organizationId,
-      url,
-      token,
-      configId,
-    });
+    let config;
+    try {
+      config = await storeOrgGitLabToken({
+        organizationId: auth.organizationId,
+        url,
+        token,
+        configId,
+      });
+    } catch (error) {
+      if (error instanceof GitLabConfigNotFoundError) {
+        return NextResponse.json({ error: 'GitLab config not found' }, { status: 404 });
+      }
+      throw error;
+    }
 
     return NextResponse.json({
       success: true,

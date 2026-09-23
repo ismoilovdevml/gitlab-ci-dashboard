@@ -65,8 +65,21 @@ export function decryptToken(stored: string): string {
 }
 
 /**
+ * Thrown when a GitLab config id does not exist in the caller's organization.
+ * Configs of other organizations are reported the same way as missing ones.
+ */
+export class GitLabConfigNotFoundError extends Error {
+  constructor() {
+    super('GitLab config not found');
+    this.name = 'GitLabConfigNotFoundError';
+  }
+}
+
+/**
  * Store a GitLab token for an organization.
- * Encrypts the token at rest.
+ * Encrypts the token at rest. Updating `configId` only matches a config owned
+ * by `organizationId`; otherwise GitLabConfigNotFoundError is thrown and
+ * nothing is changed.
  */
 export async function storeOrgGitLabToken(opts: {
   organizationId: string;
@@ -74,16 +87,29 @@ export async function storeOrgGitLabToken(opts: {
   token: string;
   configId?: string;
 }) {
+  if (!opts.organizationId) {
+    throw new Error('organizationId is required');
+  }
+
   const encryptedToken = encryptToken(opts.token);
 
   if (opts.configId) {
-    return prisma.gitLabConfig.update({
-      where: { id: opts.configId },
+    const where = { id: opts.configId, organizationId: opts.organizationId };
+    const { count } = await prisma.gitLabConfig.updateMany({
+      where,
       data: {
         url: opts.url,
         token: encryptedToken,
       },
     });
+    if (count === 0) {
+      throw new GitLabConfigNotFoundError();
+    }
+    const updated = await prisma.gitLabConfig.findFirst({ where });
+    if (!updated) {
+      throw new GitLabConfigNotFoundError();
+    }
+    return updated;
   }
 
   return prisma.gitLabConfig.create({
