@@ -1,0 +1,30 @@
+name: Task
+description: A scoped unit of work for maintainers and contributors
+labels: ["type: task", "status: ready"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files affected
+      description: Files this change is expected to touch
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable by a command where possible
+    validations:
+      required: true
+  - type: input
+    id: depends
+    attributes:
+      label: Depends on
+      placeholder: "#12, #13 (or none)"
