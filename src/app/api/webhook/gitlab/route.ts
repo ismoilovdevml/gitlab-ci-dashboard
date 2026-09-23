@@ -4,7 +4,7 @@ import prisma from '@/lib/db/prisma';
 import { createLogger, logSecurityEvent } from '@/lib/logger';
 import { gitlabWebhookQuerySchema } from '@/lib/validation';
 import { deriveOrgWebhookSecret } from '@/lib/gitlab/webhook-secret';
-import { sendDiscordAlert, sendSlackAlert, sendTelegramAlert } from '@/lib/notifications/senders';
+import { isDeliverableChannelType, sendChannelAlert } from '@/lib/notifications';
 
 const log = createLogger('GitLabWebhook');
 
@@ -294,46 +294,49 @@ export async function POST(request: NextRequest) {
     // Format message based on event type
     const alert = formatEventMessage(payload);
 
-    // Send alerts through all enabled channels
+    // Only channel types with a sender are delivered to. Others (email, generic
+    // webhook) are skipped without a history entry: nothing was attempted, and a
+    // failure row per event would flood the history with the same non-actionable
+    // message. The settings UI states these types are not delivered.
     for (const channel of channels) {
-      try {
-        if (channel.type === 'telegram') {
-          await sendTelegramAlert(channel.config as { botToken: string; chatId: string }, alert);
-        } else if (channel.type === 'slack') {
-          await sendSlackAlert(channel.config as { webhookUrl: string }, alert);
-        } else if (channel.type === 'discord') {
-          await sendDiscordAlert(channel.config as { webhookUrl: string }, alert);
-        }
-
-        await prisma.alertHistory.create({
-          data: {
-            organizationId: channel.organizationId,
-            projectName: payload.project?.name || 'Unknown',
-            pipelineId: getPipelineId(payload),
-            status: payload.object_kind,
-            channel: channel.type,
-            message: `${payload.object_kind} event sent via ${channel.type}`,
-            sent: true,
-          },
-        });
-
-        log.debug('Alert sent', { channel: channel.type });
-      } catch (error) {
-        log.error('Failed to send alert', { channel: channel.type, error });
-
-        await prisma.alertHistory.create({
-          data: {
-            organizationId: channel.organizationId,
-            projectName: payload.project?.name || 'Unknown',
-            pipelineId: getPipelineId(payload),
-            status: payload.object_kind,
-            channel: channel.type,
-            message: `Failed to send ${payload.object_kind} event`,
-            sent: false,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          },
-        });
+      if (!isDeliverableChannelType(channel.type)) {
+        log.debug('Channel type has no sender; skipped', { channel: channel.type });
+        continue;
       }
+
+      const history = {
+        organizationId: channel.organizationId,
+        projectName: payload.project?.name || 'Unknown',
+        pipelineId: getPipelineId(payload),
+        status: payload.object_kind,
+        channel: channel.type,
+      };
+
+      let sendError: unknown = null;
+      try {
+        await sendChannelAlert(channel.type, channel.config, alert);
+      } catch (error) {
+        sendError = error;
+        log.error('Failed to send alert', { channel: channel.type, error });
+      }
+
+      // A history write failure must not turn a delivered alert into a failure
+      // row or make GitLab retry the event (which would resend it).
+      try {
+        await prisma.alertHistory.create({
+          data: sendError
+            ? {
+                ...history,
+                message: `Failed to send ${payload.object_kind} event`,
+                sent: false,
+                error: sendError instanceof Error ? sendError.message : 'Unknown error',
+              }
+            : { ...history, message: `${payload.object_kind} event sent via ${channel.type}`, sent: true },
+        });
+      } catch (error) {
+        log.error('Failed to record alert history', { channel: channel.type, error });
+      }
+      if (!sendError) log.debug('Alert sent', { channel: channel.type });
     }
 
     return NextResponse.json({ message: 'Webhook processed successfully' });
