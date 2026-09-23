@@ -76,8 +76,9 @@ services:
       # Security
       SESSION_SECRET: ${SESSION_SECRET}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      GITLAB_WEBHOOK_SECRET: ${GITLAB_WEBHOOK_SECRET:-}
     ports:
-      - "3000:3000"
+      - "${DASHBOARD_PORT:-3000}:3000"
     networks:
       - gitlab-dashboard-network
     # Run migrations and seed before starting app
