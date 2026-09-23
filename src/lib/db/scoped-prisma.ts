@@ -1,5 +1,4 @@
 import prisma from './prisma';
-import { Prisma } from '@prisma/client';
 
 /**
  * Models that support organization scoping.

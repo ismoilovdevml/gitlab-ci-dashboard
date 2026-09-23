@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { cacheHelpers } from '@/lib/db/redis';
 import { requireCsrf } from '@/lib/csrf';
+import { logger } from '@/lib/logger';
 
 // Channel configs are per organization; a shared key would serve one org's channels to another.
 function channelsCacheKey(organizationId: string | null): string {
@@ -28,7 +29,7 @@ export async function GET() {
 
     return NextResponse.json(channels);
   } catch (error) {
-    console.error('Failed to fetch channels:', error);
+    logger.error('Failed to fetch channels', { error });
     return NextResponse.json(
       { error: 'Failed to fetch channels' },
       { status: 500 }
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(channel);
   } catch (error) {
-    console.error('Failed to save channel:', error);
+    logger.error('Failed to save channel', { error });
     return NextResponse.json(
       { error: 'Failed to save channel' },
       { status: 500 }
@@ -126,7 +127,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete channel:', error);
+    logger.error('Failed to delete channel', { error });
     return NextResponse.json(
       { error: 'Failed to delete channel' },
       { status: 500 }

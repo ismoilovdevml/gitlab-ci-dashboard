@@ -3,6 +3,7 @@ import { serialize } from 'cookie';
 import { cookies } from 'next/headers';
 import { deleteSession } from '@/lib/auth';
 import { requireCsrf } from '@/lib/csrf';
+import { logger } from '@/lib/logger';
 
 const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error', { error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

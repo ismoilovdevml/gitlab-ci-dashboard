@@ -1,4 +1,5 @@
 import { Redis } from 'ioredis';
+import { logger } from './logger';
 
 let redis: Redis | null = null;
 
@@ -58,7 +59,7 @@ export async function rateLimit(
       reset: resetTime,
     };
   } catch (error) {
-    console.error('Rate limit error:', error);
+    logger.error('Rate limit error', { error });
     // SECURITY FIX: Fail closed - deny request if Redis is down
     // This prevents attackers from bypassing rate limits by causing Redis failures
     return {
@@ -89,7 +90,7 @@ export async function resetRateLimit(identifier: string): Promise<void> {
     const client = getRedis();
     await client.del(key);
   } catch (error) {
-    console.error('Reset rate limit error:', error);
+    logger.error('Reset rate limit error', { error });
   }
 }
 
@@ -115,7 +116,7 @@ export async function getRateLimitStatus(
       reset: Date.now() + (ttl > 0 ? ttl * 1000 : 0),
     };
   } catch (error) {
-    console.error('Get rate limit status error:', error);
+    logger.error('Get rate limit status error', { error });
     // SECURITY FIX: Fail closed on error
     return {
       success: false,

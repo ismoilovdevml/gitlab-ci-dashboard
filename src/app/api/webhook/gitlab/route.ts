@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import prisma from '@/lib/db/prisma';
+import { createLogger, logSecurityEvent } from '@/lib/logger';
+
+const log = createLogger('GitLabWebhook');
 
 // GitLab webhook payload types
 interface BaseWebhookPayload {
@@ -179,13 +182,13 @@ async function validateWebhookToken(request: NextRequest): Promise<boolean> {
 
   // If no secret is configured, allow all requests (but log warning)
   if (!expectedToken) {
-    console.warn('⚠️ GITLAB_WEBHOOK_SECRET not configured - webhook validation disabled');
+    log.warn('GITLAB_WEBHOOK_SECRET not configured - webhook validation disabled');
     return true;
   }
 
   // Validate token using constant-time comparison to prevent timing attacks
   if (!webhookToken) {
-    console.error('❌ Missing X-Gitlab-Token header');
+    logSecurityEvent('GitLab webhook rejected: missing X-Gitlab-Token header');
     return false;
   }
 
@@ -193,11 +196,11 @@ async function validateWebhookToken(request: NextRequest): Promise<boolean> {
     const expected = Buffer.from(expectedToken, 'utf-8');
     const received = Buffer.from(webhookToken, 'utf-8');
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
-      console.error('❌ Invalid X-Gitlab-Token header');
+      logSecurityEvent('GitLab webhook rejected: invalid X-Gitlab-Token header');
       return false;
     }
   } catch {
-    console.error('❌ Failed to validate webhook token');
+    logSecurityEvent('GitLab webhook rejected: token validation failed');
     return false;
   }
 
@@ -218,21 +221,18 @@ export async function POST(request: NextRequest) {
 
     const payload: WebhookPayload = await request.json();
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🎣 GITLAB WEBHOOK RECEIVED');
-    console.log('📦 Event Type:', payload.object_kind);
-    console.log('📦 Project:', payload.project?.name || 'Unknown');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log.info('Webhook received', {
+      event: payload.object_kind,
+      projectId: payload.project?.id,
+    });
 
     // Get all enabled channels
     const channels = await prisma.alertChannel.findMany({
       where: { enabled: true },
     });
 
-    console.log('📋 Enabled channels:', channels.length);
-
     if (channels.length === 0) {
-      console.log('⚠️ No channels configured');
+      log.debug('No alert channels enabled; webhook ignored');
       return NextResponse.json({ message: 'No channels configured' });
     }
 
@@ -241,8 +241,6 @@ export async function POST(request: NextRequest) {
 
     // Send alerts through all enabled channels
     for (const channel of channels) {
-      console.log(`📤 Sending alert via ${channel.type}...`);
-
       try {
         if (channel.type === 'telegram') {
           await sendTelegramAlert(
@@ -282,9 +280,9 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log(`✅ Alert sent via ${channel.type}`);
+        log.debug('Alert sent', { channel: channel.type });
       } catch (error) {
-        console.error(`❌ Failed to send alert via ${channel.type}:`, error);
+        log.error('Failed to send alert', { channel: channel.type, error });
 
         // Save failed attempt
         await prisma.alertHistory.create({
@@ -301,12 +299,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('✅ Webhook processed successfully');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
     return NextResponse.json({ message: 'Webhook processed successfully' });
   } catch (error) {
-    console.error('❌ Webhook processing failed:', error);
+    log.error('Webhook processing failed', { error });
     return NextResponse.json(
       { error: 'Failed to process webhook' },
       { status: 500 }
