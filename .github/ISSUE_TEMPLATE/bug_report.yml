@@ -1,0 +1,43 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: ["type: bug", "status: needs-triage"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Dashboard version / image tag
+      placeholder: v1.3.0 or ghcr.io/...:latest
+    validations:
+      required: true
+  - type: input
+    id: gitlab
+    attributes:
+      label: GitLab version (self-managed or gitlab.com)
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options: [Docker Compose, Docker, From source, Other]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "`docker compose logs app` output. Remove tokens and passwords before pasting."
+      render: shell
