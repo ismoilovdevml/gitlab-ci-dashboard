@@ -2,22 +2,18 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth';
 import { logError, logger } from '@/lib/logger';
-
-const MIN_ADMIN_PASSWORD_LENGTH = 12;
+import { validateAdminPassword } from '../../../../prisma/admin-password';
 
 // POST /api/setup - Create initial admin user (one-time setup)
 export async function POST() {
   try {
     // This endpoint is public, so there must be no fallback password anyone could guess.
     const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword || adminPassword.length < MIN_ADMIN_PASSWORD_LENGTH) {
-      logger.error('Setup refused: ADMIN_PASSWORD is not set or too short', {
-        minLength: MIN_ADMIN_PASSWORD_LENGTH,
-      });
+    const passwordError = validateAdminPassword(adminPassword);
+    if (passwordError || !adminPassword) {
+      logger.error('Setup refused: invalid ADMIN_PASSWORD', { reason: passwordError });
       return NextResponse.json(
-        {
-          error: `ADMIN_PASSWORD must be set to at least ${MIN_ADMIN_PASSWORD_LENGTH} characters before running setup.`,
-        },
+        { error: `${passwordError} Fix it before running setup.` },
         { status: 500 }
       );
     }

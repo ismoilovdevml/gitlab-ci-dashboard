@@ -1,14 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { validateAdminPassword } from './admin-password';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Get admin credentials from environment
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123!Secure';
+  const adminPassword = process.env.ADMIN_PASSWORD;
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
 
   // Check if admin user already exists
@@ -19,6 +19,13 @@ async function main() {
   if (existingAdmin) {
     console.log(`✅ Admin user '${adminUsername}' already exists`);
     return;
+  }
+
+  // Validated only when an admin is about to be created, so restarts of existing
+  // installs are not affected.
+  const passwordError = validateAdminPassword(adminPassword);
+  if (passwordError || !adminPassword) {
+    throw new Error(`Cannot create admin user: ${passwordError}`);
   }
 
   // Hash password
@@ -47,11 +54,7 @@ async function main() {
   console.log(`   Email: ${admin.email}`);
   console.log(`   Role: ${admin.role}`);
   console.log('');
-  console.log('🔐 Login credentials:');
-  console.log(`   Username: ${adminUsername}`);
-  console.log(`   Password: ${adminPassword}`);
-  console.log('');
-  console.log('⚠️  IMPORTANT: Change the admin password after first login!');
+  console.log('🔐 Log in with the password from ADMIN_PASSWORD.');
 }
 
 main()

@@ -65,6 +65,16 @@ describe('POST /api/setup', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
+  it('refuses the unedited .env.example placeholder', async () => {
+    process.env.ADMIN_PASSWORD = 'CHANGE_ME_ADMIN_PASSWORD';
+
+    const res = await POST();
+
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toMatch(/placeholder/);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it('never falls back to the old hardcoded default password', async () => {
     delete process.env.ADMIN_PASSWORD;
 
