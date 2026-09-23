@@ -4,25 +4,25 @@ import { cacheHelpers } from '@/lib/db/redis';
 import { getCurrentUser } from '@/lib/auth';
 import { requireCsrf } from '@/lib/csrf';
 import { logger } from '@/lib/logger';
-import { decryptToken, encryptToken, testGitLabConnection } from '@/lib/gitlab/token';
-import { GitLabUrlError, isSameOrigin, normalizeGitLabBaseUrl } from '@/lib/gitlab/url';
+import { encryptToken, testGitLabConnection } from '@/lib/gitlab/token';
+import {
+  StoredConnectionTestResult,
+  getStoredTokenStatus,
+  testStoredGitLabConnection,
+} from '@/lib/gitlab/credentials';
+import { GitLabUrlError, normalizeGitLabBaseUrl } from '@/lib/gitlab/url';
 import { formatValidationError, userGitLabConfigUpdateSchema } from '@/lib/validation';
 
 // Placeholders the UI may echo back instead of a real token; never store them.
 const MASKED_TOKEN_VALUES = new Set(['***MASKED***', '***']);
 
-/** Decrypt a stored token. Legacy plaintext values pass through unchanged. */
-function readStoredToken(stored: string | null | undefined, userId: string): string | null {
-  if (!stored) return '';
-  try {
-    return decryptToken(stored);
-  } catch (error) {
-    logger.error('Failed to decrypt stored GitLab token', {
-      userId,
-      error: error instanceof Error ? error.message : 'unknown',
-    });
-    return null;
+/** Length of the stored token for the masked response; logs when it cannot be decrypted. */
+function storedTokenLength(gitlabToken: string | null | undefined, userId: string): number {
+  const status = getStoredTokenStatus({ gitlabToken });
+  if (!status.readable) {
+    logger.error('Failed to decrypt stored GitLab token', { userId });
   }
+  return status.length;
 }
 
 // GET /api/config - Get user's GitLab configuration. The token is always masked.
@@ -37,13 +37,11 @@ export async function GET() {
       );
     }
 
-    const token = readStoredToken(user.gitlabToken, user.id);
-
     return NextResponse.json({
       url: user.gitlabUrl,
       token: user.gitlabToken ? '***MASKED***' : '',
       tokenConfigured: !!user.gitlabToken,
-      tokenLength: token?.length || 0,
+      tokenLength: storedTokenLength(user.gitlabToken, user.id),
       autoRefresh: user.autoRefresh,
       refreshInterval: user.refreshInterval,
       theme: user.theme,
@@ -110,28 +108,27 @@ export async function POST(request: NextRequest) {
     let gitlabToken: string | undefined;
     if (gitlabUrl !== undefined || submittedToken) {
       const targetUrl = gitlabUrl ?? user.gitlabUrl;
-      let testToken = submittedToken;
 
-      if (!testToken) {
-        // Keep the stored token only for the same GitLab origin, so it is
-        // never sent to a host the user has not entered it for.
-        if (!user.gitlabToken || !isSameOrigin(targetUrl, user.gitlabUrl)) {
+      // Without a new token the stored one is reused, but only for the same
+      // GitLab origin (enforced by testStoredGitLabConnection).
+      const result: StoredConnectionTestResult = submittedToken
+        ? { tested: true, ...(await testGitLabConnection(targetUrl, submittedToken)) }
+        : await testStoredGitLabConnection(user, targetUrl);
+
+      if (!result.tested) {
+        if (result.reason === 'NEW_TOKEN_REQUIRED') {
           return NextResponse.json(
             { error: 'Enter an access token for this GitLab URL', code: 'GITLAB_NEW_TOKEN_REQUIRED' },
             { status: 400 }
           );
         }
-        const stored = readStoredToken(user.gitlabToken, user.id);
-        if (!stored) {
-          return NextResponse.json(
-            { error: 'Stored GitLab token could not be read. Re-enter the token.', code: 'GITLAB_STORED_TOKEN_UNREADABLE' },
-            { status: 400 }
-          );
-        }
-        testToken = stored;
+        logger.error('Failed to decrypt stored GitLab token', { userId: user.id });
+        return NextResponse.json(
+          { error: 'Stored GitLab token could not be read. Re-enter the token.', code: 'GITLAB_STORED_TOKEN_UNREADABLE' },
+          { status: 400 }
+        );
       }
 
-      const result = await testGitLabConnection(targetUrl, testToken);
       if (!result.success) {
         return NextResponse.json(
           { error: result.error || 'Could not connect to GitLab', code: 'GITLAB_CONNECTION_FAILED' },
@@ -162,13 +159,11 @@ export async function POST(request: NextRequest) {
     // Invalidate user cache
     await cacheHelpers.invalidate(`user:${user.id}:config`);
 
-    const savedToken = readStoredToken(updatedUser.gitlabToken, user.id);
-
     return NextResponse.json({
       url: updatedUser.gitlabUrl,
       token: updatedUser.gitlabToken ? '***MASKED***' : '',
       tokenConfigured: !!updatedUser.gitlabToken,
-      tokenLength: savedToken?.length || 0,
+      tokenLength: storedTokenLength(updatedUser.gitlabToken, user.id),
       ...(gitlabUsername ? { gitlabUsername } : {}),
       autoRefresh: updatedUser.autoRefresh,
       refreshInterval: updatedUser.refreshInterval,
