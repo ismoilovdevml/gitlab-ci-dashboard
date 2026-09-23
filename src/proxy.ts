@@ -75,11 +75,10 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
+     * - _next/static, _next/image (build output and image optimisation)
+     * - /favicon.ico
+     * - image files outside /api/ — an /api/ path ending in .png must still reach the auth check
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico$|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server';
-import { isPublicStaticPath, proxy } from '../proxy';
+import { config, isPublicStaticPath, proxy } from '../proxy';
 
 const BASE = 'http://localhost:3000';
 const SESSION_COOKIE = 'gitlab_dashboard_session';
@@ -74,6 +74,42 @@ describe('proxy', () => {
         expect(isPassThrough(res)).toBe(true);
       }
     );
+  });
+
+  describe('matcher', () => {
+    // Next anchors the matcher source against the pathname; mirror that here.
+    const matcher = new RegExp(`^${config.matcher[0]}$`);
+
+    it.each([
+      '/api/projects/x.png',
+      '/api/channels/x.png',
+      '/api/logo.svg',
+      '/api/x.webp',
+      '/api/projects',
+      '/',
+      '/settings',
+      '/sw.js',
+      '/manifest.json',
+      '/favicon.ico.html',
+    ])('runs the proxy for %s', (path) => {
+      expect(matcher.test(path)).toBe(true);
+    });
+
+    it.each([
+      '/logo.png',
+      '/icons/192.png',
+      '/icon-192x192.png',
+      '/gitlab-logo-500-rgb.svg',
+      '/favicon.ico',
+      '/_next/static/chunks/main.js',
+      '/_next/image',
+    ])('skips the proxy for %s', (path) => {
+      expect(matcher.test(path)).toBe(false);
+    });
+
+    it('returns 401 for an /api image path without a session', () => {
+      expect(proxy(makeRequest('/api/projects/x.png')).status).toBe(401);
+    });
   });
 
   describe('PWA static files', () => {
