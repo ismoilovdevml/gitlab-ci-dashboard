@@ -22,8 +22,67 @@ export const ORG_SCOPED_MODELS = [
 export type OrgScopedModel = (typeof ORG_SCOPED_MODELS)[number];
 
 /**
+ * Thrown when caller-supplied input tries to target a different organization than the
+ * one a query is scoped to. Treated as a programming/security error, never silently fixed.
+ */
+export class OrgScopeViolationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'OrgScopeViolationError';
+  }
+}
+
+const LOGICAL_OPERATORS = ['AND', 'OR', 'NOT'] as const;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Date);
+}
+
+/**
+ * Reject a where clause that names an organization other than `organizationId`, including
+ * inside AND/OR/NOT. Only an exact match of the scoped id is accepted, so filter objects
+ * such as `{ in: [...] }` or `{ not: ... }` are rejected too.
+ */
+export function assertWhereInScope(organizationId: string, where: unknown, context = 'where'): void {
+  if (!isPlainObject(where)) return;
+
+  if ('organizationId' in where && where.organizationId !== organizationId) {
+    throw new OrgScopeViolationError(
+      `${context}.organizationId conflicts with the scoped organization`
+    );
+  }
+
+  for (const op of LOGICAL_OPERATORS) {
+    const branch = where[op];
+    if (branch === undefined) continue;
+    const items = Array.isArray(branch) ? branch : [branch];
+    items.forEach((item, i) => assertWhereInScope(organizationId, item, `${context}.${op}[${i}]`));
+  }
+}
+
+/**
+ * Reject write data that would place a record in (or move it to) another organization,
+ * either via `organizationId` or via the `organization` relation.
+ */
+export function assertDataInScope(organizationId: string, data: unknown, context = 'data'): void {
+  const rows = Array.isArray(data) ? data : [data];
+  rows.forEach((row, i) => {
+    if (!isPlainObject(row)) return;
+    const label = Array.isArray(data) ? `${context}[${i}]` : context;
+    if ('organizationId' in row && row.organizationId !== organizationId) {
+      throw new OrgScopeViolationError(`${label}.organizationId conflicts with the scoped organization`);
+    }
+    if ('organization' in row) {
+      throw new OrgScopeViolationError(`${label}.organization must not be set on org-scoped writes`);
+    }
+  });
+}
+
+/**
  * Create an org-scoped query helper.
- * Automatically injects organizationId into where clauses and create data.
+ * Automatically injects organizationId into where clauses and create data. The scoped
+ * organizationId always wins: caller input naming a different organization throws
+ * OrgScopeViolationError.
  *
  * Usage:
  *   const scoped = orgScope(orgId);
@@ -34,20 +93,23 @@ export function orgScope(organizationId: string) {
   return {
     /** Add organizationId to a where clause */
     where(extra: Record<string, unknown> = {}) {
-      return { where: { organizationId, ...extra } };
+      assertWhereInScope(organizationId, extra);
+      return { where: { ...extra, organizationId } };
     },
 
     /** Add organizationId to create/update data */
     data<T extends Record<string, unknown>>(extra: T): T & { organizationId: string } {
-      return { organizationId, ...extra };
+      assertDataInScope(organizationId, extra);
+      return { ...extra, organizationId };
     },
 
     /** Filter for findMany with additional options */
     findMany(args: Record<string, unknown> = {}) {
       const { where = {}, ...rest } = args;
+      assertWhereInScope(organizationId, where);
       return {
-        where: { organizationId, ...(where as Record<string, unknown>) },
         ...rest,
+        where: { ...(where as Record<string, unknown>), organizationId },
       };
     },
 

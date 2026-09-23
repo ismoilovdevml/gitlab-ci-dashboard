@@ -30,6 +30,7 @@ import {
   getDefaultOrg,
   getUserOrgs,
   orgScope,
+  OrgScopeViolationError,
 } from '@/lib/org/scope';
 
 beforeEach(() => {
@@ -65,6 +66,51 @@ describe('orgScope', () => {
       where: { organizationId: 'o1', a: 1 },
       take: 5,
     });
+  });
+
+  it('keeps the scoped organizationId when the caller passes the same one', () => {
+    const scoped = orgScope('o1');
+    expect(scoped.where({ organizationId: 'o1' })).toEqual({ where: { organizationId: 'o1' } });
+    expect(scoped.data({ organizationId: 'o1', name: 'x' })).toEqual({ organizationId: 'o1', name: 'x' });
+  });
+
+  it('rejects a caller switching the organization through where/data/findMany', () => {
+    const scoped = orgScope('o1');
+    expect(() => scoped.where({ organizationId: 'o2' })).toThrow(OrgScopeViolationError);
+    expect(() => scoped.data({ organizationId: 'o2', name: 'x' })).toThrow(OrgScopeViolationError);
+    expect(() => scoped.findMany({ where: { organizationId: 'o2' } })).toThrow(OrgScopeViolationError);
+  });
+
+  it('rejects a caller widening the organization with filter objects or null', () => {
+    const scoped = orgScope('o1');
+    expect(() => scoped.where({ organizationId: { in: ['o1', 'o2'] } })).toThrow(OrgScopeViolationError);
+    expect(() => scoped.where({ organizationId: { not: 'o1' } })).toThrow(OrgScopeViolationError);
+    expect(() => scoped.where({ organizationId: undefined })).toThrow(OrgScopeViolationError);
+    expect(() => scoped.data({ organizationId: null })).toThrow(OrgScopeViolationError);
+  });
+
+  it('rejects a conflicting organizationId nested in AND/OR/NOT', () => {
+    const scoped = orgScope('o1');
+    expect(() => scoped.where({ OR: [{ type: 'slack' }, { organizationId: 'o2' }] })).toThrow(
+      /where\.OR\[1\]\.organizationId/
+    );
+    expect(() => scoped.findMany({ where: { AND: { NOT: { organizationId: 'o2' } } } })).toThrow(
+      OrgScopeViolationError
+    );
+    expect(scoped.where({ OR: [{ type: 'slack' }, { organizationId: 'o1' }] })).toEqual({
+      where: { OR: [{ type: 'slack' }, { organizationId: 'o1' }], organizationId: 'o1' },
+    });
+  });
+
+  it('rejects writes through the organization relation', () => {
+    const scoped = orgScope('o1');
+    expect(() => scoped.data({ organization: { connect: { id: 'o2' } } })).toThrow(OrgScopeViolationError);
+  });
+
+  it('does not let findMany rest args override the scoped where', () => {
+    const scoped = orgScope('o1');
+    const result = scoped.findMany({ where: { a: 1 }, take: 5 });
+    expect(result.where).toEqual({ a: 1, organizationId: 'o1' });
   });
 });
 
