@@ -35,7 +35,7 @@ export default function UpdateModal({
       <div className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-xl shadow-2xl ${card}`}>
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${
-          theme === 'light' ? 'border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50' : 'border-zinc-800 bg-gradient-to-r from-blue-950/30 to-cyan-950/30'
+          theme === 'light' ? 'border-gray-200 bg-linear-to-r from-blue-50 to-cyan-50' : 'border-zinc-800 bg-linear-to-r from-blue-950/30 to-cyan-950/30'
         }`}>
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${
@@ -169,7 +169,7 @@ export default function UpdateModal({
             <div className={`flex items-start gap-3 p-4 rounded-lg ${
               theme === 'light' ? 'bg-yellow-50 border border-yellow-200' : 'bg-yellow-900/20 border border-yellow-800/30'
             }`}>
-              <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+              <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${
                 theme === 'light' ? 'text-yellow-600' : 'text-yellow-500'
               }`} />
               <div>

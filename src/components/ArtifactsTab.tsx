@@ -227,7 +227,7 @@ export default function ArtifactsTab() {
 
       {groupedArtifacts.length === 0 ? (
         <div className={`rounded-xl p-12 text-center ${card} ${
-          theme === 'light' ? 'shadow-sm' : ''
+          theme === 'light' ? 'shadow-xs' : ''
         }`}>
           <FileArchive className={`w-16 h-16 mx-auto mb-4 ${
             theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'
@@ -237,7 +237,7 @@ export default function ArtifactsTab() {
         </div>
       ) : (
         <div className={`rounded-xl overflow-hidden ${card} ${
-          theme === 'light' ? 'shadow-sm' : 'border border-zinc-800'
+          theme === 'light' ? 'shadow-xs' : 'border border-zinc-800'
         }`}>
           {/* Table Header */}
           <div className={`grid grid-cols-12 gap-4 px-6 py-3 text-xs font-medium ${textSecondary} ${

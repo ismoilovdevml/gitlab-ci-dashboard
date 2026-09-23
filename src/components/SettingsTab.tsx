@@ -276,7 +276,7 @@ export default function SettingsTab() {
                     theme === 'light'
                       ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                       : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
-                  } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                  } focus:outline-hidden focus:ring-2 focus:ring-orange-500/20`}
                 />
               </div>
               <div>
@@ -293,7 +293,7 @@ export default function SettingsTab() {
                       theme === 'light'
                         ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                         : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
-                    } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                    } focus:outline-hidden focus:ring-2 focus:ring-orange-500/20`}
                   />
                   <button
                     type="button"
@@ -350,7 +350,7 @@ export default function SettingsTab() {
                     theme === 'light'
                       ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                       : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
-                  } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                  } focus:outline-hidden focus:ring-2 focus:ring-orange-500/20`}
                 />
                 <button
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
@@ -369,7 +369,7 @@ export default function SettingsTab() {
                     theme === 'light'
                       ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                       : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
-                  } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                  } focus:outline-hidden focus:ring-2 focus:ring-orange-500/20`}
                 />
                 <button
                   onClick={() => setShowNewPassword(!showNewPassword)}
@@ -387,7 +387,7 @@ export default function SettingsTab() {
                   theme === 'light'
                     ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                     : 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
-                } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                } focus:outline-hidden focus:ring-2 focus:ring-orange-500/20`}
               />
               <button
                 onClick={handleChangePassword}
@@ -483,7 +483,7 @@ export default function SettingsTab() {
                       theme === 'light'
                         ? 'bg-white border-gray-200 text-gray-900'
                         : 'bg-zinc-900 border-zinc-700 text-white'
-                    } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                    } focus:outline-hidden focus:ring-2 focus:ring-orange-500/20`}
                   >
                     {refreshIntervals.map((interval) => (
                       <option key={interval.value} value={interval.value}>

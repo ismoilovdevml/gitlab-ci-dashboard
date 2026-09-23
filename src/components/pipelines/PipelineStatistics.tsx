@@ -28,7 +28,7 @@ export default function PipelineStatistics({ stats }: PipelineStatisticsProps) {
   if (stats.total === 0) return null;
 
   return (
-    <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+    <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-xs' : ''}`}>
       <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
         <BarChart3 className="w-5 h-5 text-orange-500" />
         Pipeline Status Distribution

@@ -312,7 +312,7 @@ export default function Overview() {
         </div>
 
         {filteredJobs.length === 0 ? (
-          <div className={`rounded-xl p-6 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <div className={`rounded-xl p-6 text-center ${card} ${theme === 'light' ? 'shadow-xs' : ''}`}>
             <Zap className={`w-10 h-10 mx-auto mb-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
             <p className={`text-sm ${textSecondary}`}>No active jobs running</p>
           </div>
@@ -335,13 +335,13 @@ export default function Overview() {
                   }}
                   className={`rounded-lg p-3 transition-all cursor-pointer group ${card} ${
                     theme === 'light'
-                      ? 'shadow-sm hover:shadow-md hover:border-[#d2d2d7]'
+                      ? 'shadow-xs hover:shadow-md hover:border-[#d2d2d7]'
                       : 'hover:border-zinc-700'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     {/* Status Icon */}
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0 ${
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
                       job.status === 'running' ? 'bg-blue-500/10 text-blue-500' :
                       'bg-yellow-500/10 text-yellow-500'
                     }`}>
@@ -355,7 +355,7 @@ export default function Overview() {
                     </div>
                   </div>
                   <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
-                    <GitBranch className="w-3 h-3 flex-shrink-0" />
+                    <GitBranch className="w-3 h-3 shrink-0" />
                     <span className="truncate">{job.ref}</span>
                     <span className="whitespace-nowrap ml-auto">{formatRelativeTime(job.created_at)}</span>
                   </div>
@@ -382,7 +382,7 @@ export default function Overview() {
         </div>
 
         {filteredPipelines.length === 0 ? (
-          <div className={`rounded-xl p-6 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <div className={`rounded-xl p-6 text-center ${card} ${theme === 'light' ? 'shadow-xs' : ''}`}>
             <Clock className={`w-10 h-10 mx-auto mb-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
             <p className={`text-sm ${textSecondary}`}>No recent builds</p>
           </div>
@@ -399,13 +399,13 @@ export default function Overview() {
                   }}
                   className={`rounded-lg p-3 transition-all cursor-pointer group ${card} ${
                     theme === 'light'
-                      ? 'shadow-sm hover:shadow-md hover:border-[#d2d2d7]'
+                      ? 'shadow-xs hover:shadow-md hover:border-[#d2d2d7]'
                       : 'hover:border-zinc-700'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     {/* Build Number Badge - Smaller */}
-                    <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                    <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0 ${
                       index === 0 ? 'bg-orange-500/20 text-orange-500' :
                       index === 1 ? 'bg-orange-500/15 text-orange-400' :
                       index === 2 ? 'bg-orange-500/10 text-orange-300' :
@@ -414,7 +414,7 @@ export default function Overview() {
                       {index + 1}
                     </div>
                     {/* Status Icon */}
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 ${
                       pipeline.status === 'success' ? 'bg-green-500/10 text-green-500' :
                       pipeline.status === 'failed' ? 'bg-red-500/10 text-red-500' :
                       pipeline.status === 'running' ? 'bg-blue-500/10 text-blue-500' :
@@ -430,7 +430,7 @@ export default function Overview() {
                     </div>
                   </div>
                   <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
-                    <GitBranch className="w-3 h-3 flex-shrink-0" />
+                    <GitBranch className="w-3 h-3 shrink-0" />
                     <span className="truncate">{pipeline.ref}</span>
                     <span className="whitespace-nowrap ml-auto">{formatRelativeTime(pipeline.updated_at)}</span>
                   </div>
@@ -454,7 +454,7 @@ export default function Overview() {
         </div>
 
         {topProjects.length === 0 ? (
-          <div className={`rounded-xl p-6 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+          <div className={`rounded-xl p-6 text-center ${card} ${theme === 'light' ? 'shadow-xs' : ''}`}>
             <TrendingUp className={`w-10 h-10 mx-auto mb-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
             <p className={`text-sm ${textSecondary}`}>No project activity</p>
           </div>
@@ -465,12 +465,12 @@ export default function Overview() {
                 key={project.id}
                 className={`rounded-lg p-4 transition-all group ${card} ${
                   theme === 'light'
-                    ? 'shadow-sm hover:shadow-md hover:border-[#d2d2d7]'
+                    ? 'shadow-xs hover:shadow-md hover:border-[#d2d2d7]'
                     : 'hover:border-zinc-700'
                 }`}
               >
                 <div className="flex items-start gap-3 mb-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${
                     index === 0 ? 'bg-yellow-500/20 text-yellow-500' :
                     index === 1 ? 'bg-gray-400/20 text-gray-400' :
                     index === 2 ? 'bg-orange-500/20 text-orange-500' :

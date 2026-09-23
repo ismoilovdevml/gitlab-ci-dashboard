@@ -123,8 +123,8 @@ export default function ProjectsTab() {
           }}
           className={`rounded-xl p-4 text-left border transition-all ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-sm hover:shadow-md'
-              : 'bg-gradient-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30'
+              ? 'bg-linear-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-xs hover:shadow-md'
+              : 'bg-linear-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -144,8 +144,8 @@ export default function ProjectsTab() {
           onClick={() => setVisibilityFilter('public')}
           className={`rounded-xl p-4 text-left border transition-all ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-sm hover:shadow-md'
-              : 'bg-gradient-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30'
+              ? 'bg-linear-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-xs hover:shadow-md'
+              : 'bg-linear-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -165,8 +165,8 @@ export default function ProjectsTab() {
           onClick={() => setVisibilityFilter('private')}
           className={`rounded-xl p-4 text-left border transition-all ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm hover:shadow-md'
-              : 'bg-gradient-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30'
+              ? 'bg-linear-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-xs hover:shadow-md'
+              : 'bg-linear-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -192,7 +192,7 @@ export default function ProjectsTab() {
             placeholder="Search projects..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+            className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
           />
         </div>
 
@@ -201,7 +201,7 @@ export default function ProjectsTab() {
           <select
             value={visibilityFilter}
             onChange={(e) => setVisibilityFilter(e.target.value)}
-            className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+            className={`pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
           >
             <option value="all">All Visibility</option>
             <option value="public">Public</option>
@@ -224,8 +224,8 @@ export default function ProjectsTab() {
             onClick={() => setSelectedProject(project)}
             className={`rounded-2xl p-4 transition-all group cursor-pointer border-2 ${
               theme === 'light'
-                ? 'bg-white border-gray-200 hover:border-orange-400 shadow-sm hover:shadow-lg'
-                : 'bg-zinc-900/50 border-zinc-800 hover:border-orange-500/50 backdrop-blur-sm'
+                ? 'bg-white border-gray-200 hover:border-orange-400 shadow-xs hover:shadow-lg'
+                : 'bg-zinc-900/50 border-zinc-800 hover:border-orange-500/50 backdrop-blur-xs'
             }`}
           >
             {/* Header with Avatar and Name */}
@@ -245,7 +245,7 @@ export default function ProjectsTab() {
                 />
               ) : null}
               <div
-                className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:shadow-orange-500/50 transition-shadow"
+                className="w-12 h-12 rounded-xl bg-linear-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:shadow-orange-500/50 transition-shadow"
                 style={{ display: project.avatar_url ? 'none' : 'flex' }}
               >
                 <span className="text-white font-bold text-lg">
@@ -257,7 +257,7 @@ export default function ProjectsTab() {
                   <h3 className={`font-bold text-lg group-hover:text-orange-500 transition-colors truncate ${textPrimary}`}>
                     {project.name}
                   </h3>
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     {getVisibilityIcon(project.visibility)}
                   </div>
                 </div>
@@ -279,8 +279,8 @@ export default function ProjectsTab() {
             {/* Statistics Row */}
             <div className={`flex items-center justify-between px-3 py-2.5 mb-2.5 rounded-xl border ${
               theme === 'light'
-                ? 'bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200'
-                : 'bg-gradient-to-r from-zinc-800/40 to-zinc-800/20 border-zinc-700/50'
+                ? 'bg-linear-to-r from-gray-50 to-gray-100/50 border-gray-200'
+                : 'bg-linear-to-r from-zinc-800/40 to-zinc-800/20 border-zinc-700/50'
             }`}>
               {/* Stars */}
               <button

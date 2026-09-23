@@ -99,7 +99,7 @@ export default function WebhookSetup() {
       ? 'bg-gray-800 border-gray-700 text-gray-300'
       : 'bg-gray-50 border-gray-300 text-gray-700'
   }`;
-  const stepBadge = `flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+  const stepBadge = `shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
     theme === 'dark' ? 'bg-orange-500/20 text-orange-500' : 'bg-orange-100 text-orange-600'
   }`;
 
@@ -154,7 +154,7 @@ export default function WebhookSetup() {
             theme === 'dark' ? 'bg-yellow-500/10 border border-yellow-500/20' : 'bg-yellow-50 border border-yellow-200'
           }`}
         >
-          <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
           <p className={`text-sm ${textPrimary}`}>{state.message}</p>
         </div>
       )}
@@ -233,7 +233,7 @@ export default function WebhookSetup() {
               }`}
             >
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
                 <div>
                   <p className={`font-medium ${textPrimary} mb-1`}>Local development</p>
                   <p className={`text-sm ${textSecondary}`}>

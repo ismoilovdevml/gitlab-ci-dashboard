@@ -299,7 +299,7 @@ export default function AlertHistory() {
             {Object.entries(analytics.channelStats).map(([channel, stats]) => (
               <div key={channel} className="bg-gray-700/30 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className={`p-1.5 rounded ${getChannelColor(channel)}`}>
+                  <div className={`p-1.5 rounded-sm ${getChannelColor(channel)}`}>
                     {getChannelIcon(channel)}
                   </div>
                   <span className={`font-medium ${textPrimary} capitalize`}>{channel}</span>
@@ -484,7 +484,7 @@ export default function AlertHistory() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`font-medium ${textPrimary}`}>{alert.projectName}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${getChannelColor(alert.channel)} text-white flex items-center gap-1`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-sm ${getChannelColor(alert.channel)} text-white flex items-center gap-1`}>
                         {getChannelIcon(alert.channel)}
                         <span className="capitalize">{alert.channel}</span>
                       </span>

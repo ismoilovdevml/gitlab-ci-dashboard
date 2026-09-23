@@ -82,7 +82,7 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
         onClick={onClose}
       />
       {/* Modal container */}
@@ -122,7 +122,7 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
                 placeholder="Search by ID, branch, or commit..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 ${
+                className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 ${
                   theme === 'light' ? 'bg-[#f5f5f7] border border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b]' : 'bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500'
                 }`}
               />

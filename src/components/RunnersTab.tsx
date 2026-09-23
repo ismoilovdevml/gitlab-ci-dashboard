@@ -144,8 +144,8 @@ export default function RunnersTab() {
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
-              : 'bg-gradient-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30 hover:border-blue-500/50'
+              ? 'bg-linear-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-xs hover:shadow-md hover:scale-[1.02]'
+              : 'bg-linear-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30 hover:border-blue-500/50'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -168,8 +168,8 @@ export default function RunnersTab() {
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
-              : 'bg-gradient-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30 hover:border-green-500/50'
+              ? 'bg-linear-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-xs hover:shadow-md hover:scale-[1.02]'
+              : 'bg-linear-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30 hover:border-green-500/50'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -192,8 +192,8 @@ export default function RunnersTab() {
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
-              : 'bg-gradient-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30 hover:border-red-500/50'
+              ? 'bg-linear-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-xs hover:shadow-md hover:scale-[1.02]'
+              : 'bg-linear-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30 hover:border-red-500/50'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -216,8 +216,8 @@ export default function RunnersTab() {
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 hover:from-yellow-100 hover:to-yellow-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
-              : 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/20 border-yellow-500/30 hover:from-yellow-500/20 hover:to-yellow-600/30 hover:border-yellow-500/50'
+              ? 'bg-linear-to-br from-yellow-50 to-yellow-100 border-yellow-200 hover:from-yellow-100 hover:to-yellow-200 shadow-xs hover:shadow-md hover:scale-[1.02]'
+              : 'bg-linear-to-br from-yellow-500/10 to-yellow-600/20 border-yellow-500/30 hover:from-yellow-500/20 hover:to-yellow-600/30 hover:border-yellow-500/50'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -240,8 +240,8 @@ export default function RunnersTab() {
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
-              : 'bg-gradient-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30 hover:from-purple-500/20 hover:to-purple-600/30 hover:border-purple-500/50'
+              ? 'bg-linear-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 shadow-xs hover:shadow-md hover:scale-[1.02]'
+              : 'bg-linear-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30 hover:from-purple-500/20 hover:to-purple-600/30 hover:border-purple-500/50'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -264,8 +264,8 @@ export default function RunnersTab() {
           }}
           className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 hover:from-orange-100 hover:to-orange-200 shadow-sm hover:shadow-md hover:scale-[1.02]'
-              : 'bg-gradient-to-br from-orange-500/10 to-orange-600/20 border-orange-500/30 hover:from-orange-500/20 hover:to-orange-600/30 hover:border-orange-500/50'
+              ? 'bg-linear-to-br from-orange-50 to-orange-100 border-orange-200 hover:from-orange-100 hover:to-orange-200 shadow-xs hover:shadow-md hover:scale-[1.02]'
+              : 'bg-linear-to-br from-orange-500/10 to-orange-600/20 border-orange-500/30 hover:from-orange-500/20 hover:to-orange-600/30 hover:border-orange-500/50'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -291,7 +291,7 @@ export default function RunnersTab() {
             placeholder="Search runners..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+            className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
           />
         </div>
 
@@ -300,7 +300,7 @@ export default function RunnersTab() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+            className={`pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
           >
             <option value="all">All Status</option>
             <option value="online">Online</option>
@@ -314,7 +314,7 @@ export default function RunnersTab() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+            className={`pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
           >
             <option value="all">All Types</option>
             <option value="instance_type">Instance</option>
@@ -332,13 +332,13 @@ export default function RunnersTab() {
 
       {/* Loading State */}
       {isLoading && runners.length === 0 ? (
-        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-xs' : ''}`}>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className={textSecondary}>Loading runners...</p>
         </div>
       ) : runners.length === 0 ? (
         /* Empty State */
-        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-xs' : ''}`}>
           <Server className={`w-16 h-16 mx-auto mb-4 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
           <p className={`text-lg ${textSecondary}`}>No runners found</p>
           <p className={`text-sm mt-2 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'}`}>
@@ -358,7 +358,7 @@ export default function RunnersTab() {
         </div>
       ) : filteredRunners.length === 0 ? (
         /* No Results */
-        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-sm' : ''}`}>
+        <div className={`rounded-xl p-12 text-center ${card} ${theme === 'light' ? 'shadow-xs' : ''}`}>
           <Search className={`w-16 h-16 mx-auto mb-4 ${theme === 'light' ? 'text-[#86868b]' : 'text-zinc-700'}`} />
           <p className={`text-lg ${textSecondary}`}>No runners match your filters</p>
           <button
@@ -390,12 +390,12 @@ export default function RunnersTab() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className={cn(
-                    'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',
+                    'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
                     runner.status === 'online'
-                      ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                      ? 'bg-linear-to-br from-green-500 to-emerald-600'
                       : runner.status === 'paused'
-                      ? 'bg-gradient-to-br from-yellow-500 to-orange-600'
-                      : 'bg-gradient-to-br from-gray-500 to-gray-600'
+                      ? 'bg-linear-to-br from-yellow-500 to-orange-600'
+                      : 'bg-linear-to-br from-gray-500 to-gray-600'
                   )}>
                     <Server className="w-5 h-5 text-white" />
                   </div>
@@ -426,7 +426,7 @@ export default function RunnersTab() {
                   </div>
                 </div>
                 <div className={cn(
-                  'px-2 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-1.5 flex-shrink-0',
+                  'px-2 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-1.5 shrink-0',
                   getRunnerStatusColor(runner.status)
                 )}>
                   <Circle className={cn('w-1.5 h-1.5 fill-current', runner.online && 'animate-pulse')} />

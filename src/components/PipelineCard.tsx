@@ -31,7 +31,7 @@ export default function PipelineCard({ pipeline, projectName, onClick, onRetry, 
         <div className="flex items-center gap-2 flex-1">
           {/* Build Number Badge */}
           {index !== undefined && (
-            <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+            <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0 ${
               index === 0 ? 'bg-orange-500/20 text-orange-500' :
               index === 1 ? 'bg-orange-500/15 text-orange-400' :
               index === 2 ? 'bg-orange-500/10 text-orange-300' :

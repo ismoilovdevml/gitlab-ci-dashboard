@@ -53,7 +53,7 @@ export default function NotificationToast() {
       {notifications.map((notification) => (
         <div
           key={notification.id}
-          className={`${getBgColor(notification.type)} border rounded-lg p-4 shadow-lg backdrop-blur-sm animate-slide-in-right ${
+          className={`${getBgColor(notification.type)} border rounded-lg p-4 shadow-lg backdrop-blur-xs animate-slide-in-right ${
             theme === 'light' ? 'bg-white/90' : ''
           }`}
         >

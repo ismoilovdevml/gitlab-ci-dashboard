@@ -70,8 +70,8 @@ export default function StatsCard({ title, value, icon: Icon, trend, color = 'bl
 
   return (
     <div className={cn(
-      'bg-gradient-to-br border rounded-xl p-6 transition-all hover:scale-105',
-      theme === 'light' ? `${colorClasses.light} shadow-sm hover:shadow-md` : colorClasses.dark
+      'bg-linear-to-br border rounded-xl p-6 transition-all hover:scale-105',
+      theme === 'light' ? `${colorClasses.light} shadow-xs hover:shadow-md` : colorClasses.dark
     )}>
       <div className="flex items-start justify-between">
         <div>

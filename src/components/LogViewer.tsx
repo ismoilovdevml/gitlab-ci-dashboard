@@ -128,7 +128,7 @@ export default function LogViewer({
     return parts.map((part, i) => {
       if (part.toLowerCase() === escapedTerm.toLowerCase()) {
         return (
-          <mark key={i} className="bg-yellow-500 text-black px-1 rounded">
+          <mark key={i} className="bg-yellow-500 text-black px-1 rounded-sm">
             {part}
           </mark>
         );
@@ -166,14 +166,14 @@ export default function LogViewer({
     <>
       {/* Backdrop overlay */}
       <div
-        className={`fixed inset-0 z-[1000] backdrop-blur-sm ${
+        className={`fixed inset-0 z-1000 backdrop-blur-xs ${
           theme === 'light' ? 'bg-black/50' : 'bg-black/80'
         }`}
         onClick={onClose}
       />
 
       {/* Modal container */}
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-1000 flex items-center justify-center p-4 pointer-events-none">
         <div className={`rounded-xl flex flex-col pointer-events-auto ${
           isFullscreen ? 'w-full h-full' : 'w-full max-w-7xl h-[85vh]'
         } ${
@@ -278,7 +278,7 @@ export default function LogViewer({
                 placeholder="Search in logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:border-orange-500 ${
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-hidden focus:border-orange-500 ${
                   theme === 'light'
                     ? 'bg-[#f5f5f7] border-[#d2d2d7] text-[#1d1d1f] placeholder-[#86868b]'
                     : 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500'
@@ -353,7 +353,7 @@ export default function LogViewer({
               {processedLogs.map((item) => (
                 <div
                   key={item.index}
-                  className={`py-1 px-3 rounded mb-0.5 ${item.bg} hover:bg-zinc-800/50 transition-colors`}
+                  className={`py-1 px-3 rounded-sm mb-0.5 ${item.bg} hover:bg-zinc-800/50 transition-colors`}
                 >
                   <span className="text-zinc-600 mr-3 select-none inline-block w-10 text-right">
                     {item.index + 1}

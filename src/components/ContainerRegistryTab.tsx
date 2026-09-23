@@ -219,8 +219,8 @@ export default function ContainerRegistryTab() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className={`rounded-xl p-4 ${
             theme === 'light'
-              ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 shadow-sm'
-              : 'bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20'
+              ? 'bg-linear-to-br from-blue-50 to-blue-100/50 border border-blue-200 shadow-xs'
+              : 'bg-linear-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20'
           }`}>
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -239,7 +239,7 @@ export default function ContainerRegistryTab() {
 
       {repositories.length === 0 ? (
         <div className={`rounded-xl p-12 text-center ${card} ${
-          theme === 'light' ? 'shadow-sm' : ''
+          theme === 'light' ? 'shadow-xs' : ''
         }`}>
           <Package className={`w-12 h-12 mx-auto mb-4 ${
             theme === 'light' ? 'text-[#86868b]' : 'text-zinc-600'
@@ -293,7 +293,7 @@ export default function ContainerRegistryTab() {
                       <div className={`flex items-center gap-2 text-xs font-mono p-2 rounded ${
                         theme === 'light' ? 'bg-[#f5f5f7] border border-[#d2d2d7]' : 'bg-zinc-900 border border-zinc-800'
                       }`}>
-                        <Terminal className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                        <Terminal className="w-3 h-3 text-blue-500 shrink-0" />
                         <span className={`flex-1 truncate ${textSecondary}`}>docker pull {repo.location}</span>
                         <button
                           onClick={(e) => {
@@ -399,7 +399,7 @@ export default function ContainerRegistryTab() {
                             <div className={`flex items-center gap-2 text-xs font-mono p-2 rounded ${
                               theme === 'light' ? 'bg-white border border-[#d2d2d7]' : 'bg-zinc-900 border border-zinc-800'
                             }`}>
-                              <Terminal className="w-3 h-3 text-green-500 flex-shrink-0" />
+                              <Terminal className="w-3 h-3 text-green-500 shrink-0" />
                               <span className={`flex-1 truncate ${textSecondary}`}>docker pull {repo.location}:{tag.name}</span>
                               <button
                                 onClick={(e) => {
