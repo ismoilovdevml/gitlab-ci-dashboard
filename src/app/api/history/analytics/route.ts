@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { redis } from '@/lib/db/redis';
-import { requireFeature } from '@/lib/license';
 
-const ANALYTICS_CACHE_KEY = 'history:analytics';
+// Keyed under the org's history prefix so history writes invalidate it (see history/route.ts).
+function analyticsCacheKey(organizationId: string | null, days: number): string {
+  return `history:${organizationId ?? 'default'}:analytics:${days}`;
+}
+
 const CACHE_TTL = 300; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('pipeline_analytics');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     // Try to get from cache
     try {
-      const cached = await redis.get(`${ANALYTICS_CACHE_KEY}:${days}`);
+      const cached = await redis.get(analyticsCacheKey(auth.organizationId, days));
       if (cached) {
         return NextResponse.json(JSON.parse(cached));
       }
@@ -127,7 +126,7 @@ export async function GET(request: NextRequest) {
 
     // Cache the response
     try {
-      await redis.setex(`${ANALYTICS_CACHE_KEY}:${days}`, CACHE_TTL, JSON.stringify(analytics));
+      await redis.setex(analyticsCacheKey(auth.organizationId, days), CACHE_TTL, JSON.stringify(analytics));
     } catch (cacheError) {
       console.warn('Cache write failed:', cacheError);
     }

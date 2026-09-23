@@ -1,6 +1,9 @@
-import prisma from './db/prisma';
+import type prisma from './db/prisma';
 import { logger } from './logger';
 import { Prisma } from '@prisma/client';
+
+/** Org-scoped Prisma client from getOrgPrisma()/getScopedPrisma(). */
+export type DbClient = typeof prisma;
 
 export interface TrendPoint {
   timestamp: Date;
@@ -21,13 +24,14 @@ export interface TrendAnalysis {
  * Record trend data point
  */
 export async function recordTrendData(
+  db: DbClient,
   metric: string,
   value: number,
   projectId?: number,
   metadata?: Record<string, unknown>
 ): Promise<void> {
   try {
-    await prisma.trendData.create({
+    await db.trendData.create({
       data: {
         metric,
         projectId,
@@ -88,6 +92,7 @@ function predictNextValue(values: number[]): number {
  * Get trend analysis for a metric
  */
 export async function getTrendAnalysis(
+  db: DbClient,
   metric: string,
   projectId?: number,
   startDate?: Date,
@@ -95,7 +100,7 @@ export async function getTrendAnalysis(
   limit: number = 100
 ): Promise<TrendAnalysis> {
   try {
-    const data = await prisma.trendData.findMany({
+    const data = await db.trendData.findMany({
       where: {
         metric,
         ...(projectId && { projectId }),
@@ -145,6 +150,7 @@ export async function getTrendAnalysis(
  * Get multiple trends
  */
 export async function getMultipleTrends(
+  db: DbClient,
   metrics: string[],
   projectId?: number,
   startDate?: Date,
@@ -155,6 +161,7 @@ export async function getMultipleTrends(
   for (const metric of metrics) {
     try {
       const trend = await getTrendAnalysis(
+        db,
         metric,
         projectId,
         startDate,
@@ -173,6 +180,7 @@ export async function getMultipleTrends(
  * Auto-record pipeline metrics
  */
 export async function recordPipelineMetrics(
+  db: DbClient,
   projectId: number,
   pipelineId: number,
   status: string,
@@ -180,6 +188,7 @@ export async function recordPipelineMetrics(
 ): Promise<void> {
   // Record success rate
   await recordTrendData(
+    db,
     'pipeline_success_rate',
     status === 'success' ? 100 : 0,
     projectId,
@@ -188,14 +197,14 @@ export async function recordPipelineMetrics(
 
   // Record duration
   if (duration > 0) {
-    await recordTrendData('pipeline_duration', duration, projectId, {
+    await recordTrendData(db, 'pipeline_duration', duration, projectId, {
       pipelineId,
       status,
     });
   }
 
   // Record count
-  await recordTrendData('pipeline_count', 1, projectId, {
+  await recordTrendData(db, 'pipeline_count', 1, projectId, {
     pipelineId,
     status,
   });

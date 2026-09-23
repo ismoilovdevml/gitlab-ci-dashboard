@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateDoraMetrics, getDoraMetricsSummary } from '@/lib/dora-metrics';
-import { requireFeature } from '@/lib/license';
 import { logger } from '@/lib/logger';
+import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('dora_metrics');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    const { db, auth } = await getOrgPrisma();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
     const projectIds = searchParams.get('projectIds');
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Multiple projects summary
     if (projectIds) {
       const ids = projectIds.split(',').map(id => parseInt(id, 10));
-      const metrics = await getDoraMetricsSummary(ids, period);
+      const metrics = await getDoraMetricsSummary(db, ids, period);
 
       return NextResponse.json({
         success: true,
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
         const projectName = `Project ${id}`;
 
         const metrics = await calculateDoraMetrics(
+          db,
           id,
           projectName,
           start,

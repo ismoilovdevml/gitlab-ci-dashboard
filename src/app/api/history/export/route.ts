@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
-import { requireFeature } from '@/lib/license';
 
 export async function GET(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('pipeline_analytics');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { cacheHelpers } from '@/lib/db/redis';
-import { requireFeature } from '@/lib/license';
+
+// Channel configs are per organization; a shared key would serve one org's channels to another.
+function channelsCacheKey(organizationId: string | null): string {
+  return `alert:channels:${organizationId ?? 'default'}`;
+}
 
 // GET /api/channels - Get all alert channels
 export async function GET() {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const channels = await cacheHelpers.getOrSet(
-      'alert:channels',
+      channelsCacheKey(auth.organizationId),
       async () => {
         return await db.alertChannel.findMany({
           orderBy: { updatedAt: 'desc' },
@@ -38,10 +38,6 @@ export async function GET() {
 // POST /api/channels - Create or update channel
 export async function POST(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -77,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Invalidate cache
-    await cacheHelpers.invalidate('alert:channels');
+    await cacheHelpers.invalidate(channelsCacheKey(auth.organizationId));
 
     return NextResponse.json(channel);
   } catch (error) {
@@ -92,10 +88,6 @@ export async function POST(request: NextRequest) {
 // DELETE /api/channels?type=telegram
 export async function DELETE(request: NextRequest) {
   try {
-    const featureCheck = await requireFeature('alerts');
-    if (featureCheck) {
-      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
-    }
     const { db, auth } = await getOrgPrisma();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -123,7 +115,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Invalidate cache
-    await cacheHelpers.invalidate('alert:channels');
+    await cacheHelpers.invalidate(channelsCacheKey(auth.organizationId));
 
     return NextResponse.json({ success: true });
   } catch (error) {
