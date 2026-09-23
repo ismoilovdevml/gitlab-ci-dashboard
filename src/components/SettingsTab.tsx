@@ -23,8 +23,7 @@ export default function SettingsTab() {
   // State
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(10000);
-  const [gitlabUrl, setGitlabUrl] = useState('https://gitlab.com');
-  const [gitlabToken, setGitlabToken] = useState('');
+  const [tokenConfigured, setTokenConfigured] = useState(false);
   const [notifyPipelineFailures, setNotifyPipelineFailures] = useState(true);
   const [notifyPipelineSuccess, setNotifyPipelineSuccess] = useState(false);
   const [username, setUsername] = useState('');
@@ -40,8 +39,8 @@ export default function SettingsTab() {
   const [showToken, setShowToken] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [localUrl, setLocalUrl] = useState(gitlabUrl);
-  const [localToken, setLocalToken] = useState(gitlabToken);
+  const [localUrl, setLocalUrl] = useState('https://gitlab.com');
+  const [localToken, setLocalToken] = useState('');
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -62,13 +61,10 @@ export default function SettingsTab() {
         setUsername(user.username || '');
         setRole(user.role || '');
 
-        const url = user.gitlabUrl || 'https://gitlab.com';
-        const token = user.gitlabToken === '***' ? '' : user.gitlabToken || '';
-
-        setGitlabUrl(url);
-        setGitlabToken(token);
-        setLocalUrl(url);
-        setLocalToken(token);
+        // The session endpoint only reports whether a token is stored, never the token.
+        setLocalUrl(user.gitlabUrl || 'https://gitlab.com');
+        setTokenConfigured(Boolean(user.gitlabToken));
+        setLocalToken('');
         setAutoRefresh(user.autoRefresh ?? true);
         setRefreshInterval(user.refreshInterval ?? 10000);
         setNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
@@ -104,78 +100,51 @@ export default function SettingsTab() {
     { value: 300000, label: '5m' },
   ];
 
-  const testGitLabConnection = async () => {
+  // The server tests the connection before saving; the browser never calls GitLab.
+  // A blank token keeps the stored one (only accepted for the same GitLab host).
+  const handleSaveGitLabConfig = async () => {
     setTesting(true);
     try {
-      const response = await axios.get(`${localUrl}/api/v4/user`, {
-        headers: { 'PRIVATE-TOKEN': localToken },
-      });
+      const response = await withCsrf((headers) =>
+        axios.post('/api/config', {
+          url: localUrl,
+          token: localToken,
+          autoRefresh,
+          refreshInterval,
+          theme: currentTheme,
+          notifyPipelineFailures,
+          notifyPipelineSuccess,
+        }, { headers })
+      );
 
-      if (response.status === 200) {
-        notifySuccess('GitLab Connected', `Connected as ${response.data.name || response.data.username}`);
-        return true;
-      }
-      return false;
+      setLocalToken('');
+      setTokenConfigured(Boolean(response.data?.tokenConfigured));
+
+      setStoreAutoRefresh(autoRefresh);
+      setStoreRefreshInterval(refreshInterval);
+      setStoreNotifyPipelineFailures(notifyPipelineFailures);
+      setStoreNotifyPipelineSuccess(notifyPipelineSuccess);
+
+      setSaved(true);
+      const who = response.data?.gitlabUsername;
+      notifySuccess('Configuration Saved', who ? `Connected as ${who}` : 'Settings saved successfully');
+
+      setTimeout(() => {
+        setSaved(false);
+        window.location.reload();
+      }, 2000);
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          notifyError('Connection Failed', 'Invalid API token');
-        } else if (error.code === 'ERR_NETWORK') {
-          notifyError('Connection Failed', 'Cannot reach GitLab server');
-        } else {
-          notifyError('Connection Failed', error.message || 'Unknown error');
-        }
+        notifyError('Connection Failed', error.response?.data?.error || 'Could not save configuration');
       } else {
-        notifyError('Connection Failed', 'Failed to connect to GitLab');
+        notifyError('Save Failed', 'Could not save configuration');
       }
-      return false;
     } finally {
       setTesting(false);
     }
   };
 
-  const handleSaveGitLabConfig = async () => {
-    const isConnected = await testGitLabConnection();
-
-    if (isConnected) {
-      try {
-        await withCsrf((headers) =>
-          axios.post('/api/config', {
-            url: localUrl,
-            token: localToken,
-            autoRefresh,
-            refreshInterval,
-            theme: currentTheme,
-            notifyPipelineFailures,
-            notifyPipelineSuccess,
-          }, { headers })
-        );
-
-        setGitlabUrl(localUrl);
-        setGitlabToken(localToken);
-
-        setStoreAutoRefresh(autoRefresh);
-        setStoreRefreshInterval(refreshInterval);
-        setStoreNotifyPipelineFailures(notifyPipelineFailures);
-        setStoreNotifyPipelineSuccess(notifyPipelineSuccess);
-
-        setSaved(true);
-        notifySuccess('Configuration Saved', 'Settings saved successfully');
-
-        // Give time for user preferences hook to save to database
-        setTimeout(() => {
-          setSaved(false);
-          window.location.reload();
-        }, 2000); // Increased from 1500ms to 2000ms
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          notifyError('Save Failed', error.response?.data?.error || 'Could not save configuration');
-        } else {
-          notifyError('Save Failed', 'Could not save configuration');
-        }
-      }
-    }
-  };
+  const canSaveGitLab = Boolean(localUrl) && (Boolean(localToken) || tokenConfigured) && !testing;
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -296,8 +265,9 @@ export default function SettingsTab() {
             </div>
             <div className="space-y-3">
               <div>
-                <label className={`text-xs ${textSecondary} mb-1.5 block`}>GitLab URL</label>
+                <label htmlFor="gitlab-url" className={`text-xs ${textSecondary} mb-1.5 block`}>GitLab URL</label>
                 <input
+                  id="gitlab-url"
                   type="text"
                   value={localUrl}
                   onChange={(e) => setLocalUrl(e.target.value)}
@@ -310,13 +280,15 @@ export default function SettingsTab() {
                 />
               </div>
               <div>
-                <label className={`text-xs ${textSecondary} mb-1.5 block`}>Access Token</label>
+                <label htmlFor="gitlab-token" className={`text-xs ${textSecondary} mb-1.5 block`}>Access Token</label>
                 <div className="relative">
                   <input
+                    id="gitlab-token"
                     type={showToken ? 'text' : 'password'}
                     value={localToken}
                     onChange={(e) => setLocalToken(e.target.value)}
-                    placeholder="glpat-xxxxxxxxxxxxx"
+                    autoComplete="off"
+                    placeholder={tokenConfigured ? 'Saved (leave blank to keep)' : 'glpat-xxxxxxxxxxxxx'}
                     className={`w-full px-3 py-2 pr-9 rounded-lg border font-mono text-sm ${
                       theme === 'light'
                         ? 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
@@ -324,6 +296,8 @@ export default function SettingsTab() {
                     } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
                   />
                   <button
+                    type="button"
+                    aria-label={showToken ? 'Hide token' : 'Show token'}
                     onClick={() => setShowToken(!showToken)}
                     className={`absolute right-2 top-1/2 -translate-y-1/2 ${textSecondary}`}
                   >
@@ -333,9 +307,10 @@ export default function SettingsTab() {
               </div>
               <button
                 onClick={handleSaveGitLabConfig}
-                disabled={!localUrl || !localToken || testing}
+                type="button"
+                disabled={!canSaveGitLab}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all text-sm font-medium ${
-                  (!localUrl || !localToken || testing) && 'opacity-50 cursor-not-allowed'
+                  !canSaveGitLab && 'opacity-50 cursor-not-allowed'
                 }`}
               >
                 {testing ? (

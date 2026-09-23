@@ -24,6 +24,11 @@ jest.mock('@/lib/auth', () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: 'u1' }),
 }));
 
+jest.mock('@/lib/gitlab/token', () => ({
+  ...jest.requireActual('@/lib/gitlab/token'),
+  testGitLabConnection: jest.fn().mockResolvedValue({ success: true, username: 'root' }),
+}));
+
 describe('POST /api/config CSRF enforcement', () => {
   const url = 'http://localhost/api/config';
   const body = { url: 'https://gitlab.example.com', token: 'glpat-x' };

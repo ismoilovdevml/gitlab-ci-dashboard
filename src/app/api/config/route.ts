@@ -4,8 +4,8 @@ import { cacheHelpers } from '@/lib/db/redis';
 import { getCurrentUser } from '@/lib/auth';
 import { requireCsrf } from '@/lib/csrf';
 import { logger } from '@/lib/logger';
-import { decryptToken, encryptToken } from '@/lib/gitlab/token';
-import { GitLabUrlError, normalizeGitLabBaseUrl } from '@/lib/gitlab/url';
+import { decryptToken, encryptToken, testGitLabConnection } from '@/lib/gitlab/token';
+import { GitLabUrlError, isSameOrigin, normalizeGitLabBaseUrl } from '@/lib/gitlab/url';
 import { formatValidationError, userGitLabConfigUpdateSchema } from '@/lib/validation';
 
 // Placeholders the UI may echo back instead of a real token; never store them.
@@ -25,8 +25,8 @@ function readStoredToken(stored: string | null | undefined, userId: string): str
   }
 }
 
-// GET /api/config - Get user's GitLab configuration
-export async function GET(request: NextRequest) {
+// GET /api/config - Get user's GitLab configuration. The token is always masked.
+export async function GET() {
   try {
     const user = await getCurrentUser();
 
@@ -37,23 +37,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if token should be unmasked (for API usage, not for display)
-    const { searchParams } = new URL(request.url);
-    const unmask = searchParams.get('unmask') === 'true';
-
     const token = readStoredToken(user.gitlabToken, user.id);
-    if (token === null && unmask) {
-      return NextResponse.json(
-        { error: 'Stored GitLab token could not be decrypted. Check TOKEN_ENCRYPTION_KEY or re-enter the token in Settings.' },
-        { status: 500 }
-      );
-    }
 
-    // Return user's config
-    // SECURITY: Only unmask token for internal API calls, not for UI display
     return NextResponse.json({
       url: user.gitlabUrl,
-      token: unmask ? token : (user.gitlabToken ? '***MASKED***' : ''),
+      token: user.gitlabToken ? '***MASKED***' : '',
       tokenConfigured: !!user.gitlabToken,
       tokenLength: token?.length || 0,
       autoRefresh: user.autoRefresh,
@@ -104,6 +92,7 @@ export async function POST(request: NextRequest) {
     }
     const body = parsed.data;
 
+    let gitlabUsername: string | undefined;
     let gitlabUrl: string | undefined;
     if (body.url !== undefined) {
       try {
@@ -114,10 +103,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const submittedToken =
+      body.token === undefined || MASKED_TOKEN_VALUES.has(body.token) ? '' : body.token.trim();
+
+    // Changing the URL or token: verify the connection from the server before saving.
     let gitlabToken: string | undefined;
-    if (body.token !== undefined && !MASKED_TOKEN_VALUES.has(body.token)) {
-      const trimmed = body.token.trim();
-      gitlabToken = trimmed ? encryptToken(trimmed) : '';
+    if (gitlabUrl !== undefined || submittedToken) {
+      const targetUrl = gitlabUrl ?? user.gitlabUrl;
+      let testToken = submittedToken;
+
+      if (!testToken) {
+        // Keep the stored token only for the same GitLab origin, so it is
+        // never sent to a host the user has not entered it for.
+        if (!user.gitlabToken || !isSameOrigin(targetUrl, user.gitlabUrl)) {
+          return NextResponse.json(
+            { error: 'Enter an access token for this GitLab URL', code: 'GITLAB_NEW_TOKEN_REQUIRED' },
+            { status: 400 }
+          );
+        }
+        const stored = readStoredToken(user.gitlabToken, user.id);
+        if (!stored) {
+          return NextResponse.json(
+            { error: 'Stored GitLab token could not be read. Re-enter the token.', code: 'GITLAB_STORED_TOKEN_UNREADABLE' },
+            { status: 400 }
+          );
+        }
+        testToken = stored;
+      }
+
+      const result = await testGitLabConnection(targetUrl, testToken);
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.error || 'Could not connect to GitLab', code: 'GITLAB_CONNECTION_FAILED' },
+          { status: 400 }
+        );
+      }
+      gitlabUsername = result.username;
+      if (submittedToken) {
+        gitlabToken = encryptToken(submittedToken);
+      }
     }
 
     // Update user's config (undefined fields are left unchanged)
@@ -145,6 +169,7 @@ export async function POST(request: NextRequest) {
       token: updatedUser.gitlabToken ? '***MASKED***' : '',
       tokenConfigured: !!updatedUser.gitlabToken,
       tokenLength: savedToken?.length || 0,
+      ...(gitlabUsername ? { gitlabUsername } : {}),
       autoRefresh: updatedUser.autoRefresh,
       refreshInterval: updatedUser.refreshInterval,
       theme: updatedUser.theme,
