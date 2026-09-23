@@ -38,9 +38,32 @@ function isSensitiveKey(key: string): boolean {
 }
 
 /**
+ * Reduce an Error to fields that are safe to log. Axios/fetch errors carry the
+ * request config (headers such as PRIVATE-TOKEN) and sockets, so only a small
+ * allow-list is kept.
+ */
+export function serializeError(error: Error): Record<string, unknown> {
+  const serialized: Record<string, unknown> = {
+    name: error.name,
+    message: error.message,
+  };
+  const extra = error as Error & { code?: unknown; response?: { status?: unknown } };
+  if (typeof extra.code === 'string' || typeof extra.code === 'number') {
+    serialized.code = extra.code;
+  }
+  if (extra.response && typeof extra.response.status === 'number') {
+    serialized.status = extra.response.status;
+  }
+  if (process.env.NODE_ENV !== 'production' && error.stack) {
+    serialized.stack = error.stack;
+  }
+  return serialized;
+}
+
+/**
  * Sanitize object by masking sensitive fields
  */
-function sanitizeObject(obj: unknown): unknown {
+function sanitizeObject(obj: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
   if (obj === null || obj === undefined) {
     return obj;
   }
@@ -49,8 +72,19 @@ function sanitizeObject(obj: unknown): unknown {
     return obj;
   }
 
+  if (obj instanceof Error) {
+    return serializeError(obj);
+  }
+
+  if (seen.has(obj)) {
+    return '[Circular]';
+  }
+  seen.add(obj);
+
   if (Array.isArray(obj)) {
-    return obj.map((item) => sanitizeObject(item));
+    const items = obj.map((item) => sanitizeObject(item, seen));
+    seen.delete(obj);
+    return items;
   }
 
   const sanitized: Record<string, unknown> = {};
@@ -59,12 +93,14 @@ function sanitizeObject(obj: unknown): unknown {
     if (isSensitiveKey(key)) {
       sanitized[key] = '***REDACTED***';
     } else if (typeof value === 'object' && value !== null) {
-      sanitized[key] = sanitizeObject(value);
+      sanitized[key] = sanitizeObject(value, seen);
     } else {
       sanitized[key] = value;
     }
   }
 
+  // Only ancestors count as cycles; shared siblings are still serialized.
+  seen.delete(obj);
   return sanitized;
 }
 
