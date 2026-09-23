@@ -35,95 +35,95 @@ export default function Overview() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedJobProjectId, setSelectedJobProjectId] = useState<number | null>(null);
 
-  const loadData = async (abortSignal?: AbortSignal) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Get API instance from database configuration
-      const api = await getGitLabAPIAsync();
-
-      // Load projects if not already loaded
-      const projectsToUse = projects.length > 0 ? projects : await api.getProjects(1, 50);
-      if (projects.length === 0 && !abortSignal?.aborted) {
-        setProjects(projectsToUse);
-      }
-
-      const [pipelines, pipelineStats] = await Promise.all([
-        api.getAllActivePipelines(),
-        api.getPipelineStats(),
-      ]);
-
-      // Check if aborted
-      if (abortSignal?.aborted) return;
-
-      setActivePipelines(pipelines);
-      setStats(pipelineStats);
-
-      // Load recent pipelines from ALL projects for accurate Top Active Projects
-      // Increase to get better pipeline count statistics
-      const recentPromises = projectsToUse.map(project =>
-        api.getPipelines(project.id, 1, 10).catch(() => [])
-      );
-      const allRecent = await Promise.all(recentPromises);
-
-      // Check if aborted before setting state
-      if (abortSignal?.aborted) return;
-
-      const recent = allRecent
-        .flat()
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-        .slice(0, 50);  // Keep more pipelines for accurate counting
-      setRecentPipelines(recent);
-
-      // Load active jobs from running pipelines (increased to 20 for better visibility)
-      const runningPipelines = pipelines.slice(0, 20);
-      const jobsPromises = runningPipelines.map(pipeline =>
-        api.getPipelineJobs(pipeline.project_id, pipeline.id).catch(() => [])
-      );
-      const allJobs = await Promise.all(jobsPromises);
-
-      if (!abortSignal?.aborted) {
-        const jobs = allJobs
-          .flat()
-          .filter(job => job.status === 'running' || job.status === 'pending')
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 20); // Show up to 20 active jobs
-
-        // Enrich jobs with project data from store
-        const enrichedJobs = jobs.map(job => {
-          const projectData = projectsToUse.find(p => p.id === job.pipeline.project_id);
-          if (projectData && !job.project) {
-            // Add project data to job if missing
-            return {
-              ...job,
-              project: {
-                id: projectData.id,
-                name: projectData.name,
-                name_with_namespace: projectData.name_with_namespace
-              }
-            };
-          }
-          return job;
-        });
-
-        setActiveJobs(enrichedJobs);
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Data loading was cancelled');
-      } else if (error instanceof Error && error.message.includes('not configured')) {
-        setError(error.message);
-      } else {
-        console.warn('Failed to load data:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load data');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const loadData = async (abortSignal?: AbortSignal) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Get API instance from database configuration
+        const api = await getGitLabAPIAsync();
+
+        // Load projects if not already loaded
+        const projectsToUse = projects.length > 0 ? projects : await api.getProjects(1, 50);
+        if (projects.length === 0 && !abortSignal?.aborted) {
+          setProjects(projectsToUse);
+        }
+
+        const [pipelines, pipelineStats] = await Promise.all([
+          api.getAllActivePipelines(),
+          api.getPipelineStats(),
+        ]);
+
+        // Check if aborted
+        if (abortSignal?.aborted) return;
+
+        setActivePipelines(pipelines);
+        setStats(pipelineStats);
+
+        // Load recent pipelines from ALL projects for accurate Top Active Projects
+        // Increase to get better pipeline count statistics
+        const recentPromises = projectsToUse.map(project =>
+          api.getPipelines(project.id, 1, 10).catch(() => [])
+        );
+        const allRecent = await Promise.all(recentPromises);
+
+        // Check if aborted before setting state
+        if (abortSignal?.aborted) return;
+
+        const recent = allRecent
+          .flat()
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+          .slice(0, 50);  // Keep more pipelines for accurate counting
+        setRecentPipelines(recent);
+
+        // Load active jobs from running pipelines (increased to 20 for better visibility)
+        const runningPipelines = pipelines.slice(0, 20);
+        const jobsPromises = runningPipelines.map(pipeline =>
+          api.getPipelineJobs(pipeline.project_id, pipeline.id).catch(() => [])
+        );
+        const allJobs = await Promise.all(jobsPromises);
+
+        if (!abortSignal?.aborted) {
+          const jobs = allJobs
+            .flat()
+            .filter(job => job.status === 'running' || job.status === 'pending')
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 20); // Show up to 20 active jobs
+
+          // Enrich jobs with project data from store
+          const enrichedJobs = jobs.map(job => {
+            const projectData = projectsToUse.find(p => p.id === job.pipeline.project_id);
+            if (projectData && !job.project) {
+              // Add project data to job if missing
+              return {
+                ...job,
+                project: {
+                  id: projectData.id,
+                  name: projectData.name,
+                  name_with_namespace: projectData.name_with_namespace
+                }
+              };
+            }
+            return job;
+          });
+
+          setActiveJobs(enrichedJobs);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Data loading was cancelled');
+        } else if (error instanceof Error && error.message.includes('not configured')) {
+          setError(error.message);
+        } else {
+          console.warn('Failed to load data:', error);
+          setError(error instanceof Error ? error.message : 'Failed to load data');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     const controller = new AbortController();
 
     // Always try to load data - projects will be fetched if needed

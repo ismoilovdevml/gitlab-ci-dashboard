@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
+import { useNotifications } from '@/hooks/useNotifications';
 import { TelegramIcon, SlackIcon, DiscordIcon, EmailIcon } from './icons/BrandIcons';
 import { formatPercentage } from '@/lib/utils';
 
@@ -46,9 +47,42 @@ interface Analytics {
   timeSeries: Array<{ date: string; total: number; success: number; failed: number }>;
 }
 
+interface HistoryFilters {
+  search: string;
+  statusFilter: string;
+  channelFilter: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface HistoryPage {
+  data: AlertHistory[];
+  pagination: { hasMore: boolean; nextCursor: string | null };
+}
+
+async function fetchHistoryPage(filters: HistoryFilters, cursor?: string): Promise<HistoryPage> {
+  const params = new URLSearchParams();
+  params.append('limit', '50');
+  if (cursor) params.append('cursor', cursor);
+  if (filters.search) params.append('search', filters.search);
+  if (filters.statusFilter !== 'all') params.append('status', filters.statusFilter);
+  if (filters.channelFilter !== 'all') params.append('channel', filters.channelFilter);
+  if (filters.startDate) params.append('startDate', filters.startDate);
+  if (filters.endDate) params.append('endDate', filters.endDate);
+
+  const res = await fetch(`/api/history?${params.toString()}`);
+  return res.json();
+}
+
+async function fetchAnalytics(): Promise<Analytics> {
+  const res = await fetch('/api/history/analytics?days=30');
+  return res.json();
+}
+
 export default function AlertHistory() {
   const { card, textPrimary, textSecondary, input } = useTheme();
   const { addNotification } = useDashboardStore();
+  const { notifySuccess, notifyError } = useNotifications();
 
   const [history, setHistory] = useState<AlertHistory[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
@@ -67,39 +101,18 @@ export default function AlertHistory() {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadHistory();
-    loadAnalytics();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, statusFilter, channelFilter, startDate, endDate]);
+  const filters: HistoryFilters = { search, statusFilter, channelFilter, startDate, endDate };
 
   const loadHistory = async (cursor?: string) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      params.append('limit', '50');
-      if (cursor) params.append('cursor', cursor);
-      if (search) params.append('search', search);
-      if (statusFilter !== 'all') params.append('status', statusFilter);
-      if (channelFilter !== 'all') params.append('channel', channelFilter);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-
-      const res = await fetch(`/api/history?${params.toString()}`);
-      const data = await res.json();
-
-      setHistory(prevHistory => cursor ? [...prevHistory, ...data.data] : data.data);
-      setHasMore(data.pagination.hasMore);
-      setNextCursor(data.pagination.nextCursor);
+      const page = await fetchHistoryPage(filters, cursor);
+      setHistory(prevHistory => cursor ? [...prevHistory, ...page.data] : page.data);
+      setHasMore(page.pagination.hasMore);
+      setNextCursor(page.pagination.nextCursor);
     } catch (error) {
       console.error('Failed to load history:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to load history',
-        timestamp: Date.now()
-      });
+      notifyError('Error', 'Failed to load history');
     } finally {
       setLoading(false);
     }
@@ -108,15 +121,63 @@ export default function AlertHistory() {
   const loadAnalytics = async () => {
     try {
       setAnalyticsLoading(true);
-      const res = await fetch('/api/history/analytics?days=30');
-      const data = await res.json();
-      setAnalytics(data);
+      setAnalytics(await fetchAnalytics());
     } catch (error) {
       console.error('Failed to load analytics:', error);
     } finally {
       setAnalyticsLoading(false);
     }
   };
+
+  // Changing a filter reloads history and analytics: flag both as loading in the same render
+  // instead of from the effect below.
+  const filterKey = [search, statusFilter, channelFilter, startDate, endDate].join('\u0000');
+  const [loadingFilterKey, setLoadingFilterKey] = useState(filterKey);
+  if (filterKey !== loadingFilterKey) {
+    setLoadingFilterKey(filterKey);
+    setLoading(true);
+    setAnalyticsLoading(true);
+  }
+
+  useEffect(() => {
+    let ignore = false;
+
+    fetchHistoryPage({ search, statusFilter, channelFilter, startDate, endDate })
+      .then((page) => {
+        if (ignore) return;
+        setHistory(page.data);
+        setHasMore(page.pagination.hasMore);
+        setNextCursor(page.pagination.nextCursor);
+      })
+      .catch((error) => {
+        console.error('Failed to load history:', error);
+        addNotification({
+          id: Date.now().toString(),
+          type: 'error',
+          title: 'Error',
+          message: 'Failed to load history',
+          timestamp: Date.now()
+        });
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+
+    fetchAnalytics()
+      .then((data) => {
+        if (!ignore) setAnalytics(data);
+      })
+      .catch((error) => {
+        console.error('Failed to load analytics:', error);
+      })
+      .finally(() => {
+        if (!ignore) setAnalyticsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [search, statusFilter, channelFilter, startDate, endDate, addNotification]);
 
   const handleExport = async (format: 'csv' | 'json') => {
     try {
@@ -139,22 +200,10 @@ export default function AlertHistory() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Success',
-        message: `Exported ${history.length} records as ${format.toUpperCase()}`,
-        timestamp: Date.now()
-      });
+      notifySuccess('Success', `Exported ${history.length} records as ${format.toUpperCase()}`);
     } catch (error) {
       console.error('Failed to export:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to export history',
-        timestamp: Date.now()
-      });
+      notifyError('Error', 'Failed to export history');
     }
   };
 
@@ -165,22 +214,10 @@ export default function AlertHistory() {
       await csrfFetch('/api/history', { method: 'DELETE' });
       setHistory([]);
       loadAnalytics();
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Success',
-        message: 'History cleared successfully',
-        timestamp: Date.now()
-      });
+      notifySuccess('Success', 'History cleared successfully');
     } catch (error) {
       console.error('Failed to clear history:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to clear history',
-        timestamp: Date.now()
-      });
+      notifyError('Error', 'Failed to clear history');
     }
   };
 
@@ -189,22 +226,10 @@ export default function AlertHistory() {
       await csrfFetch(`/api/history?id=${id}`, { method: 'DELETE' });
       setHistory(history.filter(h => h.id !== id));
       loadAnalytics();
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Success',
-        message: 'Item deleted successfully',
-        timestamp: Date.now()
-      });
+      notifySuccess('Success', 'Item deleted successfully');
     } catch (error) {
       console.error('Failed to delete item:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to delete item',
-        timestamp: Date.now()
-      });
+      notifyError('Error', 'Failed to delete item');
     }
   };
 

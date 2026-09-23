@@ -46,23 +46,25 @@ export default function ArtifactsTab() {
   });
 
   useEffect(() => {
+    let ignore = false;
+    const loadArtifacts = async () => {
+      try {
+        const api = await getGitLabAPIAsync();
+        const artifactsList = await api.getAllArtifacts();
+        if (!ignore) setArtifacts(artifactsList);
+      } catch (error) {
+        console.error('Failed to load artifacts:', error);
+        if (!ignore) notifyError('Load Failed', 'Failed to load artifacts');
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
     loadArtifacts();
+    return () => {
+      ignore = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadArtifacts = async () => {
-    setLoading(true);
-    try {
-      const api = await getGitLabAPIAsync();
-      const artifactsList = await api.getAllArtifacts();
-      setArtifacts(artifactsList);
-    } catch (error) {
-      console.error('Failed to load artifacts:', error);
-      notifyError('Load Failed', 'Failed to load artifacts');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Group artifacts by job
   const groupedArtifacts = useMemo(() => {

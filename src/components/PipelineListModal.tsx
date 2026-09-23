@@ -19,59 +19,56 @@ export default function PipelineListModal({ title, status, onClose }: PipelineLi
   const { projects } = useDashboardStore();
   const { theme, textPrimary, textSecondary } = useTheme();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
-  const [filteredPipelines, setFilteredPipelines] = useState<Pipeline[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const filteredPipelines = searchTerm
+    ? pipelines.filter(p =>
+        p.ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.sha.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.id.toString().includes(searchTerm)
+      )
+    : pipelines;
+
+  // Loaded once when the modal opens.
   useEffect(() => {
+    let ignore = false;
+
+    const loadPipelines = async () => {
+      try {
+        const api = await getGitLabAPIAsync();
+
+        const pipelinePromises = projects.map(project =>
+          api.getPipelines(project.id, 1, 20).catch(() => [])
+        );
+
+        const allPipelines = await Promise.all(pipelinePromises);
+        let result = allPipelines.flat();
+
+        // Filter by status if provided
+        if (status) {
+          result = result.filter(p => p.status === status);
+        }
+
+        // Sort by updated_at
+        result.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+        if (!ignore) setPipelines(result);
+      } catch (error) {
+        console.error('Failed to load pipelines:', error);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+
     loadPipelines();
+    return () => {
+      ignore = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (searchTerm) {
-      setFilteredPipelines(
-        pipelines.filter(p =>
-          p.ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.sha.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.id.toString().includes(searchTerm)
-        )
-      );
-    } else {
-      setFilteredPipelines(pipelines);
-    }
-  }, [searchTerm, pipelines]);
-
-  const loadPipelines = async () => {
-    try {
-      setLoading(true);
-      const api = await getGitLabAPIAsync();
-
-      const pipelinePromises = projects.map(project =>
-        api.getPipelines(project.id, 1, 20).catch(() => [])
-      );
-
-      const allPipelines = await Promise.all(pipelinePromises);
-      let result = allPipelines.flat();
-
-      // Filter by status if provided
-      if (status) {
-        result = result.filter(p => p.status === status);
-      }
-
-      // Sort by updated_at
-      result.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-
-      setPipelines(result);
-      setFilteredPipelines(result);
-    } catch (error) {
-      console.error('Failed to load pipelines:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePipelineClick = (pipeline: Pipeline) => {
     setSelectedPipeline(pipeline);

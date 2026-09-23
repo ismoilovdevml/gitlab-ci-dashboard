@@ -99,6 +99,32 @@ describe('SettingsTab GitLab configuration', () => {
     expect(requested.every((u: string) => u.startsWith('/api/'))).toBe(true);
   });
 
+  it('loads the session user and the app version once on mount', async () => {
+    mockSession({ username: 'alice', gitlabUrl: 'https://gitlab.internal', gitlabToken: '' });
+
+    render(<SettingsTab />);
+
+    expect(await screen.findByText('v1.0.0')).toBeInTheDocument();
+    expect(await screen.findByText('alice')).toBeInTheDocument();
+    expect(screen.getByLabelText('GitLab URL')).toHaveValue('https://gitlab.internal');
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to the bundled version when the version endpoint fails', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockGet.mockImplementation((url: string) =>
+      url === '/api/version'
+        ? Promise.reject(new Error('down'))
+        : Promise.resolve({ data: { authenticated: false } })
+    );
+
+    render(<SettingsTab />);
+
+    expect(await screen.findByText('v1.2.0')).toBeInTheDocument();
+    expect(screen.getByLabelText('GitLab URL')).toHaveValue('https://gitlab.com');
+    jest.restoreAllMocks();
+  });
+
   it('requires a token when none is stored', async () => {
     mockSession({ username: 'admin', gitlabUrl: 'https://gitlab.example.com', gitlabToken: '' });
 

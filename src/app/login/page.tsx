@@ -12,13 +12,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState('');
-
-  // Mounting animation
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Check if already logged in
   useEffect(() => {
@@ -79,9 +73,9 @@ export default function LoginPage() {
         <GitBranch className="absolute bottom-20 right-20 w-7 h-7 text-orange-400 animate-float" style={{ animationDelay: '3s', animationDuration: '8s' }} />
       </div>
 
-      <div className={`w-full max-w-md relative z-10 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+      <div className={`w-full max-w-md relative z-10 transition-all duration-1000 opacity-100 translate-y-0 starting:opacity-0 starting:translate-y-8`}>
         {/* Logo & Title */}
-        <div className={`text-center mb-8 transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+        <div className={`text-center mb-8 transition-all duration-700 delay-100 opacity-100 translate-y-0 starting:opacity-0 starting:-translate-y-4`}>
           <div className="inline-flex items-center justify-center w-20 h-20 bg-linear-to-br from-orange-500 to-orange-600 rounded-3xl mb-6 shadow-2xl shadow-orange-500/30 relative group hover:scale-110 transition-transform duration-300">
             <div className="absolute inset-0 bg-linear-to-br from-orange-400 to-orange-600 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity" />
             <LogIn className="w-10 h-10 text-white relative z-10 group-hover:rotate-12 transition-transform duration-300" />
@@ -93,7 +87,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className={`bg-zinc-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-zinc-800/50 p-8 transition-all duration-700 delay-200 hover:border-zinc-700/50 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`bg-zinc-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-zinc-800/50 p-8 transition-all duration-700 delay-200 hover:border-zinc-700/50 opacity-100 translate-y-0 starting:opacity-0 starting:translate-y-4`}>
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Error Message */}
             {error && (

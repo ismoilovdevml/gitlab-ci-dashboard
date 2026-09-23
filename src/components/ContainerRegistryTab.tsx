@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Trash2, Package, Clock, HardDrive, Tag, ChevronDown, ChevronRight, Copy, CheckCircle, Terminal, ExternalLink } from 'lucide-react';
-import { useDashboardStore } from '@/store/dashboard-store';
+import { useNotifications } from '@/hooks/useNotifications';
 import { getGitLabAPIAsync, ContainerRepository, ContainerTag } from '@/lib/gitlab-api';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import ConfirmDialog from './ConfirmDialog';
 
 export default function ContainerRegistryTab() {
-  const { addNotification } = useDashboardStore();
+  const { notifyError, notifySuccess } = useNotifications();
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [repositories, setRepositories] = useState<ContainerRepository[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,32 +35,28 @@ export default function ContainerRegistryTab() {
     setCopiedCommand(text);
     setTimeout(() => setCopiedCommand(null), 2000);
 
-    addNotification({
-      id: Date.now().toString(),
-      type: 'success',
-      title: 'Copied!',
-      message: `${type} command copied to clipboard`,
-      timestamp: Date.now(),
-    });
+    notifySuccess('Copied!', `${type} command copied to clipboard`);
   };
 
+  // Loaded once on mount, while `loading` is still in its initial true state.
   useEffect(() => {
+    let ignore = false;
+    const loadRepositories = async () => {
+      try {
+        const api = await getGitLabAPIAsync();
+        const reposList = await api.getAllContainerRepositories();
+        if (!ignore) setRepositories(reposList);
+      } catch (error) {
+        console.error('Failed to load container repositories:', error);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
     loadRepositories();
-     
+    return () => {
+      ignore = true;
+    };
   }, []);
-
-  const loadRepositories = async () => {
-    setLoading(true);
-    try {
-      const api = await getGitLabAPIAsync();
-      const reposList = await api.getAllContainerRepositories();
-      setRepositories(reposList);
-    } catch (error) {
-      console.error('Failed to load container repositories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const toggleRepository = async (repo: ContainerRepository) => {
     const isExpanded = expandedRepos.has(repo.id);
@@ -116,22 +112,10 @@ export default function ContainerRegistryTab() {
       await api.deleteContainerRepository(repo.project_id, repo.id);
       setRepositories(repositories.filter(r => r.id !== repo.id));
 
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Repository Deleted',
-        message: `Successfully deleted repository "${repo.name}"`,
-        timestamp: Date.now(),
-      });
+      notifySuccess('Repository Deleted', `Successfully deleted repository "${repo.name}"`);
     } catch (error) {
       console.error('Failed to delete repository:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Delete Failed',
-        message: `Failed to delete repository "${repo.name}"`,
-        timestamp: Date.now(),
-      });
+      notifyError('Delete Failed', `Failed to delete repository "${repo.name}"`);
     } finally {
       setDeletingRepoIds(prev => {
         const next = new Set(prev);
@@ -174,22 +158,10 @@ export default function ContainerRegistryTab() {
         )
       );
 
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Tag Deleted',
-        message: `Successfully deleted tag "${tag.name}"`,
-        timestamp: Date.now(),
-      });
+      notifySuccess('Tag Deleted', `Successfully deleted tag "${tag.name}"`);
     } catch (error) {
       console.error('Failed to delete tag:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Delete Failed',
-        message: `Failed to delete tag "${tag.name}"`,
-        timestamp: Date.now(),
-      });
+      notifyError('Delete Failed', `Failed to delete tag "${tag.name}"`);
     } finally {
       setDeletingTags(prev => {
         const next = new Set(prev);
