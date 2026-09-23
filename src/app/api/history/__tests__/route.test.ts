@@ -6,6 +6,7 @@ import { GET, DELETE } from '../route';
 import { GET as GET_ANALYTICS } from '../analytics/route';
 import { getOrgPrisma } from '@/lib/db/scoped-prisma';
 import { redis, cacheHelpers } from '@/lib/db/redis';
+import { csrfRequest, TEST_SESSION_SECRET } from '@/lib/testing/csrf';
 
 jest.mock('@/lib/db/scoped-prisma', () => ({
   getOrgPrisma: jest.fn(),
@@ -28,6 +29,10 @@ function authFor(organizationId: string) {
 }
 
 describe('history cache keys are org-scoped', () => {
+  beforeAll(() => {
+    process.env.SESSION_SECRET = TEST_SESSION_SECRET;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockRedisGet.mockResolvedValue(JSON.stringify({ cached: true }));
@@ -49,7 +54,7 @@ describe('history cache keys are org-scoped', () => {
   it('DELETE /api/history invalidates only the caller org keys', async () => {
     mockGetOrgPrisma.mockResolvedValueOnce(authFor('org-a'));
 
-    await DELETE(new NextRequest('http://localhost/api/history', { method: 'DELETE' }));
+    await DELETE(csrfRequest('http://localhost/api/history', 'DELETE', 'valid'));
 
     expect(mockInvalidate).toHaveBeenCalledWith('history:org-a:*');
   });
