@@ -65,10 +65,6 @@ const nextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
-  env: {
-    GITLAB_URL: process.env.GITLAB_URL,
-    GITLAB_TOKEN: process.env.GITLAB_TOKEN,
-  },
 }
 
 module.exports = withPWA(nextConfig)

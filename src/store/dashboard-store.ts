@@ -45,6 +45,45 @@ export interface Notification {
   timestamp: number;
 }
 
+type PersistedDashboardState = Pick<
+  DashboardStore,
+  | 'theme'
+  | 'activeTab'
+  | 'autoRefresh'
+  | 'refreshInterval'
+  | 'notifyPipelineFailures'
+  | 'notifyPipelineSuccess'
+>;
+
+const PERSISTED_KEYS: ReadonlyArray<keyof PersistedDashboardState> = [
+  'theme',
+  'activeTab',
+  'autoRefresh',
+  'refreshInterval',
+  'notifyPipelineFailures',
+  'notifyPipelineSuccess',
+];
+
+function pickPersisted(state: Partial<PersistedDashboardState>): Partial<PersistedDashboardState> {
+  const out: Record<string, unknown> = {};
+  for (const key of PERSISTED_KEYS) {
+    if (state[key] !== undefined) out[key] = state[key];
+  }
+  return out as Partial<PersistedDashboardState>;
+}
+
+/**
+ * Older builds persisted `gitlabUrl` / `gitlabToken` under the same key.
+ * Keep only the current preference fields so a stale token is dropped from
+ * localStorage on first load.
+ */
+export function migrateDashboardState(persisted: unknown): Partial<PersistedDashboardState> {
+  if (!persisted || typeof persisted !== 'object') return {};
+  return pickPersisted(persisted as Partial<PersistedDashboardState>);
+}
+
+export const DASHBOARD_STORE_VERSION = 1;
+
 export const useDashboardStore = create<DashboardStore>()(
   persist(
     (set) => ({
@@ -88,8 +127,9 @@ export const useDashboardStore = create<DashboardStore>()(
     {
       name: 'gitlab-dashboard-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist these fields
-      partialize: (state) => ({
+      version: DASHBOARD_STORE_VERSION,
+      migrate: (persisted) => migrateDashboardState(persisted) as DashboardStore,
+      partialize: (state): PersistedDashboardState => ({
         theme: state.theme,
         activeTab: state.activeTab,
         autoRefresh: state.autoRefresh,
