@@ -30,6 +30,21 @@ export const gitlabConfigSchema = z.object({
   notifyPipelineSuccess: z.boolean().default(false),
 });
 
+/**
+ * Body of POST /api/config. Every field is optional so a partial update leaves
+ * the other columns untouched. The URL is normalised separately with
+ * normalizeGitLabBaseUrl.
+ */
+export const userGitLabConfigUpdateSchema = z.object({
+  url: z.string().max(2048).optional(),
+  token: z.string().max(1024).optional(),
+  autoRefresh: z.boolean().optional(),
+  refreshInterval: z.number().int().min(5000).max(300000).optional(),
+  theme: z.enum(['light', 'dark']).optional(),
+  notifyPipelineFailures: z.boolean().optional(),
+  notifyPipelineSuccess: z.boolean().optional(),
+});
+
 // ==========================================
 // Alert Channel Schemas
 // ==========================================
@@ -155,6 +170,7 @@ export function formatValidationError(error: z.ZodError): Record<string, string>
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type GitLabConfigInput = z.infer<typeof gitlabConfigSchema>;
+export type UserGitLabConfigUpdateInput = z.infer<typeof userGitLabConfigUpdateSchema>;
 export type AlertChannelInput = z.infer<typeof alertChannelSchema>;
 export type PipelineActionInput = z.infer<typeof pipelineActionSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;

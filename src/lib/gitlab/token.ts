@@ -1,6 +1,7 @@
 import { randomBytes, createCipheriv, createDecipheriv, scryptSync } from 'crypto';
 import prisma from '@/lib/db/prisma';
 import { logger } from '@/lib/logger';
+import { GitLabUrlError, normalizeGitLabBaseUrl } from './url';
 
 const ALGORITHM = 'aes-256-gcm';
 const TOKEN_SALT = 'gitlab-ci-dashboard-token-v1';
@@ -148,18 +149,36 @@ export async function deleteOrgGitLabConfig(configId: string, organizationId: st
 
 /**
  * Test a GitLab connection by calling /api/v4/user.
+ * Redirects are not followed so the token only ever goes to the given origin.
  */
 export async function testGitLabConnection(url: string, token: string): Promise<{
   success: boolean;
   username?: string;
   error?: string;
 }> {
+  let baseUrl: string;
   try {
-    const normalizedUrl = url.replace(/\/$/, '');
-    const res = await fetch(`${normalizedUrl}/api/v4/user`, {
+    baseUrl = normalizeGitLabBaseUrl(url);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof GitLabUrlError ? error.message : 'Invalid GitLab URL',
+    };
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/api/v4/user`, {
       headers: { 'PRIVATE-TOKEN': token },
+      redirect: 'manual',
       signal: AbortSignal.timeout(10000),
     });
+
+    if (res.status >= 300 && res.status < 400) {
+      return {
+        success: false,
+        error: 'GitLab redirected the request — use the final GitLab URL (check http vs https and the path)',
+      };
+    }
 
     if (res.ok) {
       const data = await res.json();

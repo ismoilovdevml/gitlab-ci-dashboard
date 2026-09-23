@@ -1,6 +1,7 @@
-import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
+import { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import { logger } from './logger';
 import { cacheWithTTL, invalidateCacheByTag } from './cache';
+import { createGitLabHttpClient } from './gitlab/http';
 
 export interface GitLabConfig {
   url: string;
@@ -19,16 +20,14 @@ export class GitLabClient {
   private client: AxiosInstance;
   private config: GitLabConfig;
 
+  /** @throws GitLabUrlError when `config.url` is not a valid http(s) base URL. */
   constructor(config: GitLabConfig) {
-    this.config = config;
-    this.client = axios.create({
-      baseURL: `${config.url}/api/v4`,
-      headers: {
-        'PRIVATE-TOKEN': config.token,
-        'Content-Type': 'application/json',
-      },
-      timeout: 30000, // 30 seconds
+    const { baseUrl, client } = createGitLabHttpClient(config.url, config.token, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000,
     });
+    this.config = { ...config, url: baseUrl };
+    this.client = client;
 
     // Add request interceptor for logging
     this.client.interceptors.request.use(
