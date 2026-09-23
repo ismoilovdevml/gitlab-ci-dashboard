@@ -215,7 +215,7 @@ export default function PipelinesTab() {
               placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+              className={`w-full pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
             />
           </div>
 
@@ -229,12 +229,12 @@ export default function PipelinesTab() {
                     theme === 'light'
                       ? `border-b border-gray-200 hover:bg-gray-50 ${
                           selectedProject === project.id
-                            ? 'bg-gradient-to-r from-orange-50 to-orange-100/50 border-l-4 border-l-orange-500 shadow-sm'
+                            ? 'bg-linear-to-r from-orange-50 to-orange-100/50 border-l-4 border-l-orange-500 shadow-xs'
                             : ''
                         }`
                       : `border-b border-zinc-800 hover:bg-zinc-800/50 ${
                           selectedProject === project.id
-                            ? 'bg-gradient-to-r from-orange-500/10 to-orange-500/5 border-l-4 border-l-orange-500 shadow-lg shadow-orange-500/10'
+                            ? 'bg-linear-to-r from-orange-500/10 to-orange-500/5 border-l-4 border-l-orange-500 shadow-lg shadow-orange-500/10'
                             : ''
                         }`
                   }`}
@@ -252,7 +252,7 @@ export default function PipelinesTab() {
                         className="w-10 h-10 rounded-lg object-cover border border-orange-500/30"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-md">
+                      <div className="w-10 h-10 rounded-lg bg-linear-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-md">
                         <span className="text-white font-bold text-sm">
                           {project.name.charAt(0).toUpperCase()}
                         </span>
@@ -265,7 +265,7 @@ export default function PipelinesTab() {
                       <p className={`text-xs truncate ${textSecondary}`}>{project.namespace.name}</p>
                     </div>
                     {selectedProject === project.id && (
-                      <div className="flex-shrink-0 w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                      <div className="shrink-0 w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
                     )}
                   </div>
                 </button>
@@ -281,8 +281,8 @@ export default function PipelinesTab() {
             <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 `}>
               <div className={`rounded-xl p-4 border transition-all ${
                 theme === 'light'
-                  ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-sm hover:shadow-md'
-                  : 'bg-gradient-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30'
+                  ? 'bg-linear-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 shadow-xs hover:shadow-md'
+                  : 'bg-linear-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30 hover:from-blue-500/20 hover:to-blue-600/30'
               }`}>
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -299,8 +299,8 @@ export default function PipelinesTab() {
 
               <div className={`rounded-xl p-4 border transition-all ${
                 theme === 'light'
-                  ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-sm hover:shadow-md'
-                  : 'bg-gradient-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30'
+                  ? 'bg-linear-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200 shadow-xs hover:shadow-md'
+                  : 'bg-linear-to-br from-green-500/10 to-green-600/20 border-green-500/30 hover:from-green-500/20 hover:to-green-600/30'
               }`}>
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -317,8 +317,8 @@ export default function PipelinesTab() {
 
               <div className={`rounded-xl p-4 border transition-all ${
                 theme === 'light'
-                  ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 shadow-sm hover:shadow-md'
-                  : 'bg-gradient-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30 hover:from-purple-500/20 hover:to-purple-600/30'
+                  ? 'bg-linear-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 shadow-xs hover:shadow-md'
+                  : 'bg-linear-to-br from-purple-500/10 to-purple-600/20 border-purple-500/30 hover:from-purple-500/20 hover:to-purple-600/30'
               }`}>
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -335,8 +335,8 @@ export default function PipelinesTab() {
 
               <div className={`rounded-xl p-4 border transition-all ${
                 theme === 'light'
-                  ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-sm hover:shadow-md'
-                  : 'bg-gradient-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30'
+                  ? 'bg-linear-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200 shadow-xs hover:shadow-md'
+                  : 'bg-linear-to-br from-red-500/10 to-red-600/20 border-red-500/30 hover:from-red-500/20 hover:to-red-600/30'
               }`}>
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -355,7 +355,7 @@ export default function PipelinesTab() {
 
           {/* Pipeline Status Distribution Chart */}
           {selectedProject && pipelines.length > 0 && (
-            <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-sm' : ''} `}>
+            <div className={`rounded-xl p-6 ${card} ${theme === 'light' ? 'shadow-xs' : ''} `}>
               <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
                 <BarChart3 className="w-5 h-5 text-orange-500" />
                 Pipeline Status Distribution
@@ -447,7 +447,7 @@ export default function PipelinesTab() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+                  className={`pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
                 >
                   <option value="all">All Status</option>
                   <option value="success">Success</option>
@@ -464,7 +464,7 @@ export default function PipelinesTab() {
                 <select
                   value={dateRange}
                   onChange={(e) => setDateRange(e.target.value)}
-                  className={`pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-orange-500 ${input} ${inputFocus}`}
+                  className={`pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
                 >
                   <option value="1">Last 24 hours</option>
                   <option value="7">Last 7 days</option>

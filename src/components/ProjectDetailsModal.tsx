@@ -58,7 +58,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
         onClick={onClose}
       />
       {/* Modal container */}
@@ -79,7 +79,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={project.avatar_url} alt={project.name} className="w-16 h-16 rounded-lg" />
               ) : (
-                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-lg bg-linear-to-br from-orange-500 to-red-600 flex items-center justify-center">
                   <span className="text-white font-bold text-2xl">
                     {project.name.charAt(0).toUpperCase()}
                   </span>

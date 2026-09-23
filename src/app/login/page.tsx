@@ -63,7 +63,7 @@ export default function LoginPage() {
   const isFormValid = username.length > 0 && password.length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-orange-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-linear-to-br from-zinc-950 via-zinc-900 to-orange-950 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
@@ -82,11 +82,11 @@ export default function LoginPage() {
       <div className={`w-full max-w-md relative z-10 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         {/* Logo & Title */}
         <div className={`text-center mb-8 transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl mb-6 shadow-2xl shadow-orange-500/30 relative group hover:scale-110 transition-transform duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-orange-600 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-linear-to-br from-orange-500 to-orange-600 rounded-3xl mb-6 shadow-2xl shadow-orange-500/30 relative group hover:scale-110 transition-transform duration-300">
+            <div className="absolute inset-0 bg-linear-to-br from-orange-400 to-orange-600 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity" />
             <LogIn className="w-10 h-10 text-white relative z-10 group-hover:rotate-12 transition-transform duration-300" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold text-white mb-3 bg-linear-to-r from-white to-zinc-300 bg-clip-text text-transparent">
             GitLab CI/CD Dashboard
           </h1>
           <p className="text-zinc-400 text-lg">Sign in to your account</p>
@@ -97,8 +97,8 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-950/50 backdrop-blur-sm border border-red-900/50 rounded-xl p-4 flex items-center gap-3 animate-shake">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 animate-pulse" />
+              <div className="bg-red-950/50 backdrop-blur-xs border border-red-900/50 rounded-xl p-4 flex items-center gap-3 animate-shake">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 animate-pulse" />
                 <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 placeholder="Enter your username"
                 required
                 autoComplete="username"
-                className="w-full px-4 py-3.5 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-zinc-800 transition-all duration-300 hover:border-zinc-600"
+                className="w-full px-4 py-3.5 bg-zinc-800/50 backdrop-blur-xs border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-zinc-800 transition-all duration-300 hover:border-zinc-600"
               />
             </div>
 
@@ -134,7 +134,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   required
                   autoComplete="current-password"
-                  className="w-full px-4 py-3.5 pr-12 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-zinc-800 transition-all duration-300 hover:border-zinc-600"
+                  className="w-full px-4 py-3.5 pr-12 bg-zinc-800/50 backdrop-blur-xs border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-zinc-800 transition-all duration-300 hover:border-zinc-600"
                 />
                 <button
                   type="button"
@@ -150,9 +150,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !isFormValid}
-              className="group relative w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-3.5 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
+              className="group relative w-full bg-linear-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-3.5 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-linear-to-r from-orange-400 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative flex items-center justify-center gap-2">
                 {loading ? (
                   <>

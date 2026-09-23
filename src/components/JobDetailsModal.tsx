@@ -195,14 +195,14 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
     <>
       {/* Backdrop overlay */}
       <div
-        className={`fixed inset-0 z-[999] backdrop-blur-sm ${
+        className={`fixed inset-0 z-999 backdrop-blur-xs ${
           theme === 'light' ? 'bg-black/50' : 'bg-black/80'
         }`}
         onClick={onClose}
       />
 
       {/* Modal container */}
-      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 pointer-events-none overflow-y-auto">
+      <div className="fixed inset-0 z-999 flex items-center justify-center p-4 pointer-events-none overflow-y-auto">
         <div
           className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
             theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
@@ -210,7 +210,7 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
         >
           {/* Header */}
           <div className={`p-6 flex items-center justify-between border-b ${
-            theme === 'light' ? 'border-gray-200 bg-gradient-to-r from-gray-50 to-white' : 'border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-800'
+            theme === 'light' ? 'border-gray-200 bg-linear-to-r from-gray-50 to-white' : 'border-zinc-800 bg-linear-to-r from-zinc-900 to-zinc-800'
           }`}>
             <div className="flex-1">
               <div className="flex items-center gap-3">
@@ -359,7 +359,7 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
                             return (
                               <div
                                 key={index}
-                                className={`py-1 px-3 rounded mb-0.5 ${parsed.bg} hover:bg-zinc-800/50 transition-colors`}
+                                className={`py-1 px-3 rounded-sm mb-0.5 ${parsed.bg} hover:bg-zinc-800/50 transition-colors`}
                               >
                                 <span className="text-zinc-600 mr-3 select-none inline-block w-10 text-right">
                                   {index + 1}

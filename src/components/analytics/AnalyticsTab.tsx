@@ -63,7 +63,7 @@ export default function AnalyticsTab() {
               theme === 'light'
                 ? 'bg-white border-gray-300 text-gray-900'
                 : 'bg-zinc-800 border-zinc-700 text-white'
-            } focus:outline-none focus:ring-2 focus:ring-orange-500`}
+            } focus:outline-hidden focus:ring-2 focus:ring-orange-500`}
           >
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>

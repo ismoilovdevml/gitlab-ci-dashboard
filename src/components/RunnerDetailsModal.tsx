@@ -123,18 +123,18 @@ export default function RunnerDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
       <div className={`${card} rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden ${
         theme === 'light' ? 'shadow-2xl' : 'border border-gray-800'
       }`}>
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${
           theme === 'light'
-            ? 'border-[#d2d2d7] bg-gradient-to-r from-blue-50 to-purple-50'
-            : 'border-gray-800 bg-gradient-to-r from-blue-600/10 to-purple-600/10'
+            ? 'border-[#d2d2d7] bg-linear-to-r from-blue-50 to-purple-50'
+            : 'border-gray-800 bg-linear-to-r from-blue-600/10 to-purple-600/10'
         }`}>
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+            <div className="p-3 bg-linear-to-br from-blue-500 to-purple-600 rounded-xl">
               <ServerIcon className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -202,7 +202,7 @@ export default function RunnerDetailsModal({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Version */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' : 'bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-blue-50 to-blue-100 border-blue-200' : 'bg-linear-to-br from-blue-500/10 to-blue-600/10 border-blue-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <GitCommitIcon className="w-6 h-6 text-blue-500" />
@@ -215,7 +215,7 @@ export default function RunnerDetailsModal({
 
                 {/* Revision */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200' : 'bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-purple-50 to-purple-100 border-purple-200' : 'bg-linear-to-br from-purple-500/10 to-purple-600/10 border-purple-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <SettingsIcon className="w-6 h-6 text-purple-500" />
@@ -228,7 +228,7 @@ export default function RunnerDetailsModal({
 
                 {/* Architecture */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200' : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border-cyan-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-cyan-50 to-cyan-100 border-cyan-200' : 'bg-linear-to-br from-cyan-500/10 to-cyan-600/10 border-cyan-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <CpuChipIcon className="w-6 h-6 text-cyan-500" />
@@ -241,7 +241,7 @@ export default function RunnerDetailsModal({
 
                 {/* Platform */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200' : 'bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-green-50 to-green-100 border-green-200' : 'bg-linear-to-br from-green-500/10 to-green-600/10 border-green-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <ServerIcon className="w-6 h-6 text-green-500" />
@@ -254,7 +254,7 @@ export default function RunnerDetailsModal({
 
                 {/* Created Date */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200' : 'bg-gradient-to-br from-orange-500/10 to-orange-600/10 border-orange-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-orange-50 to-orange-100 border-orange-200' : 'bg-linear-to-br from-orange-500/10 to-orange-600/10 border-orange-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <CalendarIcon className="w-6 h-6 text-orange-500" />
@@ -271,7 +271,7 @@ export default function RunnerDetailsModal({
 
                 {/* Last Contact */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200' : 'bg-gradient-to-br from-teal-500/10 to-teal-600/10 border-teal-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-teal-50 to-teal-100 border-teal-200' : 'bg-linear-to-br from-teal-500/10 to-teal-600/10 border-teal-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <ClockIcon className="w-6 h-6 text-teal-500" />
@@ -288,7 +288,7 @@ export default function RunnerDetailsModal({
 
                 {/* Access Level */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200' : 'bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 border-indigo-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-indigo-50 to-indigo-100 border-indigo-200' : 'bg-linear-to-br from-indigo-500/10 to-indigo-600/10 border-indigo-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <ShieldIcon className="w-6 h-6 text-indigo-500" />
@@ -301,7 +301,7 @@ export default function RunnerDetailsModal({
 
                 {/* Type */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200' : 'bg-gradient-to-br from-pink-500/10 to-pink-600/10 border-pink-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-pink-50 to-pink-100 border-pink-200' : 'bg-linear-to-br from-pink-500/10 to-pink-600/10 border-pink-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <ChartBarIcon className="w-6 h-6 text-pink-500" />
@@ -314,7 +314,7 @@ export default function RunnerDetailsModal({
 
                 {/* Maximum Timeout */}
                 <div className={`rounded-lg p-4 border ${
-                  theme === 'light' ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200' : 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 border-yellow-500/30'
+                  theme === 'light' ? 'bg-linear-to-br from-yellow-50 to-yellow-100 border-yellow-200' : 'bg-linear-to-br from-yellow-500/10 to-yellow-600/10 border-yellow-500/30'
                 }`}>
                   <div className="flex items-center gap-3">
                     <TimerIcon className="w-6 h-6 text-yellow-500" />
@@ -522,7 +522,7 @@ export default function RunnerDetailsModal({
             <div className="p-6 space-y-6">
               {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-blue-100 to-blue-200 border-blue-300' : 'from-blue-500/10 to-blue-600/10 border-blue-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -532,7 +532,7 @@ export default function RunnerDetailsModal({
                   <p className={`text-3xl font-bold ${textPrimary}`}>{jobStats.total}</p>
                 </div>
 
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-green-100 to-green-200 border-green-300' : 'from-green-500/10 to-green-600/10 border-green-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -542,7 +542,7 @@ export default function RunnerDetailsModal({
                   <p className={`text-3xl font-bold ${textPrimary}`}>{jobStats.success}</p>
                 </div>
 
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-red-100 to-red-200 border-red-300' : 'from-red-500/10 to-red-600/10 border-red-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -552,7 +552,7 @@ export default function RunnerDetailsModal({
                   <p className={`text-3xl font-bold ${textPrimary}`}>{jobStats.failed}</p>
                 </div>
 
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-purple-100 to-purple-200 border-purple-300' : 'from-purple-500/10 to-purple-600/10 border-purple-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -562,7 +562,7 @@ export default function RunnerDetailsModal({
                   <p className={`text-3xl font-bold ${textPrimary}`}>{successRate}%</p>
                 </div>
 
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-yellow-100 to-yellow-200 border-yellow-300' : 'from-yellow-500/10 to-yellow-600/10 border-yellow-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -572,7 +572,7 @@ export default function RunnerDetailsModal({
                   <p className={`text-3xl font-bold ${textPrimary}`}>{formatDuration(avgDuration)}</p>
                 </div>
 
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-indigo-100 to-indigo-200 border-indigo-300' : 'from-indigo-500/10 to-indigo-600/10 border-indigo-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -582,7 +582,7 @@ export default function RunnerDetailsModal({
                   <p className={`text-3xl font-bold ${textPrimary}`}>{jobStats.running}</p>
                 </div>
 
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-orange-100 to-orange-200 border-orange-300' : 'from-orange-500/10 to-orange-600/10 border-orange-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -592,7 +592,7 @@ export default function RunnerDetailsModal({
                   <p className={`text-3xl font-bold ${textPrimary}`}>{jobStats.pending}</p>
                 </div>
 
-                <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                <div className={`bg-linear-to-br rounded-lg p-4 border ${
                   theme === 'light' ? 'from-gray-100 to-gray-200 border-gray-300' : 'from-gray-500/10 to-gray-600/10 border-gray-500/30'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">

@@ -155,7 +155,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                     'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
                     activeTab === item.id
                       ? theme === 'light'
-                        ? 'bg-orange-50 text-orange-600 shadow-sm'
+                        ? 'bg-orange-50 text-orange-600 shadow-xs'
                         : 'bg-orange-500/10 text-orange-500 border border-orange-500/20'
                       : sidebarItem
                   )}

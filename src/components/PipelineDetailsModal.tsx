@@ -153,11 +153,11 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-999 bg-black/60 backdrop-blur-xs"
         onClick={onClose}
       />
       {/* Modal container */}
-      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
+      <div className="fixed inset-0 z-999 flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
         <div
           className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
             theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
@@ -166,7 +166,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         >
         {/* Header */}
         <div className={`p-6 flex items-center justify-between border-b ${
-          theme === 'light' ? 'border-gray-200 bg-gradient-to-r from-gray-50 to-white' : 'border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-800'
+          theme === 'light' ? 'border-gray-200 bg-linear-to-r from-gray-50 to-white' : 'border-zinc-800 bg-linear-to-r from-zinc-900 to-zinc-800'
         }`}>
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
@@ -283,8 +283,8 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className={`rounded-lg p-3 border transition-all ${
               theme === 'light'
-                ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
-                : 'bg-gradient-to-br from-green-500/10 to-green-600/20 border-green-500/30'
+                ? 'bg-linear-to-br from-green-50 to-green-100 border-green-200'
+                : 'bg-linear-to-br from-green-500/10 to-green-600/20 border-green-500/30'
             }`}>
               <div className="flex items-center gap-2 mb-1">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -294,8 +294,8 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
             </div>
             <div className={`rounded-lg p-3 border transition-all ${
               theme === 'light'
-                ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
-                : 'bg-gradient-to-br from-red-500/10 to-red-600/20 border-red-500/30'
+                ? 'bg-linear-to-br from-red-50 to-red-100 border-red-200'
+                : 'bg-linear-to-br from-red-500/10 to-red-600/20 border-red-500/30'
             }`}>
               <div className="flex items-center gap-2 mb-1">
                 <XCircle className="w-4 h-4 text-red-500" />
@@ -306,8 +306,8 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
             {pipelineStats.running > 0 && (
               <div className={`rounded-lg p-3 border transition-all ${
                 theme === 'light'
-                  ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200'
-                  : 'bg-gradient-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30'
+                  ? 'bg-linear-to-br from-blue-50 to-blue-100 border-blue-200'
+                  : 'bg-linear-to-br from-blue-500/10 to-blue-600/20 border-blue-500/30'
               }`}>
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="w-4 h-4 text-blue-500" />
@@ -319,8 +319,8 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
             {pipelineStats.pending > 0 && (
               <div className={`rounded-lg p-3 border transition-all ${
                 theme === 'light'
-                  ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
-                  : 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/20 border-yellow-500/30'
+                  ? 'bg-linear-to-br from-yellow-50 to-yellow-100 border-yellow-200'
+                  : 'bg-linear-to-br from-yellow-500/10 to-yellow-600/20 border-yellow-500/30'
               }`}>
                 <div className="flex items-center gap-2 mb-1">
                   <Clock className="w-4 h-4 text-yellow-500" />
@@ -331,8 +331,8 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
             )}
             <div className={`rounded-lg p-3 border transition-all ${
               theme === 'light'
-                ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200'
-                : 'bg-gradient-to-br from-orange-500/10 to-orange-600/20 border-orange-500/30'
+                ? 'bg-linear-to-br from-orange-50 to-orange-100 border-orange-200'
+                : 'bg-linear-to-br from-orange-500/10 to-orange-600/20 border-orange-500/30'
             }`}>
               <div className="flex items-center gap-2 mb-1">
                 <CheckCircle2 className="w-4 h-4 text-orange-500" />

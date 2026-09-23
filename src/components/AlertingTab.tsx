@@ -458,7 +458,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                     <p className={`text-sm ${textSecondary} mt-1`}>Get from @BotFather</p>
                   </div>
@@ -475,7 +475,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="-1001234567890"
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
@@ -497,7 +497,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="https://hooks.slack.com/services/..."
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                   <div>
@@ -513,7 +513,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="#general"
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
@@ -535,7 +535,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="https://discord.com/api/webhooks/..."
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
@@ -558,7 +558,7 @@ export default function AlertingTab() {
                           setChannelConfig(updated);
                         }}
                         placeholder="smtp.gmail.com"
-                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
                     </div>
                     <div>
@@ -574,7 +574,7 @@ export default function AlertingTab() {
                           setChannelConfig(updated);
                         }}
                         placeholder="587"
-                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
                     </div>
                   </div>
@@ -592,7 +592,7 @@ export default function AlertingTab() {
                           setChannelConfig(updated);
                         }}
                         placeholder="user@gmail.com"
-                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
                     </div>
                     <div>
@@ -608,7 +608,7 @@ export default function AlertingTab() {
                           setChannelConfig(updated);
                         }}
                         placeholder="••••••••"
-                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                       />
                     </div>
                   </div>
@@ -625,7 +625,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="alerts@example.com"
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                   <div>
@@ -641,7 +641,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="team@example.com"
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                   <p className={`text-sm ${textSecondary}`}>
@@ -666,7 +666,7 @@ export default function AlertingTab() {
                         setChannelConfig(updated);
                       }}
                       placeholder="https://your-api.com/webhook"
-                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
+                      className={`w-full px-3 py-2 border rounded-lg transition-colors ${input} focus:outline-hidden focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500`}
                     />
                   </div>
                 </div>
