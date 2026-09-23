@@ -7,30 +7,18 @@ const SESSION_COOKIE_NAME = 'gitlab_dashboard_session';
 const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
 
 // API routes that don't require authentication
-const PUBLIC_API_ROUTES = ['/api/auth/login', '/api/auth/cloud-session', '/api/webhook/gitlab', '/api/webhook/cloud', '/api/setup', '/api/version'];
+const PUBLIC_API_ROUTES = ['/api/auth/login', '/api/webhook/gitlab', '/api/setup', '/api/version'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const authMode = process.env.AUTH_MODE || 'session';
-
-  // Determine authentication based on mode
-  let isAuthenticated = false;
-
-  if (authMode === 'supabase') {
-    // Cloud mode: check Bearer token or session cookie
-    const authHeader = request.headers.get('authorization');
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
-    isAuthenticated = !!authHeader?.startsWith('Bearer ') || !!sessionCookie?.value;
-  } else {
-    // Self-hosted mode: session cookie only
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
-    isAuthenticated = !!sessionCookie?.value;
-  }
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
+  const isAuthenticated = !!sessionCookie?.value;
 
   // Check if route is public
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  const isPublicApiRoute = PUBLIC_API_ROUTES.some((route) =>
-    pathname.startsWith(route)
+  // Match the route itself or a sub-path, never a sibling like /api/versions.
+  const isPublicApiRoute = PUBLIC_API_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
   // Allow public routes and API routes

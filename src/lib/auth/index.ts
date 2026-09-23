@@ -1,4 +1,3 @@
-// Auth adapter - unified interface for session and JWT auth
+// Auth adapter - unified interface for session auth
 export { getAuth, requireAuth, requireAdmin, getCurrentUser } from './adapter';
-export type { AuthUser, AuthContext, AuthMode } from './types';
-export { getAuthMode } from './types';
+export type { AuthUser, AuthContext } from './types';

@@ -1,33 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogIn, Eye, EyeOff, AlertCircle, GitBranch, Activity, Zap } from 'lucide-react';
 import axios from 'axios';
 
-type AuthMode = 'session' | 'supabase';
-
-function getAuthMode(): AuthMode {
-  const mode = process.env.NEXT_PUBLIC_AUTH_MODE;
-  return mode === 'supabase' ? 'supabase' : 'session';
-}
-
 export default function LoginPage() {
   const router = useRouter();
-  const authMode = useMemo(() => getAuthMode(), []);
 
-  // Shared state
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-
-  // Session mode: username
   const [username, setUsername] = useState('');
-
-  // Supabase mode: email
-  const [email, setEmail] = useState('');
 
   // Mounting animation
   useEffect(() => {
@@ -49,8 +35,7 @@ export default function LoginPage() {
     checkSession();
   }, [router]);
 
-  // Session mode login (existing behavior)
-  const handleSessionLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -75,51 +60,7 @@ export default function LoginPage() {
     }
   };
 
-  // Supabase mode login
-  const handleSupabaseLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      // Dynamically import the browser client to avoid bundling Supabase in session mode
-      const { createBrowserClient } = await import('@/lib/supabase/client');
-      const supabase = createBrowserClient();
-
-      // Authenticate with Supabase
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError || !data.session) {
-        setError(signInError?.message || 'Login failed');
-        return;
-      }
-
-      // Bridge Supabase auth to local session by calling cloud-session endpoint
-      const response = await axios.post('/api/auth/cloud-session', {
-        accessToken: data.session.access_token,
-      });
-
-      if (response.data.success) {
-        router.push('/');
-      }
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.error || 'Login failed');
-      } else {
-        setError('An unexpected error occurred');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = authMode === 'supabase' ? handleSupabaseLogin : handleSessionLogin;
-  const isFormValid = authMode === 'supabase'
-    ? email.length > 0 && password.length > 0
-    : username.length > 0 && password.length > 0;
+  const isFormValid = username.length > 0 && password.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-orange-950 flex items-center justify-center p-4 relative overflow-hidden">
@@ -162,40 +103,22 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Identity Field: Username (session) or Email (supabase) */}
-            {authMode === 'supabase' ? (
-              <div className="group">
-                <label htmlFor="email" className="block text-sm font-medium text-zinc-300 mb-2 group-focus-within:text-orange-400 transition-colors">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  autoComplete="email"
-                  className="w-full px-4 py-3.5 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-zinc-800 transition-all duration-300 hover:border-zinc-600"
-                />
-              </div>
-            ) : (
-              <div className="group">
-                <label htmlFor="username" className="block text-sm font-medium text-zinc-300 mb-2 group-focus-within:text-orange-400 transition-colors">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
-                  required
-                  autoComplete="username"
-                  className="w-full px-4 py-3.5 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-zinc-800 transition-all duration-300 hover:border-zinc-600"
-                />
-              </div>
-            )}
+            {/* Username */}
+            <div className="group">
+              <label htmlFor="username" className="block text-sm font-medium text-zinc-300 mb-2 group-focus-within:text-orange-400 transition-colors">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
+                required
+                autoComplete="username"
+                className="w-full px-4 py-3.5 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-zinc-800 transition-all duration-300 hover:border-zinc-600"
+              />
+            </div>
 
             {/* Password */}
             <div className="group">
@@ -248,39 +171,11 @@ export default function LoginPage() {
 
           {/* Info / Links */}
           <div className="mt-6 pt-6 border-t border-zinc-800/50">
-            {authMode === 'supabase' ? (
-              <p className="text-sm text-zinc-500 text-center">
-                Don&apos;t have an account?{' '}
-                <a
-                  href="https://cidash.dev/signup"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-orange-400 hover:text-orange-300 transition-colors"
-                >
-                  Sign up
-                </a>
-              </p>
-            ) : (
-              <p className="text-sm text-zinc-500 text-center">
-                Default credentials are set in your environment variables
-              </p>
-            )}
+            <p className="text-sm text-zinc-500 text-center">
+              Default credentials are set in your environment variables
+            </p>
           </div>
         </div>
-
-        {/* Footer */}
-        {authMode === 'supabase' && (
-          <div className={`mt-8 text-center transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <a
-              href="https://cidash.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-zinc-600 hover:text-zinc-400 transition-colors"
-            >
-              Powered by cidash.dev
-            </a>
-          </div>
-        )}
       </div>
 
       <style jsx>{`

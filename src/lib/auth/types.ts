@@ -1,6 +1,6 @@
 /**
  * Normalized user object returned by all auth adapters.
- * Provides a consistent interface regardless of auth mode (session vs JWT).
+ * Provides a consistent interface for authenticated users.
  */
 export interface AuthUser {
   id: string;
@@ -24,13 +24,4 @@ export interface AuthUser {
 export interface AuthContext {
   user: AuthUser;
   organizationId: string | null;
-}
-
-/**
- * Auth mode: self-hosted uses session cookies, cloud uses Supabase JWT.
- */
-export type AuthMode = 'session' | 'supabase';
-
-export function getAuthMode(): AuthMode {
-  return (process.env.AUTH_MODE as AuthMode) || 'session';
 }
