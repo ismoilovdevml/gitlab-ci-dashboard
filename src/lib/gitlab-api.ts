@@ -1,4 +1,5 @@
-import axios, { AxiosInstance } from 'axios';
+import { AxiosInstance } from 'axios';
+import { createGitLabHttpClient } from './gitlab/http';
 
 // Cache TTL constants (in seconds)
 export const CacheTTL = {
@@ -398,15 +399,12 @@ class GitLabAPI {
   private baseUrl: string;
   private token: string;
 
+  /** @throws GitLabUrlError when `baseUrl` is not a valid http(s) base URL. */
   constructor(baseUrl: string, token: string) {
-    this.baseUrl = baseUrl;
+    const http = createGitLabHttpClient(baseUrl, token);
+    this.baseUrl = http.baseUrl;
     this.token = token;
-    this.api = axios.create({
-      baseURL: `${baseUrl}/api/v4`,
-      headers: {
-        'PRIVATE-TOKEN': token,
-      },
-    });
+    this.api = http.client;
   }
 
   // Get config
