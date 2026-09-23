@@ -127,6 +127,18 @@ describe('GET /api/artifacts/download', () => {
 
     const res = await GET(req());
     expect(res.status).toBe(500);
+    expect((await res.json()).code).toBe('GITLAB_TOKEN_UNREADABLE');
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['token', { gitlabToken: '' }],
+    ['URL', { gitlabUrl: '' }],
+  ])('returns 409 when the GitLab %s is not configured', async (_what, overrides) => {
+    mockUser.mockResolvedValue(user(overrides));
+    const res = await GET(req());
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe('GITLAB_NOT_CONFIGURED');
     expect(mockGet).not.toHaveBeenCalled();
   });
 

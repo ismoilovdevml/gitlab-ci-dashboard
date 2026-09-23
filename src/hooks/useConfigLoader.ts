@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import axios from 'axios';
+import { logger } from '@/lib/logger';
 
 /**
  * Global config loader hook
@@ -28,14 +29,10 @@ export function useConfigLoader() {
         if (typeof config.notifyPipelineFailures === 'boolean') setNotifyPipelineFailures(config.notifyPipelineFailures);
         if (typeof config.notifyPipelineSuccess === 'boolean') setNotifyPipelineSuccess(config.notifyPipelineSuccess);
         if (config.theme) setTheme(config.theme);
-
-        console.log('✅ Config loaded from database:', {
-          url: config.url,
-          hasToken: !!config.token,
-          theme: config.theme,
-        });
       } catch (error) {
-        console.error('❌ Failed to load config from database:', error);
+        logger.error('Failed to load config from database', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     };
 

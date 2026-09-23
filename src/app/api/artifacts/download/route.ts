@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { getCurrentUser } from '@/lib/auth';
-import { decryptToken } from '@/lib/gitlab/token';
 import {
-  GitLabUrlError,
-  isSameOrigin,
-  normalizeGitLabBaseUrl,
-  resolveRedirectUrl,
-} from '@/lib/gitlab/url';
+  GitLabCredentials,
+  GitLabCredentialsError,
+  getUserGitLabCredentials,
+  gitLabAuthHeaders,
+} from '@/lib/gitlab/credentials';
+import { GitLabUrlError, isSameOrigin, resolveRedirectUrl } from '@/lib/gitlab/url';
 import { logger } from '@/lib/logger';
 
 const MAX_REDIRECTS = 3;
@@ -40,25 +40,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized - please login' }, { status: 401 });
   }
 
-  if (!user.gitlabToken) {
-    return NextResponse.json({ error: 'GitLab token not found' }, { status: 401 });
-  }
-
-  let baseUrl: string;
+  let credentials: GitLabCredentials;
   try {
-    baseUrl = normalizeGitLabBaseUrl(user.gitlabUrl || 'https://gitlab.com');
+    credentials = getUserGitLabCredentials(user);
   } catch (error) {
-    const message = error instanceof GitLabUrlError ? error.message : 'Invalid GitLab URL';
-    return NextResponse.json({ error: `Invalid GitLab URL configuration: ${message}` }, { status: 400 });
+    if (error instanceof GitLabCredentialsError) {
+      if (error.code === 'GITLAB_TOKEN_UNREADABLE') {
+        logger.error('Failed to decrypt GitLab token for artifact download', { userId: user.id });
+      }
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
+    throw error;
   }
-
-  let token: string;
-  try {
-    token = decryptToken(user.gitlabToken);
-  } catch {
-    logger.error('Failed to decrypt GitLab token for artifact download', { userId: user.id });
-    return NextResponse.json({ error: 'GitLab token could not be decrypted' }, { status: 500 });
-  }
+  const { baseUrl } = credentials;
 
   let url = `${baseUrl}/api/v4/projects/${projectIdNum}/jobs/${jobIdNum}/artifacts`;
 
@@ -68,7 +62,7 @@ export async function GET(request: NextRequest) {
     // attached while the request stays on the configured GitLab origin.
     for (let hop = 0; ; hop++) {
       const response = await axios.get<ArrayBuffer>(url, {
-        headers: isSameOrigin(url, baseUrl) ? { 'PRIVATE-TOKEN': token } : {},
+        headers: isSameOrigin(url, baseUrl) ? gitLabAuthHeaders(credentials) : {},
         responseType: 'arraybuffer',
         maxRedirects: 0,
         timeout: DOWNLOAD_TIMEOUT_MS,

@@ -12,18 +12,6 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     disableDevLogs: true,
     runtimeCaching: [
       {
-        urlPattern: /^https:\/\/gitlab\.com\/api\//,
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'gitlab-api-cache',
-          expiration: {
-            maxEntries: 50,
-            maxAgeSeconds: 5 * 60 // 5 minutes
-          },
-          networkTimeoutSeconds: 10
-        }
-      },
-      {
         urlPattern: /\.(png|jpg|jpeg|svg|gif|webp)$/i,
         handler: 'CacheFirst',
         options: {
