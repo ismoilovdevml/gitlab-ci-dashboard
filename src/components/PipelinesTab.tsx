@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { Search, RefreshCw, Filter, Calendar, TrendingUp, Clock, CheckCircle, XCircle, AlertCircle, BarChart3 } from 'lucide-react';
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -32,49 +32,8 @@ export default function PipelinesTab() {
   const [totalPipelines, setTotalPipelines] = useState(0);
   const pipelinesPerPage = 20;
 
-  useEffect(() => {
-    loadProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadProjects = async () => {
-    try {
-      const api = await getGitLabAPIAsync();
-      const projectsList = await api.getProjects(1, 50);
-      setProjects(projectsList);
-      if (projectsList.length > 0 && !selectedProject) {
-        setSelectedProject(projectsList[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-    }
-  };
-
-  // Debounced pipeline loading to reduce API calls
-  const debouncedLoadPipelines = useDebouncedCallback(() => {
-    loadPipelines();
-  }, 300);
-
-  useEffect(() => {
-    if (selectedProject) {
-      setCurrentPage(1);
-      debouncedLoadPipelines();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProject, statusFilter, dateRange]);
-
-  useEffect(() => {
-    if (selectedProject) {
-      loadPipelines();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
-
-  const loadPipelines = useCallback(async () => {
+  const loadPipelines = async (page: number = currentPage) => {
     if (!selectedProject) return;
-
-    // Create abort controller for this request
-    const controller = new AbortController();
 
     try {
       setIsLoading(true);
@@ -85,7 +44,7 @@ export default function PipelinesTab() {
       createdAfter.setDate(createdAfter.getDate() - parseInt(dateRange));
 
       // Load pipelines with pagination
-      const pipelinesList = await api.getPipelines(selectedProject, currentPage, pipelinesPerPage);
+      const pipelinesList = await api.getPipelines(selectedProject, page, pipelinesPerPage);
 
       // Filter by status
       let filteredPipelines = pipelinesList;
@@ -110,12 +69,63 @@ export default function PipelinesTab() {
     } finally {
       setIsLoading(false);
     }
+  };
 
-    // Cleanup function
+  // Debounced pipeline loading to reduce API calls. It runs the loader from the latest render,
+  // so it sees the project/filters set by the handler that scheduled it.
+  const debouncedLoadPipelines = useDebouncedCallback(() => {
+    loadPipelines();
+  }, 300);
+
+  // Load projects once and select the first one.
+  useEffect(() => {
+    let ignore = false;
+    getGitLabAPIAsync()
+      .then((api) => api.getProjects(1, 50))
+      .then((projectsList) => {
+        setProjects(projectsList);
+        if (!ignore && projectsList.length > 0) {
+          setSelectedProject(projectsList[0].id);
+          debouncedLoadPipelines();
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load projects:', error);
+      });
     return () => {
-      controller.abort();
+      ignore = true;
     };
-  }, [selectedProject, currentPage, pipelinesPerPage, dateRange, statusFilter]);
+  }, [setProjects, debouncedLoadPipelines]);
+
+  // A new project or filter starts again from the first page.
+  const reloadFromFirstPage = (projectId: number | null) => {
+    if (projectId) {
+      setCurrentPage(1);
+      debouncedLoadPipelines();
+    }
+  };
+
+  const handleSelectProject = (projectId: number) => {
+    if (projectId === selectedProject) return;
+    setSelectedProject(projectId);
+    reloadFromFirstPage(projectId);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    reloadFromFirstPage(selectedProject);
+  };
+
+  const handleDateRangeChange = (value: string) => {
+    setDateRange(value);
+    reloadFromFirstPage(selectedProject);
+  };
+
+  const goToPage = (page: number) => {
+    if (page === currentPage) return;
+    setCurrentPage(page);
+    loadPipelines(page);
+  };
 
   const loadPipelineJobs = async (pipeline: Pipeline) => {
     try {
@@ -224,7 +234,7 @@ export default function PipelinesTab() {
               {filteredProjects.map((project, index) => (
                 <button
                   key={project.id}
-                  onClick={() => setSelectedProject(project.id)}
+                  onClick={() => handleSelectProject(project.id)}
                   className={`w-full text-left px-4 py-3 transition-all duration-300 hover:scale-[1.02] ${
                     theme === 'light'
                       ? `border-b border-gray-200 hover:bg-gray-50 ${
@@ -446,7 +456,7 @@ export default function PipelinesTab() {
                 <Filter className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => handleStatusFilterChange(e.target.value)}
                   className={`pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
                 >
                   <option value="all">All Status</option>
@@ -463,7 +473,7 @@ export default function PipelinesTab() {
                 <Calendar className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
                 <select
                   value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value)}
+                  onChange={(e) => handleDateRangeChange(e.target.value)}
                   className={`pl-10 pr-4 py-2 rounded-lg focus:outline-hidden focus:border-orange-500 ${input} ${inputFocus}`}
                 >
                   <option value="1">Last 24 hours</option>
@@ -476,7 +486,7 @@ export default function PipelinesTab() {
             </div>
 
             <button
-              onClick={loadPipelines}
+              onClick={() => loadPipelines()}
               disabled={isLoading}
               className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50"
             >
@@ -512,7 +522,7 @@ export default function PipelinesTab() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-6">
                   <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() => goToPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
                     className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                       theme === 'light'
@@ -539,7 +549,7 @@ export default function PipelinesTab() {
                       return (
                         <button
                           key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
+                          onClick={() => goToPage(pageNum)}
                           className={`w-10 h-10 rounded-lg transition-colors ${
                             currentPage === pageNum
                               ? 'bg-orange-500 text-white'
@@ -555,7 +565,7 @@ export default function PipelinesTab() {
                   </div>
 
                   <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
                     className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                       theme === 'light'

@@ -47,50 +47,57 @@ export default function SettingsTab() {
 
   // Load user config on mount
   useEffect(() => {
+    let ignore = false;
+
+    const loadUserConfig = async () => {
+      try {
+        const response = await axios.get('/api/auth/session');
+        if (response.data.authenticated && response.data.user) {
+          const user = response.data.user;
+
+          // Keep the shared store in sync even if this tab was already left.
+          setStoreAutoRefresh(user.autoRefresh ?? true);
+          setStoreRefreshInterval(user.refreshInterval ?? 10000);
+          setStoreNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
+          setStoreNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
+
+          if (ignore) return;
+          setUsername(user.username || '');
+          setRole(user.role || '');
+
+          // The session endpoint only reports whether a token is stored, never the token.
+          setLocalUrl(user.gitlabUrl || 'https://gitlab.com');
+          setTokenConfigured(Boolean(user.gitlabToken));
+          setLocalToken('');
+          setAutoRefresh(user.autoRefresh ?? true);
+          setRefreshInterval(user.refreshInterval ?? 10000);
+          setNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
+          setNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
+        }
+      } catch (error) {
+        console.error('Failed to load user config:', error);
+      }
+    };
+
+    const loadVersionInfo = async () => {
+      try {
+        const response = await axios.get('/api/version');
+        if (!ignore && response.data) {
+          setAppVersion(response.data.currentVersion || '1.2.0');
+        }
+      } catch (error) {
+        console.error('Failed to load version:', error);
+        if (!ignore) setAppVersion('1.2.0');
+      }
+    };
+
     loadUserConfig();
     loadVersionInfo();
+    return () => {
+      ignore = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadUserConfig = async () => {
-    try {
-      const response = await axios.get('/api/auth/session');
-      if (response.data.authenticated && response.data.user) {
-        const user = response.data.user;
-
-        setUsername(user.username || '');
-        setRole(user.role || '');
-
-        // The session endpoint only reports whether a token is stored, never the token.
-        setLocalUrl(user.gitlabUrl || 'https://gitlab.com');
-        setTokenConfigured(Boolean(user.gitlabToken));
-        setLocalToken('');
-        setAutoRefresh(user.autoRefresh ?? true);
-        setRefreshInterval(user.refreshInterval ?? 10000);
-        setNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
-        setNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
-
-        setStoreAutoRefresh(user.autoRefresh ?? true);
-        setStoreRefreshInterval(user.refreshInterval ?? 10000);
-        setStoreNotifyPipelineFailures(user.notifyPipelineFailures ?? true);
-        setStoreNotifyPipelineSuccess(user.notifyPipelineSuccess ?? false);
-      }
-    } catch (error) {
-      console.error('Failed to load user config:', error);
-    }
-  };
-
-  const loadVersionInfo = async () => {
-    try {
-      const response = await axios.get('/api/version');
-      if (response.data) {
-        setAppVersion(response.data.currentVersion || '1.2.0');
-      }
-    } catch (error) {
-      console.error('Failed to load version:', error);
-      setAppVersion('1.2.0');
-    }
-  };
 
   const refreshIntervals = [
     { value: 5000, label: '5s' },

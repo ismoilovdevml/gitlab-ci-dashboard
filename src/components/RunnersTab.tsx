@@ -8,10 +8,26 @@ import { formatRelativeTime, cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import RunnerDetailsModal from '@/components/RunnerDetailsModal';
 
+async function fetchRunners(): Promise<Runner[]> {
+  const api = await getGitLabAPIAsync();
+  const runnersList = await api.getRunners(1, 100);
+
+  if (runnersList.length === 0) {
+    console.log('No runners found. This might be because:');
+    console.log('1. You have no runners configured');
+    console.log('2. You lack admin permissions (trying project runners fallback)');
+  }
+  return runnersList;
+}
+
+function runnersErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Failed to load runners';
+}
+
 export default function RunnersTab() {
   const { runners, setRunners } = useDashboardStore();
   const { theme, textPrimary, textSecondary, card, input, inputFocus } = useTheme();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -30,31 +46,35 @@ export default function RunnersTab() {
     setSelectedRunner(null);
   };
 
-  useEffect(() => {
-    loadRunners();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const loadRunners = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const api = await getGitLabAPIAsync();
-      const runnersList = await api.getRunners(1, 100);
-      setRunners(runnersList);
-
-      if (runnersList.length === 0) {
-        console.log('No runners found. This might be because:');
-        console.log('1. You have no runners configured');
-        console.log('2. You lack admin permissions (trying project runners fallback)');
-      }
+      setRunners(await fetchRunners());
     } catch (error) {
       console.error('Failed to load runners:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load runners');
+      setError(runnersErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Initial load; isLoading starts as true so no synchronous state update is needed here.
+  useEffect(() => {
+    let ignore = false;
+    fetchRunners()
+      .then(setRunners)
+      .catch((error) => {
+        console.error('Failed to load runners:', error);
+        if (!ignore) setError(runnersErrorMessage(error));
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [setRunners]);
 
   const getRunnerStatusColor = (status: string) => {
     switch (status) {

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ArtifactsTab from '../ArtifactsTab';
 
 jest.mock('@/hooks/useTheme', () => ({
@@ -31,6 +31,37 @@ const artifactJob = {
   artifacts_file: { filename: 'artifacts.zip', size: 1024 },
   web_url: 'https://gitlab.example.com/group/app/-/jobs/42',
 };
+
+describe('ArtifactsTab loading', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('shows the loading state until artifacts arrive, then lists them', async () => {
+    let resolve!: (value: unknown[]) => void;
+    mockGetAllArtifacts.mockReturnValue(new Promise((res) => { resolve = res; }));
+
+    render(<ArtifactsTab />);
+    expect(screen.getByText('Loading artifacts...')).toBeInTheDocument();
+
+    await act(async () => resolve([artifactJob]));
+
+    expect(await screen.findByTitle('Download artifacts')).toBeInTheDocument();
+    expect(screen.queryByText('Loading artifacts...')).not.toBeInTheDocument();
+    expect(mockGetAllArtifacts).toHaveBeenCalledTimes(1);
+  });
+
+  it('notifies and shows the empty state when loading fails', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockGetAllArtifacts.mockRejectedValue(new Error('boom'));
+
+    render(<ArtifactsTab />);
+
+    expect(await screen.findByText('No Artifacts Found')).toBeInTheDocument();
+    expect(mockNotifyError).toHaveBeenCalledWith('Load Failed', 'Failed to load artifacts');
+    jest.restoreAllMocks();
+  });
+});
 
 describe('ArtifactsTab download', () => {
   const originalFetch = global.fetch;

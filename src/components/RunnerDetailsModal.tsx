@@ -37,30 +37,37 @@ export default function RunnerDetailsModal({
 }: RunnerDetailsModalProps) {
   const { theme, textPrimary, textSecondary, card } = useTheme();
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'stats'>('overview');
 
+  // Jobs are (re)loaded every time the modal opens or shows another runner. The loading flag is
+  // reset while rendering when that happens, instead of from the effect.
+  const activeRunner = isOpen ? runner : null;
+  const [loadingFor, setLoadingFor] = useState<Runner | null>(activeRunner);
+  const [loading, setLoading] = useState(activeRunner !== null);
+  if (activeRunner !== loadingFor) {
+    setLoadingFor(activeRunner);
+    setLoading(activeRunner !== null);
+  }
+
   useEffect(() => {
-    if (isOpen && runner) {
-      loadRunnerJobs();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!isOpen || !runner) return;
+
+    let ignore = false;
+    getGitLabAPIAsync()
+      .then((api) => api.getRunnerJobs(runner.id, 1, 50))
+      .then((runnerJobs) => {
+        if (!ignore) setJobs(runnerJobs);
+      })
+      .catch((error) => {
+        console.error('Failed to load runner jobs:', error);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [isOpen, runner]);
-
-  const loadRunnerJobs = async () => {
-    if (!runner) return;
-
-    setLoading(true);
-    try {
-      const api = await getGitLabAPIAsync();
-      const runnerJobs = await api.getRunnerJobs(runner.id, 1, 50);
-      setJobs(runnerJobs);
-    } catch (error) {
-      console.error('Failed to load runner jobs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!isOpen || !runner) return null;
 

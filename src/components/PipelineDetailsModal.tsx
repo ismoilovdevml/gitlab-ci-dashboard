@@ -24,23 +24,40 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [logs, setLogs] = useState('');
-  const [loading, setLoading] = useState(false);
+  // Id of the pipeline whose jobs are loaded; null while a reload is in flight.
+  const [loadedPipelineId, setLoadedPipelineId] = useState<number | null>(null);
+  const loading = loadedPipelineId !== pipeline.id;
 
   useEffect(() => {
-    loadJobs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pipeline.id]);
+    let ignore = false;
+    const pipelineId = pipeline.id;
+    getGitLabAPIAsync()
+      .then((api) => api.getPipelineJobs(projectId, pipelineId))
+      .then((jobsList) => {
+        if (!ignore) setJobs(jobsList);
+      })
+      .catch((error) => {
+        console.error('Failed to load jobs:', error);
+      })
+      .finally(() => {
+        if (!ignore) setLoadedPipelineId(pipelineId);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [projectId, pipeline.id]);
 
   const loadJobs = async () => {
+    const pipelineId = pipeline.id;
     try {
-      setLoading(true);
+      setLoadedPipelineId(null);
       const api = await getGitLabAPIAsync();
-      const jobsList = await api.getPipelineJobs(projectId, pipeline.id);
+      const jobsList = await api.getPipelineJobs(projectId, pipelineId);
       setJobs(jobsList);
     } catch (error) {
       console.error('Failed to load jobs:', error);
     } finally {
-      setLoading(false);
+      setLoadedPipelineId(pipelineId);
     }
   };
 

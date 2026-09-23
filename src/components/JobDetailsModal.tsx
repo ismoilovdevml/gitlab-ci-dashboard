@@ -26,7 +26,9 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
   const [pipelineJobs, setPipelineJobs] = useState<Job[]>([]);
   const [showLogViewer, setShowLogViewer] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'pipeline' | 'logs'>('pipeline');
-  const [loadingPipeline, setLoadingPipeline] = useState(false);
+  // Id of the job whose pipeline jobs are loaded; null while a reload is in flight.
+  const [pipelineJobsFor, setPipelineJobsFor] = useState<number | null>(null);
+  const loadingPipeline = pipelineJobsFor !== job.id;
 
   // Parse and colorize log lines (same as LogViewer)
   const parseLogLine = (line: string) => {
@@ -71,32 +73,6 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
                   projects.find(p => p.id === job.pipeline?.project_id);
   const projectName = project?.name || job.project?.name || job.project?.name_with_namespace || 'Loading...';
 
-  useEffect(() => {
-    loadPipelineJobs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [job.id]);
-
-  // Load logs when switching to logs tab
-  useEffect(() => {
-    if (selectedTab === 'logs' && !logs && !loading) {
-      loadJobLogs();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTab]);
-
-  // Auto-refresh logs for running jobs
-  useEffect(() => {
-    if (selectedTab === 'logs' && job.status === 'running' && logs) {
-      const interval = setInterval(() => {
-        refreshJobLogs();
-      }, 3000); // Refresh every 3 seconds
-
-      return () => clearInterval(interval);
-    }
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTab, job.status, logs]);
-
   // Auto-scroll to bottom for running jobs
   useEffect(() => {
     if (selectedTab === 'logs' && job.status === 'running' && logs) {
@@ -107,16 +83,38 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
     }
   }, [logs, selectedTab, job.status]);
 
+  const pipelineId = job.pipeline.id;
+
+  useEffect(() => {
+    let ignore = false;
+    const jobId = job.id;
+    getGitLabAPIAsync()
+      .then((api) => api.getPipelineJobs(projectId, pipelineId))
+      .then((jobs) => {
+        if (!ignore) setPipelineJobs(jobs);
+      })
+      .catch((error) => {
+        console.error('Failed to load pipeline jobs:', error);
+      })
+      .finally(() => {
+        if (!ignore) setPipelineJobsFor(jobId);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [job.id, projectId, pipelineId]);
+
   const loadPipelineJobs = async () => {
+    const jobId = job.id;
     try {
-      setLoadingPipeline(true);
+      setPipelineJobsFor(null);
       const api = await getGitLabAPIAsync();
-      const jobs = await api.getPipelineJobs(projectId, job.pipeline.id);
+      const jobs = await api.getPipelineJobs(projectId, pipelineId);
       setPipelineJobs(jobs);
     } catch (error) {
       console.error('Failed to load pipeline jobs:', error);
     } finally {
-      setLoadingPipeline(false);
+      setPipelineJobsFor(jobId);
     }
   };
 
@@ -142,6 +140,27 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
     } catch (error) {
       console.error('Failed to refresh logs:', error);
     }
+  };
+
+  // Auto-refresh logs for running jobs
+  useEffect(() => {
+    if (selectedTab === 'logs' && job.status === 'running' && logs) {
+      const interval = setInterval(() => {
+        refreshJobLogs();
+      }, 3000); // Refresh every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab, job.status, logs]);
+
+  // Load logs the first time the logs tab is opened
+  const showLogsTab = () => {
+    if (selectedTab !== 'logs' && !logs && !loading) {
+      loadJobLogs();
+    }
+    setSelectedTab('logs');
   };
 
   const handleRetryJob = async (jobToRetry: Job) => {
@@ -293,7 +312,7 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
               )}
             </button>
             <button
-              onClick={() => setSelectedTab('logs')}
+              onClick={showLogsTab}
               className={`flex items-center gap-2 px-6 py-3 font-medium text-sm transition-colors relative ${
                 selectedTab === 'logs'
                   ? theme === 'light'

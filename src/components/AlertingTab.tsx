@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Bell, TestTube, Settings, History, Check, Webhook } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { useTheme } from '@/hooks/useTheme';
+import { useNotifications } from '@/hooks/useNotifications';
 import { channelsApi, historyApi } from '@/lib/api/alerts';
 import WebhookSetup from './WebhookSetup';
 import AlertHistory from './AlertHistory';
@@ -57,6 +58,7 @@ interface AlertHistory {
 export default function AlertingTab() {
   const { card, textPrimary, textSecondary, input } = useTheme();
   const { addNotification } = useDashboardStore();
+  const { notifyError, notifyInfo, notifySuccess } = useNotifications();
 
   const [activeTab, setActiveTab] = useState<'webhook' | 'channels' | 'history'>('webhook');
   const [activeChannel, setActiveChannel] = useState<AlertChannel>('telegram');
@@ -74,49 +76,55 @@ export default function AlertingTab() {
 
   // Load config from API
   useEffect(() => {
+    let ignore = false;
+
+    const loadData = async () => {
+      try {
+
+        // Load channels
+        const channels = await channelsApi.getAll();
+        const config: ChannelConfig = {
+          telegram: { enabled: false, botToken: '', chatId: '' },
+          slack: { enabled: false, webhookUrl: '', channel: '#general' },
+          discord: { enabled: false, webhookUrl: '' },
+          email: { enabled: false, smtpHost: '', smtpPort: '587', username: '', password: '', from: '', to: '' },
+          webhook: { enabled: false, url: '', headers: {} },
+        };
+
+        channels.forEach((ch: { type: string; enabled: boolean; config: Record<string, unknown> }) => {
+          const channelType = ch.type as AlertChannel;
+          if (channelType in config) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (config as any)[channelType] = { ...config[channelType], ...ch.config, enabled: ch.enabled };
+          }
+        });
+        if (ignore) return;
+        setChannelConfig(config);
+
+        // Load history (first 50 with pagination support)
+        const historyResponse = await historyApi.getAll(50);
+        if (ignore) return;
+        setAlertHistory(historyResponse.data.map((h) => ({
+          ...h,
+          timestamp: h.timestamp || new Date().toISOString(),
+        })));
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        addNotification({
+          id: Date.now().toString(),
+          type: 'error',
+          title: 'Error',
+          message: 'Failed to load configuration',
+          timestamp: Date.now()
+        });
+      }
+    };
+
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadData = async () => {
-    try {
-
-      // Load channels
-      const channels = await channelsApi.getAll();
-      const config: ChannelConfig = {
-        telegram: { enabled: false, botToken: '', chatId: '' },
-        slack: { enabled: false, webhookUrl: '', channel: '#general' },
-        discord: { enabled: false, webhookUrl: '' },
-        email: { enabled: false, smtpHost: '', smtpPort: '587', username: '', password: '', from: '', to: '' },
-        webhook: { enabled: false, url: '', headers: {} },
-      };
-
-      channels.forEach((ch: { type: string; enabled: boolean; config: Record<string, unknown> }) => {
-        const channelType = ch.type as AlertChannel;
-        if (channelType in config) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (config as any)[channelType] = { ...config[channelType], ...ch.config, enabled: ch.enabled };
-        }
-      });
-      setChannelConfig(config);
-
-      // Load history (first 50 with pagination support)
-      const historyResponse = await historyApi.getAll(50);
-      setAlertHistory(historyResponse.data.map((h) => ({
-        ...h,
-        timestamp: h.timestamp || new Date().toISOString(),
-      })));
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to load configuration',
-        timestamp: Date.now()
-      });
-    }
-  };
+    return () => {
+      ignore = true;
+    };
+  }, [addNotification]);
 
   const saveChannelConfig = async () => {
     try {
@@ -127,22 +135,10 @@ export default function AlertingTab() {
         channelConfig[activeChannel]
       );
 
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Saved',
-        message: 'Channel configuration saved successfully',
-        timestamp: Date.now()
-      });
+      notifySuccess('Saved', 'Channel configuration saved successfully');
     } catch (error) {
       console.error('Failed to save channel:', error);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to save channel configuration',
-        timestamp: Date.now()
-      });
+      notifyError('Error', 'Failed to save channel configuration');
     }
   };
 
@@ -160,26 +156,14 @@ export default function AlertingTab() {
           await testDiscord();
           break;
         case 'email':
-          addNotification({
-            id: Date.now().toString(),
-            type: 'info',
-            title: 'Info',
-            message: 'Email test will be implemented with backend',
-            timestamp: Date.now()
-          });
+          notifyInfo('Info', 'Email test will be implemented with backend');
           break;
         case 'webhook':
           await testWebhook();
           break;
       }
     } catch {
-      addNotification({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Error',
-        message: `Failed to test ${channel}`,
-        timestamp: Date.now()
-      });
+      notifyError('Error', `Failed to test ${channel}`);
     } finally {
       setTesting(false);
     }
@@ -198,13 +182,7 @@ export default function AlertingTab() {
     });
 
     if (response.ok) {
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Success',
-        message: 'Telegram test message sent successfully',
-        timestamp: Date.now()
-      });
+      notifySuccess('Success', 'Telegram test message sent successfully');
     } else {
       const error = await response.json();
       throw new Error(error.description);
@@ -231,13 +209,7 @@ export default function AlertingTab() {
     });
 
     if (response.ok) {
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Success',
-        message: 'Slack test message sent successfully',
-        timestamp: Date.now()
-      });
+      notifySuccess('Success', 'Slack test message sent successfully');
     } else {
       throw new Error('Slack webhook failed');
     }
@@ -254,13 +226,7 @@ export default function AlertingTab() {
     });
 
     if (response.ok) {
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Success',
-        message: 'Discord test message sent successfully',
-        timestamp: Date.now()
-      });
+      notifySuccess('Success', 'Discord test message sent successfully');
     } else {
       throw new Error('Discord webhook failed');
     }
@@ -279,13 +245,7 @@ export default function AlertingTab() {
     });
 
     if (response.ok) {
-      addNotification({
-        id: Date.now().toString(),
-        type: 'success',
-        title: 'Success',
-        message: 'Webhook test successful',
-        timestamp: Date.now()
-      });
+      notifySuccess('Success', 'Webhook test successful');
     } else {
       throw new Error('Webhook failed');
     }
@@ -408,8 +368,13 @@ export default function AlertingTab() {
                 </h3>
                 <button
                   onClick={async () => {
-                    const updated = { ...channelConfig };
-                    updated[activeChannel].enabled = !updated[activeChannel].enabled;
+                    const updated = {
+                      ...channelConfig,
+                      [activeChannel]: {
+                        ...channelConfig[activeChannel],
+                        enabled: !channelConfig[activeChannel].enabled,
+                      },
+                    };
                     setChannelConfig(updated);
 
                     // Auto-save to API when toggling
@@ -419,13 +384,7 @@ export default function AlertingTab() {
                         updated[activeChannel].enabled,
                         updated[activeChannel]
                       );
-                      addNotification({
-                        id: Date.now().toString(),
-                        type: 'success',
-                        title: 'Saved',
-                        message: `${activeChannel} ${updated[activeChannel].enabled ? 'enabled' : 'disabled'}`,
-                        timestamp: Date.now()
-                      });
+                      notifySuccess('Saved', `${activeChannel} ${updated[activeChannel].enabled ? 'enabled' : 'disabled'}`);
                     } catch (error) {
                       console.error('Failed to toggle channel:', error);
                     }

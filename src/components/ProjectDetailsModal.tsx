@@ -20,7 +20,9 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
   const { theme, textPrimary, textSecondary } = useTheme();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Id of the project whose pipelines are loaded.
+  const [loadedProjectId, setLoadedProjectId] = useState<number | null>(null);
+  const loading = loadedProjectId !== project.id;
   const [stats, setStats] = useState({
     total: 0,
     running: 0,
@@ -29,30 +31,35 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
   });
 
   useEffect(() => {
+    let ignore = false;
+    const projectId = project.id;
+
+    const loadProjectData = async () => {
+      try {
+        const api = await getGitLabAPIAsync();
+        const pipelinesList = await api.getPipelines(projectId, 1, 50);
+        if (ignore) return;
+        setPipelines(pipelinesList);
+
+        // Calculate stats
+        setStats({
+          total: pipelinesList.length,
+          running: pipelinesList.filter(p => p.status === 'running').length,
+          success: pipelinesList.filter(p => p.status === 'success').length,
+          failed: pipelinesList.filter(p => p.status === 'failed').length,
+        });
+      } catch (error) {
+        console.error('Failed to load project data:', error);
+      } finally {
+        if (!ignore) setLoadedProjectId(projectId);
+      }
+    };
+
     loadProjectData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      ignore = true;
+    };
   }, [project.id]);
-
-  const loadProjectData = async () => {
-    try {
-      setLoading(true);
-      const api = await getGitLabAPIAsync();
-      const pipelinesList = await api.getPipelines(project.id, 1, 50);
-      setPipelines(pipelinesList);
-
-      // Calculate stats
-      setStats({
-        total: pipelinesList.length,
-        running: pipelinesList.filter(p => p.status === 'running').length,
-        success: pipelinesList.filter(p => p.status === 'success').length,
-        failed: pipelinesList.filter(p => p.status === 'failed').length,
-      });
-    } catch (error) {
-      console.error('Failed to load project data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <>

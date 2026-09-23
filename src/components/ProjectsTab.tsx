@@ -16,11 +16,6 @@ export default function ProjectsTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
 
-  useEffect(() => {
-    loadProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const loadProjects = async () => {
     try {
       const api = await getGitLabAPIAsync();
@@ -30,6 +25,11 @@ export default function ProjectsTab() {
       console.error('Failed to load projects:', error);
     }
   };
+
+  useEffect(() => {
+    loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleToggleStar = async (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
