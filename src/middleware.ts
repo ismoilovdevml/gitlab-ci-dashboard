@@ -16,8 +16,9 @@ export function middleware(request: NextRequest) {
 
   // Check if route is public
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  const isPublicApiRoute = PUBLIC_API_ROUTES.some((route) =>
-    pathname.startsWith(route)
+  // Match the route itself or a sub-path, never a sibling like /api/versions.
+  const isPublicApiRoute = PUBLIC_API_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
   // Allow public routes and API routes

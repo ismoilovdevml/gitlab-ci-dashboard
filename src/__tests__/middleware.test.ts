@@ -51,6 +51,22 @@ describe('middleware', () => {
       expect(res.status).toBe(401);
     });
 
+    it.each([
+      '/api/versions',
+      '/api/setupx',
+      '/api/setup-admin',
+      '/api/webhook/gitlabx',
+      '/api/auth/login-as',
+    ])('does not treat prefix sibling %s as public', (path) => {
+      const res = middleware(makeRequest(path));
+      expect(res.status).toBe(401);
+    });
+
+    it('allows sub-paths of a public API route', () => {
+      const res = middleware(makeRequest('/api/webhook/gitlab/extra'));
+      expect(isPassThrough(res)).toBe(true);
+    });
+
     it.each(['/login', '/api/auth/login', '/api/webhook/gitlab', '/api/setup', '/api/version'])(
       'allows public route %s',
       (path) => {
