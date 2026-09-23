@@ -75,6 +75,7 @@ services:
 
       # Security
       SESSION_SECRET: ${SESSION_SECRET}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
     ports:
       - "3000:3000"
     networks:
