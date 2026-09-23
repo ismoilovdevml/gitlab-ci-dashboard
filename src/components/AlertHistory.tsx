@@ -45,7 +45,7 @@ interface Analytics {
   timeSeries: Array<{ date: string; total: number; success: number; failed: number }>;
 }
 
-export default function EnterpriseHistory() {
+export default function AlertHistory() {
   const { card, textPrimary, textSecondary, input } = useTheme();
   const { addNotification } = useDashboardStore();
 
