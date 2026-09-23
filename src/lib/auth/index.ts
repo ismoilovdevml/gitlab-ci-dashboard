@@ -1,4 +1,5 @@
-// Server-only: pulls in bcrypt, Prisma and next/headers. Middleware (edge) must not import it.
+// Server-only: pulls in bcrypt, Prisma and next/headers. The proxy (src/proxy.ts) runs on
+// Node.js but only checks the session cookie, so it deliberately does not import this module.
 export { hashPassword, verifyPassword } from './password';
 export {
   generateSessionToken,
