@@ -17,12 +17,29 @@ jest.mock('@serwist/turbopack/react', () => ({
 const setOnline = (value: boolean) =>
   Object.defineProperty(window.navigator, 'onLine', { configurable: true, get: () => value });
 
+const setServiceWorkerSupport = (supported: boolean) => {
+  if (supported) {
+    Object.defineProperty(window.navigator, 'serviceWorker', { configurable: true, value: {} });
+  } else {
+    delete (window.navigator as { serviceWorker?: unknown }).serviceWorker;
+  }
+};
+
 describe('PwaProvider', () => {
   beforeEach(() => {
     messageSW.mockReset().mockResolvedValue(true);
     providerProps.mockReset();
     serwist = { messageSW };
     setOnline(true);
+    setServiceWorkerSupport(true);
+  });
+
+  it('disables the worker when the browser has no service worker support', () => {
+    setServiceWorkerSupport(false);
+    render(<PwaProvider>no support</PwaProvider>);
+
+    expect(screen.getByText('no support')).toBeInTheDocument();
+    expect(providerProps).toHaveBeenCalledWith(expect.objectContaining({ disable: true }));
   });
 
   it('registers the Serwist worker as a classic script and renders children', () => {

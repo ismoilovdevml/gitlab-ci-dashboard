@@ -73,16 +73,16 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
         onClick={onClose}
       />
       {/* Modal container */}
-      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-0 sm:p-4 pointer-events-none">
 
         <div
-          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto pointer-events-auto ${
+          className={`sm:rounded-xl w-full max-w-7xl h-dvh sm:h-auto sm:max-h-[90vh] overflow-y-auto pointer-events-auto ${
             theme === 'light' ? 'bg-white border border-[#d2d2d7] shadow-2xl' : 'bg-zinc-900 border border-zinc-800'
           }`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className={`sticky top-0 p-6 flex items-center justify-between ${
+          <div className={`sticky top-0 z-10 p-4 sm:p-6 flex items-center justify-between gap-3 ${
             theme === 'light' ? 'bg-white border-b border-[#d2d2d7]/50' : 'bg-zinc-900 border-b border-zinc-800'
           }`}>
             <div className="flex items-center gap-4">
@@ -113,7 +113,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
               </a>
               <button
                 onClick={onClose}
-                className={`p-2 transition-colors ${
+                className={`p-2 max-sm:p-2.5 shrink-0 transition-colors ${
                   theme === 'light' ? 'text-[#86868b] hover:text-[#1d1d1f]' : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -123,7 +123,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
           </div>
 
           {/* Project Info */}
-          <div className={`p-6 border-b ${
+          <div className={`p-4 sm:p-6 border-b ${
             theme === 'light' ? 'border-[#d2d2d7]/50 bg-[#f5f5f7]/50' : 'border-zinc-800 bg-zinc-800/50'
           }`}>
             {project.description && (
@@ -175,7 +175,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
           </div>
 
           {/* Pipeline Stats */}
-          <div className={`p-6 border-b ${theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'}`}>
+          <div className={`p-4 sm:p-6 border-b ${theme === 'light' ? 'border-[#d2d2d7]/50' : 'border-zinc-800'}`}>
             <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Pipeline Statistics</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className={`rounded-lg p-4 ${

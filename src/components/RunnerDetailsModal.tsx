@@ -130,12 +130,12 @@ export default function RunnerDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-      <div className={`${card} rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden ${
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4">
+      <div className={`${card} sm:rounded-xl w-full max-w-6xl max-sm:h-dvh max-sm:flex max-sm:flex-col sm:max-h-[90vh] overflow-hidden ${
         theme === 'light' ? 'shadow-2xl' : 'border border-gray-800'
       }`}>
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${
+        <div className={`flex items-center justify-between gap-3 p-4 sm:p-6 border-b ${
           theme === 'light'
             ? 'border-[#d2d2d7] bg-linear-to-r from-blue-50 to-purple-50'
             : 'border-gray-800 bg-linear-to-r from-blue-600/10 to-purple-600/10'
@@ -164,7 +164,7 @@ export default function RunnerDetailsModal({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-2 shrink-0 rounded-lg transition-colors ${
               theme === 'light' ? 'hover:bg-gray-100' : 'hover:bg-gray-800'
             }`}
           >
@@ -173,7 +173,7 @@ export default function RunnerDetailsModal({
         </div>
 
         {/* Tabs */}
-        <div className={`flex gap-1 px-6 pt-4 border-b ${
+        <div className={`flex gap-1 px-4 sm:px-6 pt-4 border-b overflow-x-auto ${
           theme === 'light' ? 'border-[#d2d2d7]' : 'border-gray-800'
         }`}>
           {[
@@ -184,7 +184,7 @@ export default function RunnerDetailsModal({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as 'overview' | 'jobs' | 'stats')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition-all ${
+              className={`flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition-all ${
                 activeTab === tab.id
                   ? theme === 'light'
                     ? 'bg-gray-100 text-blue-600 border-b-2 border-blue-500'
@@ -201,7 +201,7 @@ export default function RunnerDetailsModal({
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="overflow-y-auto max-sm:flex-1 max-sm:min-h-0 sm:max-h-[calc(90vh-200px)]">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="p-6 space-y-6">

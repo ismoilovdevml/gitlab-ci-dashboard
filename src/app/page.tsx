@@ -112,12 +112,12 @@ export default function Home() {
   };
 
   return (
-    <div className={`flex h-screen transition-colors duration-300 ${
+    <div className={`flex h-screen max-lg:h-dvh transition-colors duration-300 ${
       theme === 'light' ? 'bg-gray-50' : 'bg-zinc-950'
     }`}>
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto p-8">
+      <main className="flex-1 min-w-0 overflow-auto max-lg:pt-14">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           {renderContent()}
         </div>
       </main>

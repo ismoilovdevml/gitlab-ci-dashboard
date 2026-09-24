@@ -233,9 +233,9 @@ export default function PipelinesTab() {
         <p className={textSecondary}>Browse and manage CI/CD pipelines</p>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Projects Sidebar */}
-        <div className="col-span-3 space-y-4">
+        <div className="lg:col-span-3 space-y-4">
           <div className="relative">
             <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
             <input
@@ -248,7 +248,7 @@ export default function PipelinesTab() {
           </div>
 
           <div className={`rounded-xl overflow-hidden border ${theme === 'light' ? 'border-gray-200' : 'border-zinc-800'} ${card}`}>
-            <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+            <div className="max-h-72 lg:max-h-[600px] overflow-y-auto custom-scrollbar">
               {filteredProjects.map((project, index) => (
                 <button
                   key={project.id}
@@ -303,7 +303,7 @@ export default function PipelinesTab() {
         </div>
 
         {/* Pipelines List */}
-        <div className={`col-span-9 space-y-4 `}>
+        <div className={`lg:col-span-9 min-w-0 space-y-4 `}>
           {/* Statistics Cards */}
           {selectedProject && (
             <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 `}>
@@ -388,7 +388,7 @@ export default function PipelinesTab() {
                 <BarChart3 className="w-5 h-5 text-orange-500" />
                 Pipeline Status Distribution{pageSuffix}
               </h3>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
@@ -467,8 +467,8 @@ export default function PipelinesTab() {
           )}
 
           {/* Filters and Actions */}
-          <div className={`flex items-center justify-between gap-4 `}>
-            <div className="flex items-center gap-4">
+          <div className={`flex flex-wrap items-center justify-between gap-4 `}>
+            <div className="flex flex-wrap items-center gap-4">
               {/* Status Filter */}
               <div className="relative">
                 <Filter className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
@@ -527,7 +527,7 @@ export default function PipelinesTab() {
                     />
                   ))
                 ) : (
-                  <div className="col-span-2 text-center py-12">
+                  <div className="col-span-full text-center py-12">
                     <AlertCircle className={`w-16 h-16 mx-auto mb-4 ${
                       theme === 'light' ? 'text-gray-400' : 'text-zinc-600'
                     }`} />
@@ -538,7 +538,7 @@ export default function PipelinesTab() {
 
               {/* Pagination */}
               {showPagination && (
-                <nav aria-label="Pipeline pages" className="flex items-center justify-center gap-2 mt-6">
+                <nav aria-label="Pipeline pages" className="flex flex-wrap items-center justify-center gap-2 mt-6">
                   <button
                     type="button"
                     onClick={() => goToPage(currentPage - 1)}
@@ -585,7 +585,7 @@ export default function PipelinesTab() {
             </>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <button
                   onClick={() => {
                     setSelectedPipeline(null);

@@ -70,12 +70,12 @@ export default function StatsCard({ title, value, icon: Icon, trend, color = 'bl
 
   return (
     <div className={cn(
-      'bg-linear-to-br border rounded-xl p-6 transition-all hover:scale-105',
+      'bg-linear-to-br border rounded-xl p-4 sm:p-6 transition-all hover:scale-105',
       theme === 'light' ? `${colorClasses.light} shadow-xs hover:shadow-md` : colorClasses.dark
     )}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className={`text-sm font-medium mb-2 ${colorClasses.text}`}>{title}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className={`text-sm font-medium mb-2 truncate ${colorClasses.text}`}>{title}</p>
           <p className={`text-3xl font-bold mb-1 ${textPrimary}`}>{value}</p>
           {trend && (
             <div className={cn(
@@ -88,7 +88,7 @@ export default function StatsCard({ title, value, icon: Icon, trend, color = 'bl
           )}
         </div>
         <div className={cn(
-          'p-3 rounded-lg',
+          'p-3 rounded-lg shrink-0',
           theme === 'light' ? colorClasses.icon : colorClasses.iconDark
         )}>
           <Icon className={`w-6 h-6 ${colorClasses.text.replace('text-', 'text-')}`} />
