@@ -20,10 +20,13 @@ function CacheStartUrl() {
 }
 
 export default function PwaProvider({ children }: { children: ReactNode }) {
+  // Some browsers and embedded webviews have no service worker support; Serwist would throw there.
+  const supported = typeof navigator === 'undefined' || 'serviceWorker' in navigator;
+
   return (
     <SerwistProvider
       swUrl={SW_URL}
-      disable={process.env.NODE_ENV === 'development'}
+      disable={process.env.NODE_ENV === 'development' || !supported}
       // Classic worker: browsers fetch module worker scripts without credentials, so an
       // auth-gated script URL would redirect to /login. The bundle has no imports.
       options={{ type: 'classic' }}
