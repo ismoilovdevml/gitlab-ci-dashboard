@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, ExternalLink, Activity, Layers, FileText } from 'lucide-react';
 import { Job } from '@/lib/gitlab-api';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
 import { getStatusColor, getStatusIcon, formatDuration } from '@/lib/utils';
 import LogViewer from './LogViewer';
+import JobLogContent from './JobLogContent';
+import { parseJobLogCached } from '@/lib/log-parser';
 import PipelineVisualization from './PipelineVisualization';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTheme } from '@/hooks/useTheme';
@@ -30,58 +32,13 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
   const [pipelineJobsFor, setPipelineJobsFor] = useState<number | null>(null);
   const loadingPipeline = pipelineJobsFor !== job.id;
 
-  // Parse and colorize log lines (same as LogViewer)
-  const parseLogLine = (line: string) => {
-    const lowerLine = line.toLowerCase();
-
-    // Error patterns
-    if (lowerLine.includes('error') || lowerLine.includes('failed') || lowerLine.includes('fatal') ||
-        lowerLine.includes('exception') || lowerLine.includes('✗')) {
-      return { level: 'error', color: 'text-red-400', bg: 'bg-red-500/10' };
-    }
-
-    // Warning patterns
-    if (lowerLine.includes('warning') || lowerLine.includes('warn') || lowerLine.includes('deprecated') ||
-        lowerLine.includes('⚠')) {
-      return { level: 'warning', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
-    }
-
-    // Success patterns
-    if (lowerLine.includes('success') || lowerLine.includes('complete') || lowerLine.includes('✓') ||
-        lowerLine.includes('done') || lowerLine.includes('passed') || line.includes('OK:')) {
-      return { level: 'success', color: 'text-green-400', bg: 'bg-green-500/10' };
-    }
-
-    // Info/command patterns
-    if (line.startsWith('$') || line.startsWith('>') || line.startsWith('#') ||
-        lowerLine.includes('running') || lowerLine.includes('executing') || lowerLine.includes('step_script')) {
-      return { level: 'info', color: 'text-blue-400', bg: 'bg-blue-500/10' };
-    }
-
-    // Section markers
-    if (line.includes('section_start') || line.includes('section_end')) {
-      return { level: 'section', color: 'text-purple-400', bg: 'bg-purple-500/10' };
-    }
-
-    // Default
-    return { level: 'default', color: 'text-zinc-400', bg: '' };
-  };
-
   // Get real project name from store or job data
   const project = projects.find(p => p.id === projectId) ||
                   projects.find(p => p.id === job.project?.id) ||
                   projects.find(p => p.id === job.pipeline?.project_id);
   const projectName = project?.name || job.project?.name || job.project?.name_with_namespace || 'Loading...';
 
-  // Auto-scroll to bottom for running jobs
-  useEffect(() => {
-    if (selectedTab === 'logs' && job.status === 'running' && logs) {
-      const container = document.getElementById('job-log-container');
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }
-  }, [logs, selectedTab, job.status]);
+  const parsedLog = useMemo(() => parseJobLogCached(logs), [logs]);
 
   const pipelineId = job.pipeline.id;
 
@@ -382,34 +339,13 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
                     </div>
                   </div>
                 ) : (
-                  <div className={`h-full font-mono text-xs ${
-                    theme === 'light' ? 'bg-[#1d1d1f]' : 'bg-black'
-                  }`}>
-                    <div className="p-4 overflow-auto h-full" id="job-log-container">
-                      {logs ? (
-                        <div className="leading-relaxed">
-                          {logs.split('\n').map((line, index) => {
-                            const parsed = parseLogLine(line);
-                            return (
-                              <div
-                                key={index}
-                                className={`py-1 px-3 rounded-sm mb-0.5 ${parsed.bg} hover:bg-zinc-800/50 transition-colors`}
-                              >
-                                <span className="text-zinc-600 mr-3 select-none inline-block w-10 text-right">
-                                  {index + 1}
-                                </span>
-                                <span className={parsed.color}>
-                                  {line}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-zinc-500 text-center py-8">No logs available</div>
-                      )}
-                    </div>
-                  </div>
+                  // Bounded height: the log must scroll on its own for row virtualization to work.
+                  <JobLogContent
+                    id="job-log-container"
+                    className="max-h-[calc(90vh-14rem)]"
+                    log={parsedLog}
+                    follow={job.status === 'running'}
+                  />
                 )}
               </div>
             )}
@@ -421,7 +357,7 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
               theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-zinc-800 bg-zinc-900/50'
             }`}>
               <div className="flex items-center gap-2 text-xs">
-                <span className={textSecondary}>{logs.split('\n').length} lines</span>
+                <span className={textSecondary}>{parsedLog.lines.length} lines</span>
                 {job.status === 'running' && (
                   <>
                     <span className={textSecondary}>•</span>
