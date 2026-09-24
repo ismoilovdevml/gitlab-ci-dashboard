@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import axios from 'axios';
+import packageJson from '../../../package.json';
 import SettingsTab from '../SettingsTab';
 
 jest.mock('next/navigation', () => ({
@@ -54,9 +55,6 @@ function mockSession(user: Record<string, unknown>) {
     if (url === '/api/auth/session') {
       return Promise.resolve({ data: { authenticated: true, user } });
     }
-    if (url === '/api/version') {
-      return Promise.resolve({ data: { currentVersion: '1.0.0' } });
-    }
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
@@ -99,30 +97,36 @@ describe('SettingsTab GitLab configuration', () => {
     expect(requested.every((u: string) => u.startsWith('/api/'))).toBe(true);
   });
 
-  it('loads the session user and the app version once on mount', async () => {
-    mockSession({ username: 'alice', gitlabUrl: 'https://gitlab.internal', gitlabToken: '' });
+  describe('app version', () => {
+    const original = process.env.NEXT_PUBLIC_APP_VERSION;
 
-    render(<SettingsTab />);
+    afterEach(() => {
+      if (original === undefined) delete process.env.NEXT_PUBLIC_APP_VERSION;
+      else process.env.NEXT_PUBLIC_APP_VERSION = original;
+    });
 
-    expect(await screen.findByText('v1.0.0')).toBeInTheDocument();
-    expect(await screen.findByText('alice')).toBeInTheDocument();
-    expect(screen.getByLabelText('GitLab URL')).toHaveValue('https://gitlab.internal');
-    expect(mockGet).toHaveBeenCalledTimes(2);
-  });
+    it('shows the build-time version without asking the server', async () => {
+      process.env.NEXT_PUBLIC_APP_VERSION = packageJson.version;
+      mockSession({ username: 'alice', gitlabUrl: 'https://gitlab.internal', gitlabToken: '' });
 
-  it('falls back to the bundled version when the version endpoint fails', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    mockGet.mockImplementation((url: string) =>
-      url === '/api/version'
-        ? Promise.reject(new Error('down'))
-        : Promise.resolve({ data: { authenticated: false } })
-    );
+      render(<SettingsTab />);
 
-    render(<SettingsTab />);
+      expect(await screen.findByText('alice')).toBeInTheDocument();
+      expect(screen.getByText(`v${packageJson.version}`)).toBeInTheDocument();
+      expect(screen.getByLabelText('GitLab URL')).toHaveValue('https://gitlab.internal');
+      expect(mockGet.mock.calls.map(([u]) => u)).toEqual(['/api/auth/session']);
+    });
 
-    expect(await screen.findByText('v1.2.0')).toBeInTheDocument();
-    expect(screen.getByLabelText('GitLab URL')).toHaveValue('https://gitlab.com');
-    jest.restoreAllMocks();
+    it('shows no made-up version when none was built in', async () => {
+      delete process.env.NEXT_PUBLIC_APP_VERSION;
+      mockSession({ username: 'alice', gitlabUrl: 'https://gitlab.internal', gitlabToken: '' });
+
+      render(<SettingsTab />);
+
+      expect(await screen.findByText('alice')).toBeInTheDocument();
+      expect(screen.queryByText('Version')).not.toBeInTheDocument();
+      expect(screen.queryByText(/^v\d/)).not.toBeInTheDocument();
+    });
   });
 
   it('requires a token when none is stored', async () => {
