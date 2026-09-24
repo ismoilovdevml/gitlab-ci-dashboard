@@ -9,6 +9,8 @@ interface PipelineVisualizationProps {
   onJobClick: (job: Job) => void;
   onRetryJob?: (job: Job) => void;
   onCancelJob?: (job: Job) => void;
+  /** Starts a manual job (`POST jobs/:id/play`); retry does not start manual jobs. */
+  onPlayJob?: (job: Job) => void;
   onViewLogs?: (job: Job) => void;
 }
 
@@ -17,6 +19,7 @@ export default function PipelineVisualization({
   onJobClick,
   onRetryJob,
   onCancelJob,
+  onPlayJob,
   onViewLogs
 }: PipelineVisualizationProps) {
   const { theme, textPrimary, textSecondary } = useTheme();
@@ -191,11 +194,11 @@ export default function PipelineVisualization({
                         </button>
                       )}
 
-                      {job.status === 'manual' && onRetryJob && (
+                      {job.status === 'manual' && onPlayJob && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onRetryJob(job);
+                            onPlayJob(job);
                           }}
                           className={`p-1.5 hover:bg-green-500 rounded transition-colors ${
                             theme === 'light' ? 'bg-gray-200 hover:text-white' : 'bg-zinc-800'

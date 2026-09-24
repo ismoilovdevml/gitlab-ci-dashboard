@@ -40,7 +40,7 @@ describe('RunnersTab', () => {
     expect(await screen.findAllByText('docker-runner')).not.toHaveLength(0);
     expect(screen.queryByText('Loading runners...')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /refresh/i })).toBeEnabled();
-    expect(mockGetRunners).toHaveBeenCalledWith(1, 100);
+    expect(mockGetRunners).toHaveBeenCalledWith(1, 100, { force: false });
     expect(useDashboardStore.getState().runners).toHaveLength(1);
   });
 
@@ -69,6 +69,7 @@ describe('RunnersTab', () => {
 
     expect(await screen.findAllByText('fresh-runner')).not.toHaveLength(0);
     expect(mockGetRunners).toHaveBeenCalledTimes(2);
+    expect(mockGetRunners).toHaveBeenLastCalledWith(1, 100, { force: true });
   });
 
   it('opens the runner details and loads its jobs', async () => {

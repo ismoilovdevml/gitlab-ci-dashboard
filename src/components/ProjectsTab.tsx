@@ -4,9 +4,18 @@ import { useEffect, useState, useMemo } from 'react';
 import { ExternalLink, Star, GitFork, Lock, Globe, Eye, Search, Filter, FolderGit2, GitBranch, Tag, GitCommit } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboard-store';
 import { getGitLabAPIAsync } from '@/lib/gitlab-api';
-import { Project } from '@/lib/gitlab-api';
+import type { Project, ProjectRefCounts } from '@/lib/gitlab-api';
 import { useTheme } from '@/hooks/useTheme';
 import ProjectDetailsModal from './ProjectDetailsModal';
+
+const REF_COUNT_CONCURRENCY = 5;
+
+/** `undefined` while loading, `null` when GitLab did not report the count. */
+function formatCount(value: number | null | undefined): string {
+  if (value === undefined) return '…';
+  if (value === null) return '—';
+  return value.toLocaleString();
+}
 
 export default function ProjectsTab() {
   const { projects, setProjects } = useDashboardStore();
@@ -15,6 +24,8 @@ export default function ProjectsTab() {
   const [starringProjects, setStarringProjects] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
+  const [refCounts, setRefCounts] = useState<Record<number, ProjectRefCounts>>({});
+  const projectIds = useMemo(() => projects.map((p) => p.id).join(','), [projects]);
 
   const loadProjects = async () => {
     try {
@@ -30,6 +41,29 @@ export default function ProjectsTab() {
     loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!projectIds) return;
+    let ignore = false;
+    const ids = projectIds.split(',').map(Number);
+
+    const loadRefCounts = async () => {
+      const api = await getGitLabAPIAsync();
+      for (let i = 0; i < ids.length && !ignore; i += REF_COUNT_CONCURRENCY) {
+        const batch = ids.slice(i, i + REF_COUNT_CONCURRENCY);
+        const results = await Promise.all(
+          batch.map(async (id) => [id, await api.getProjectRefCounts(id)] as const)
+        );
+        if (ignore) return;
+        setRefCounts((prev) => ({ ...prev, ...Object.fromEntries(results) }));
+      }
+    };
+
+    loadRefCounts().catch((error) => console.error('Failed to load branch and tag counts:', error));
+    return () => {
+      ignore = true;
+    };
+  }, [projectIds]);
 
   const handleToggleStar = async (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
@@ -277,7 +311,7 @@ export default function ProjectsTab() {
             </div>
 
             {/* Statistics Row */}
-            <div className={`flex items-center justify-between px-3 py-2.5 mb-2.5 rounded-xl border ${
+            <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 mb-2.5 rounded-xl border ${
               theme === 'light'
                 ? 'bg-linear-to-r from-gray-50 to-gray-100/50 border-gray-200'
                 : 'bg-linear-to-r from-zinc-800/40 to-zinc-800/20 border-zinc-700/50'
@@ -305,7 +339,7 @@ export default function ProjectsTab() {
                 <GitCommit className="w-4 h-4 text-blue-500" />
                 <span className={`text-xs ${textSecondary}`}>Commits</span>
                 <span className="text-sm font-bold text-blue-500">
-                  {project.statistics?.commit_count || 0}
+                  {formatCount(project.statistics ? project.statistics.commit_count : null)}
                 </span>
               </div>
 
@@ -313,14 +347,14 @@ export default function ProjectsTab() {
               <div className="flex items-center gap-1.5 hover:scale-105 transition-transform">
                 <GitBranch className="w-4 h-4 text-green-500" />
                 <span className={`text-xs ${textSecondary}`}>Branches</span>
-                <span className="text-sm font-bold text-green-500">0</span>
+                <span className="text-sm font-bold text-green-500">{formatCount(refCounts[project.id]?.branches)}</span>
               </div>
 
               {/* Tags */}
               <div className="flex items-center gap-1.5 hover:scale-105 transition-transform">
                 <Tag className="w-4 h-4 text-purple-500" />
                 <span className={`text-xs ${textSecondary}`}>Tags</span>
-                <span className="text-sm font-bold text-purple-500">0</span>
+                <span className="text-sm font-bold text-purple-500">{formatCount(refCounts[project.id]?.tags)}</span>
               </div>
             </div>
 

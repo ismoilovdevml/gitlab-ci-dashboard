@@ -8,9 +8,9 @@ import { formatRelativeTime, cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import RunnerDetailsModal from '@/components/RunnerDetailsModal';
 
-async function fetchRunners(): Promise<Runner[]> {
+async function fetchRunners(force = false): Promise<Runner[]> {
   const api = await getGitLabAPIAsync();
-  const runnersList = await api.getRunners(1, 100);
+  const runnersList = await api.getRunners(1, 100, { force });
 
   if (runnersList.length === 0) {
     console.log('No runners found. This might be because:');
@@ -50,7 +50,7 @@ export default function RunnersTab() {
     try {
       setIsLoading(true);
       setError(null);
-      setRunners(await fetchRunners());
+      setRunners(await fetchRunners(true));
     } catch (error) {
       console.error('Failed to load runners:', error);
       setError(runnersErrorMessage(error));
