@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "public/sw*.js",
     "public/workbox-*.js",
     "public/swe-worker-*.js",
+    // VitePress site with its own package.json and build output
+    "docs/**",
   ]),
 ]);
 

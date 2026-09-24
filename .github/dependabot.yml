@@ -18,6 +18,18 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: docs
+      include: scope
+    groups:
+      docs:
+        patterns:
+          - "*"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
