@@ -238,9 +238,11 @@ export default function ArtifactsTab() {
           <p className={textSecondary}>No job artifacts available across your projects</p>
         </div>
       ) : (
-        <div className={`rounded-xl overflow-hidden ${card} ${
+        <div className={`rounded-xl overflow-x-auto ${card} ${
           theme === 'light' ? 'shadow-xs' : 'border border-zinc-800'
         }`}>
+          {/* Keeps the columns readable on narrow screens; the card scrolls instead. */}
+          <div className="min-w-[880px]">
           {/* Table Header */}
           <div className={`grid grid-cols-12 gap-4 px-6 py-3 text-xs font-medium ${textSecondary} ${
             theme === 'light' ? 'bg-gray-50 border-b border-gray-200' : 'bg-zinc-900/50 border-b border-zinc-800'
@@ -413,6 +415,7 @@ export default function ArtifactsTab() {
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       )}

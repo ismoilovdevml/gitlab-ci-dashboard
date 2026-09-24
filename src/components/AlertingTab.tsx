@@ -244,7 +244,7 @@ export default function AlertingTab() {
   const enabledChannelsCount = Object.values(channelConfig).filter(c => c.enabled).length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="lg:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -259,10 +259,10 @@ export default function AlertingTab() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-gray-700 overflow-x-auto">
         <button
           onClick={() => setActiveTab('webhook')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`shrink-0 whitespace-nowrap px-4 py-2 font-medium transition-colors ${
             activeTab === 'webhook'
               ? 'border-b-2 border-orange-500 text-orange-500'
               : `${textSecondary} hover:text-gray-300`
@@ -273,7 +273,7 @@ export default function AlertingTab() {
         </button>
         <button
           onClick={() => setActiveTab('channels')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`shrink-0 whitespace-nowrap px-4 py-2 font-medium transition-colors ${
             activeTab === 'channels'
               ? 'border-b-2 border-orange-500 text-orange-500'
               : `${textSecondary} hover:text-gray-300`
@@ -284,7 +284,7 @@ export default function AlertingTab() {
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`shrink-0 whitespace-nowrap px-4 py-2 font-medium transition-colors ${
             activeTab === 'history'
               ? 'border-b-2 border-orange-500 text-orange-500'
               : `${textSecondary} hover:text-gray-300`

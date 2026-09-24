@@ -192,17 +192,17 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
       />
 
       {/* Modal container */}
-      <div className="fixed inset-0 z-999 flex items-center justify-center p-4 pointer-events-none overflow-y-auto">
+      <div className="fixed inset-0 z-999 flex items-center justify-center p-0 sm:p-4 pointer-events-none overflow-y-auto">
         <div
-          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
+          className={`sm:rounded-xl w-full max-w-7xl h-dvh sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
             theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
           }`}
         >
           {/* Header */}
-          <div className={`p-6 flex items-center justify-between border-b ${
+          <div className={`p-4 sm:p-6 flex items-start sm:items-center justify-between gap-3 border-b ${
             theme === 'light' ? 'border-gray-200 bg-linear-to-r from-gray-50 to-white' : 'border-zinc-800 bg-linear-to-r from-zinc-900 to-zinc-800'
           }`}>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${
                   theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-900 border border-zinc-700'
@@ -210,8 +210,8 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
                   <Activity className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
-                  <h2 className={`text-2xl font-bold ${textPrimary}`}>{job.name}</h2>
-                  <div className="flex items-center gap-2 mt-1">
+                  <h2 className={`text-xl sm:text-2xl font-bold break-words ${textPrimary}`}>{job.name}</h2>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                     <div className={`px-3 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-1.5 ${getStatusColor(job.status)}`}>
                       <span>{getStatusIcon(job.status)}</span>
                       <span>{job.status}</span>
@@ -239,7 +239,7 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <a
                 href={job.web_url}
                 target="_blank"
@@ -253,7 +253,7 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
               </a>
               <button
                 onClick={onClose}
-                className={`p-2 rounded-lg transition-all hover:scale-105 ${
+                className={`p-2 max-sm:p-2.5 shrink-0 rounded-lg transition-all hover:scale-105 ${
                   theme === 'light' ? 'hover:bg-gray-100 text-gray-600' : 'hover:bg-zinc-800 text-zinc-400'
                 }`}
               >

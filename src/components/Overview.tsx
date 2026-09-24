@@ -237,7 +237,7 @@ export default function Overview() {
       </div>
 
       {/* Essential Statistics - All Clickable */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div
           onClick={() => setShowPipelineList({ title: 'Running Pipelines', status: 'running' })}
           className="cursor-pointer"

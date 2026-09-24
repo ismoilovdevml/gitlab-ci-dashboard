@@ -186,18 +186,18 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         onClick={onClose}
       />
       {/* Modal container */}
-      <div className="fixed inset-0 z-999 flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
+      <div className="fixed inset-0 z-999 flex items-center justify-center p-0 sm:p-4 overflow-y-auto pointer-events-none">
         <div
-          className={`rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ${surface} ${
+          className={`sm:rounded-xl w-full max-w-7xl h-dvh sm:h-auto sm:max-h-[90vh] max-sm:overflow-y-auto sm:overflow-hidden flex flex-col pointer-events-auto ${surface} ${
             theme === 'light' ? 'shadow-2xl' : 'border border-zinc-800'
           }`}
           onClick={(e) => e.stopPropagation()}
         >
         {/* Header */}
-        <div className={`p-6 flex items-center justify-between border-b ${
+        <div className={`p-4 sm:p-6 flex max-sm:flex-wrap items-center justify-between gap-3 border-b ${
           theme === 'light' ? 'border-gray-200 bg-linear-to-r from-gray-50 to-white' : 'border-zinc-800 bg-linear-to-r from-zinc-900 to-zinc-800'
         }`}>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-3">
               <div className={`p-2 rounded-lg ${
                 theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-900 border border-zinc-700'
@@ -205,8 +205,8 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
                 <Activity className="w-6 h-6 text-orange-500" />
               </div>
               <div>
-                <h2 className={`text-2xl font-bold ${textPrimary}`}>Pipeline #{pipeline.id}</h2>
-                <div className="flex items-center gap-2 mt-1">
+                <h2 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Pipeline #{pipeline.id}</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <div className={`px-3 py-1 rounded-md border text-xs font-semibold uppercase flex items-center gap-1.5 ${getStatusColor(pipeline.status)}`}>
                     <span>{getStatusIcon(pipeline.status)}</span>
                     <span>{pipeline.status}</span>
@@ -217,7 +217,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 max-sm:ml-auto">
             {pipeline.status === 'failed' && (
               <button
                 onClick={handleRetryPipeline}
@@ -249,7 +249,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
             </a>
             <button
               onClick={onClose}
-              className={`p-2 rounded-lg transition-all hover:scale-105 ${
+              className={`p-2 max-sm:p-2.5 shrink-0 rounded-lg transition-all hover:scale-105 ${
                 theme === 'light' ? 'hover:bg-gray-100 text-gray-600' : 'hover:bg-zinc-800 text-zinc-400'
               }`}
             >
@@ -259,7 +259,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         </div>
 
         {/* Pipeline Info & Statistics */}
-        <div className={`p-6 border-b ${
+        <div className={`p-4 sm:p-6 border-b ${
           theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-zinc-800 bg-zinc-900/50'
         }`}>
           {/* Basic Info */}
@@ -373,7 +373,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
         </div>
 
         {/* Jobs Visualization */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="sm:flex-1 sm:overflow-y-auto p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${textPrimary}`}>
               Pipeline Jobs ({jobs.length})

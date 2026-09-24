@@ -265,7 +265,7 @@ export default function AlertHistory() {
     <div className="space-y-6">
       {/* Analytics Cards */}
       {!analyticsLoading && analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className={`${card} p-4`}>
             <div className="flex items-center justify-between">
               <div>
@@ -506,8 +506,8 @@ export default function AlertHistory() {
             <div className="space-y-2">
               {history.map((alert) => (
                 <div key={alert.id} className="p-4 bg-gray-700/50 rounded-lg flex items-start justify-between group hover:bg-gray-700/70 transition-colors">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       <span className={`font-medium ${textPrimary}`}>{alert.projectName}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-sm ${getChannelColor(alert.channel)} text-white flex items-center gap-1`}>
                         {getChannelIcon(alert.channel)}
@@ -525,7 +525,7 @@ export default function AlertHistory() {
                         <XCircle className="w-4 h-4 text-red-500" />
                       )}
                     </div>
-                    <p className={`text-sm ${textSecondary} mb-1`}>{alert.message}</p>
+                    <p className={`text-sm ${textSecondary} mb-1 break-words`}>{alert.message}</p>
                     {alert.error && (
                       <p className="text-xs text-red-400 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
@@ -539,7 +539,7 @@ export default function AlertHistory() {
                   </div>
                   <button
                     onClick={() => handleDeleteItem(alert.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-300 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-lg:opacity-100 p-2 max-lg:p-3 shrink-0 text-red-400 hover:text-red-300 transition-opacity"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
