@@ -65,6 +65,25 @@ describe('JobDetailsModal', () => {
     expect(mockGetJobTrace).toHaveBeenCalledWith(1, 42);
   });
 
+  it('renders ANSI colours and GitLab sections in the logs tab', async () => {
+    mockGetPipelineJobs.mockResolvedValue([]);
+    mockGetJobTrace.mockResolvedValue(
+      'section_start:10:step_script\r\x1b[0K\x1b[36;1mExecuting "step_script" stage\x1b[0;m\n' +
+        '\x1b[32;1m$ make build\x1b[0;m\nsection_end:25:step_script\r\x1b[0K\n',
+    );
+
+    render(<JobDetailsModal job={job} projectId={1} onClose={jest.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /job logs/i }));
+
+    const header = await screen.findByRole('button', { name: /Executing "step_script" stage/ });
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+    expect(header).toHaveTextContent('00:15');
+    expect(screen.getByText('$ make build')).toHaveStyle({ fontWeight: '700' });
+    expect(screen.getByText('2 lines')).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('section_');
+    expect(document.body.textContent).not.toContain('\x1b');
+  });
+
   it('shows a message when the logs cannot be loaded', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     mockGetPipelineJobs.mockResolvedValue([]);

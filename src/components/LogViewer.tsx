@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, Download, Maximize2, Search } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { type LogFilterLevel, lineMatches, parseJobLogCached } from '@/lib/log-parser';
+import JobLogContent from './JobLogContent';
 
 interface LogViewerProps {
   logs: string;
@@ -24,7 +26,7 @@ export default function LogViewer({
   const { theme, textPrimary, textSecondary } = useTheme();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterLevel, setFilterLevel] = useState<'all' | 'error' | 'warning' | 'info'>('all');
+  const [filterLevel, setFilterLevel] = useState<LogFilterLevel>('all');
   const [autoScroll, setAutoScroll] = useState(true);
   const isLive = jobStatus === 'running';
 
@@ -40,16 +42,6 @@ export default function LogViewer({
 
     return undefined;
   }, [isLive, onRefreshLogs]);
-
-  // Auto-scroll to bottom when logs update
-  useEffect(() => {
-    if (autoScroll && isLive) {
-      const logContainer = document.getElementById('log-container');
-      if (logContainer) {
-        logContainer.scrollTop = logContainer.scrollHeight;
-      }
-    }
-  }, [logs, autoScroll, isLive]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -71,96 +63,19 @@ export default function LogViewer({
     URL.revokeObjectURL(url);
   };
 
-  // Parse and colorize log lines
-  const parseLogLine = (line: string) => {
-    const lowerLine = line.toLowerCase();
-
-    // Error patterns
-    if (lowerLine.includes('error') || lowerLine.includes('failed') || lowerLine.includes('fatal') ||
-        lowerLine.includes('exception') || lowerLine.includes('✗')) {
-      return { level: 'error', color: 'text-red-400', bg: 'bg-red-500/10' };
+  const parsed = useMemo(() => parseJobLogCached(logs), [logs]);
+  const lowerTerm = searchTerm.trim().toLowerCase();
+  const { matchCount, errorCount, warningCount } = useMemo(() => {
+    let matches = 0;
+    let errors = 0;
+    let warnings = 0;
+    for (const line of parsed.lines) {
+      if (line.level === 'error') errors += 1;
+      else if (line.level === 'warning') warnings += 1;
+      if (lineMatches(line, lowerTerm, filterLevel)) matches += 1;
     }
-
-    // Warning patterns
-    if (lowerLine.includes('warning') || lowerLine.includes('warn') || lowerLine.includes('deprecated') ||
-        lowerLine.includes('⚠')) {
-      return { level: 'warning', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
-    }
-
-    // Success patterns
-    if (lowerLine.includes('success') || lowerLine.includes('complete') || lowerLine.includes('✓') ||
-        lowerLine.includes('done') || lowerLine.includes('passed') || line.includes('OK:')) {
-      return { level: 'success', color: 'text-green-400', bg: 'bg-green-500/10' };
-    }
-
-    // Info/command patterns
-    if (line.startsWith('$') || line.startsWith('>') || line.startsWith('#') ||
-        lowerLine.includes('running') || lowerLine.includes('executing') || lowerLine.includes('step_script')) {
-      return { level: 'info', color: 'text-blue-400', bg: 'bg-blue-500/10' };
-    }
-
-    // Section markers
-    if (line.includes('section_start') || line.includes('section_end')) {
-      return { level: 'section', color: 'text-purple-400', bg: 'bg-purple-500/10' };
-    }
-
-    // Default
-    return { level: 'default', color: 'text-zinc-400', bg: '' };
-  };
-
-  // Escape HTML to prevent XSS attacks
-  const escapeHtml = (text: string): string => {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  };
-
-  // Safely highlight search term without XSS vulnerability
-  const highlightSearchTerm = (line: string, term: string): React.ReactNode => {
-    if (!term) return line;
-
-    const escapedLine = escapeHtml(line);
-    const escapedTerm = escapeHtml(term);
-
-    // Split by search term (case insensitive)
-    const parts = escapedLine.split(new RegExp(`(${escapedTerm})`, 'gi'));
-
-    return parts.map((part, i) => {
-      if (part.toLowerCase() === escapedTerm.toLowerCase()) {
-        return (
-          <mark key={i} className="bg-yellow-500 text-black px-1 rounded-sm">
-            {part}
-          </mark>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
-  };
-
-  // Filter and highlight logs
-  const processLogs = () => {
-    if (!logs) return [];
-
-    const lines = logs.split('\n');
-    return lines
-      .map((line, index) => {
-        const parsed = parseLogLine(line);
-        return { line, index, ...parsed };
-      })
-      .filter(item => {
-        // Filter by level
-        if (filterLevel !== 'all' && item.level !== filterLevel) return false;
-
-        // Filter by search term
-        if (searchTerm && !item.line.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-
-        return true;
-      });
-  };
-
-  const processedLogs = processLogs();
-  const errorCount = logs.split('\n').filter(line => parseLogLine(line).level === 'error').length;
-  const warningCount = logs.split('\n').filter(line => parseLogLine(line).level === 'warning').length;
+    return { matchCount: matches, errorCount: errors, warningCount: warnings };
+  }, [parsed, lowerTerm, filterLevel]);
 
   return (
     <>
@@ -194,7 +109,7 @@ export default function LogViewer({
               </div>
               <div className="flex items-center gap-4 mt-1 text-xs">
                 <span className={textSecondary}>
-                  {processedLogs.length} / {logs.split('\n').length} lines
+                  {matchCount} / {parsed.lines.length} lines
                 </span>
                 {errorCount > 0 && (
                   <span className="text-red-400 flex items-center gap-1">
@@ -276,6 +191,7 @@ export default function LogViewer({
               <input
                 type="text"
                 placeholder="Search in logs..."
+                aria-label="Search in logs"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-hidden focus:border-orange-500 ${
@@ -341,34 +257,14 @@ export default function LogViewer({
         </div>
 
         {/* Log Content */}
-        <div id="log-container" className={`flex-1 overflow-auto ${
-          theme === 'light' ? 'bg-[#1d1d1f]' : 'bg-black'
-        }`}>
-          {processedLogs.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-zinc-500">
-              No logs match your filters
-            </div>
-          ) : (
-            <div className="p-4 font-mono text-xs leading-relaxed">
-              {processedLogs.map((item) => (
-                <div
-                  key={item.index}
-                  className={`py-1 px-3 rounded-sm mb-0.5 ${item.bg} hover:bg-zinc-800/50 transition-colors`}
-                >
-                  <span className="text-zinc-600 mr-3 select-none inline-block w-10 text-right">
-                    {item.index + 1}
-                  </span>
-                  <span className={item.color}>
-                    {searchTerm && item.line.toLowerCase().includes(searchTerm.toLowerCase()) ? (
-                      highlightSearchTerm(item.line, searchTerm)
-                    ) : (
-                      item.line
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="min-h-0 flex-1 overflow-hidden rounded-b-xl">
+          <JobLogContent
+            id="log-container"
+            log={parsed}
+            searchTerm={searchTerm}
+            filterLevel={filterLevel}
+            follow={isLive && autoScroll}
+          />
         </div>
         </div>
       </div>
