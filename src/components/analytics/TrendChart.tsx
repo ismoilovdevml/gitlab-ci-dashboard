@@ -1,6 +1,6 @@
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTheme } from '@/hooks/useTheme';
 
 interface TrendChartProps {
@@ -54,10 +54,10 @@ export default function TrendChart({ data, title, yAxisLabel, color = '#3b82f6' 
               color: theme === 'light' ? '#111827' : '#f9fafb',
             }}
           />
-          <Legend />
           <Line
             type="monotone"
             dataKey="value"
+            name={yAxisLabel || title}
             stroke={color}
             strokeWidth={2}
             dot={{ fill: color, r: 4 }}

@@ -45,10 +45,8 @@ export async function recordTrendData(
   }
 }
 
-/**
- * Calculate trend direction
- */
-function calculateTrend(
+/** Direction of a series: second-half average compared with the first half (5% dead band). */
+export function calculateTrend(
   values: number[]
 ): 'increasing' | 'decreasing' | 'stable' {
   if (values.length < 2) return 'stable';
@@ -61,10 +59,21 @@ function calculateTrend(
   const secondAvg =
     secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
 
-  const changePercent = ((secondAvg - firstAvg) / firstAvg) * 100;
+  if (firstAvg === 0) {
+    if (secondAvg === 0) return 'stable';
+    return secondAvg > 0 ? 'increasing' : 'decreasing';
+  }
+
+  const changePercent = ((secondAvg - firstAvg) / Math.abs(firstAvg)) * 100;
 
   if (Math.abs(changePercent) < 5) return 'stable';
   return changePercent > 0 ? 'increasing' : 'decreasing';
+}
+
+/** Percent change from the first to the last value; 0 when undefined (fewer than two points or a zero start). */
+export function calculateChangePercent(values: number[]): number {
+  if (values.length < 2 || values[0] === 0) return 0;
+  return ((values[values.length - 1] - values[0]) / Math.abs(values[0])) * 100;
 }
 
 /**
@@ -125,10 +134,7 @@ export async function getTrendAnalysis(
     const trend = calculateTrend(values);
 
     // Calculate change percent (first vs last)
-    const changePercent =
-      values.length >= 2
-        ? ((values[values.length - 1] - values[0]) / values[0]) * 100
-        : 0;
+    const changePercent = calculateChangePercent(values);
 
     const prediction = predictNextValue(values);
 
@@ -147,7 +153,7 @@ export async function getTrendAnalysis(
 }
 
 /**
- * Get multiple trends
+ * Get several recorded trends, keyed by metric name. A metric that fails to load is omitted.
  */
 export async function getMultipleTrends(
   db: DbClient,
@@ -155,19 +161,18 @@ export async function getMultipleTrends(
   projectId?: number,
   startDate?: Date,
   endDate?: Date
-): Promise<TrendAnalysis[]> {
-  const trends: TrendAnalysis[] = [];
+): Promise<Record<string, TrendAnalysis>> {
+  const trends: Record<string, TrendAnalysis> = {};
 
   for (const metric of metrics) {
     try {
-      const trend = await getTrendAnalysis(
+      trends[metric] = await getTrendAnalysis(
         db,
         metric,
         projectId,
         startDate,
         endDate
       );
-      trends.push(trend);
     } catch (error) {
       logger.error('Failed to get trend', { metric, error });
     }
