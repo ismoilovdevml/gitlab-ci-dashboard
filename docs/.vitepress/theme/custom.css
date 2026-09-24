@@ -1,0 +1,66 @@
+/* Brand colours follow the dashboard's orange accent. */
+:root {
+  --vp-c-brand-1: #e24329;
+  --vp-c-brand-2: #fc6d26;
+  --vp-c-brand-3: #fc6d26;
+  --vp-c-brand-soft: rgba(252, 109, 38, 0.14);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #fc6d26 20%, #fca326);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, rgba(252, 109, 38, 0.35) 50%, rgba(252, 163, 38, 0.35) 50%);
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+.dark {
+  --vp-c-brand-1: #fc8a4f;
+  --vp-c-brand-2: #fc6d26;
+  --vp-c-brand-3: #e24329;
+}
+
+/* Screenshots: framed, never wider than the content column. */
+.vp-doc img.screenshot {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  margin: 20px 0 8px;
+}
+
+.vp-doc .caption {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+  margin-top: 0;
+}
+
+/* Large product screenshot under the home hero. */
+.home-shot {
+  max-width: 1152px;
+  margin: 8px auto 64px;
+  padding: 0 24px;
+}
+
+.home-shot img {
+  width: 100%;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+
+.home-shot .light-only {
+  display: none;
+}
+
+html:not(.dark) .home-shot .light-only {
+  display: block;
+}
+
+html:not(.dark) .home-shot .dark-only {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .home-shot {
+    padding: 0 64px;
+  }
+}
