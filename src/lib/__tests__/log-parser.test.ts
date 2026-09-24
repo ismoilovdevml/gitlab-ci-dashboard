@@ -5,6 +5,7 @@ import {
   formatSectionDuration,
   lineMatches,
   parseJobLog,
+  parseJobLogCached,
 } from '@/lib/log-parser';
 
 const E = '\x1b';
@@ -261,6 +262,47 @@ describe('parseJobLog', () => {
     expect(sections).toHaveLength(1000);
     // Generous bound for slow CI machines; locally this is far lower.
     expect(elapsed).toBeLessThan(5000);
+  });
+});
+
+describe('parseJobLogCached', () => {
+  const TRACE = [
+    RUNNER_TRACE,
+    `section_start:1727000080:after_script[collapsed=true]\r${E}[0K${E}[36;1mRunning after_script${E}[0;m`,
+    `${E}[33mprogress 10%\rprogress 90%${E}[0m`,
+    `section_start:1727000081:inner\r${E}[0KInner`,
+    'x',
+    `section_end:1727000090:inner\r${E}[0K`,
+    `section_end:1727000099:after_script\r${E}[0K`,
+    `${E}[0;m`,
+    '',
+  ].join('\n');
+
+  it('returns the same object for the same trace', () => {
+    expect(parseJobLogCached(TRACE)).toBe(parseJobLogCached(TRACE));
+  });
+
+  it('matches a full parse when a running trace grows in arbitrary chunks', () => {
+    // Deterministic cut points, including mid-escape, mid-marker and mid-\r sequences.
+    for (const step of [1, 7, 23, 64, 301]) {
+      parseJobLogCached('unrelated trace\n');
+      for (let end = step; end < TRACE.length + step; end += step) {
+        const prefix = TRACE.slice(0, Math.min(end, TRACE.length));
+        expect(parseJobLogCached(prefix)).toEqual(parseJobLog(prefix));
+      }
+    }
+  });
+
+  it('does not mutate a previously returned result', () => {
+    const early = parseJobLogCached(`section_start:1:s\r${E}[0KS\nline\n`);
+    const snapshot = JSON.parse(JSON.stringify(early));
+    parseJobLogCached(`section_start:1:s\r${E}[0KS\nline\nmore\nsection_end:5:s\r${E}[0K\n`);
+    expect(early).toEqual(snapshot);
+  });
+
+  it('starts over when the trace is not a continuation (retried job)', () => {
+    parseJobLogCached('first job\nline\n');
+    expect(parseJobLogCached('second job\n').lines.map((l) => l.text)).toEqual(['second job']);
   });
 });
 

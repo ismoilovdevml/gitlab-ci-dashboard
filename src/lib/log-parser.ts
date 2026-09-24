@@ -387,16 +387,68 @@ function textOf(segments: LogSegment[]): string {
   return segments.length === 1 ? segments[0].text : segments.map((s) => s.text).join('');
 }
 
-export function parseJobLog(raw: string): ParsedLog {
-  const lines: LogLine[] = [];
-  const sections: LogSection[] = [];
-  const stack: number[] = [];
-  const state: TerminalState = { style: null };
+/** Parser state; rows are fed one at a time so a growing trace can be parsed incrementally. */
+class LogParser {
+  lines: LogLine[] = [];
+  sections: LogSection[] = [];
+  private stack: number[] = [];
+  private state: TerminalState = { style: null };
+  private lastRow: string | undefined;
 
-  const rows = raw.split('\n');
-  if (rows.length > 0 && rows[rows.length - 1] === '') rows.pop();
+  clone(): LogParser {
+    const copy = new LogParser();
+    copy.lines = this.lines.slice();
+    copy.sections = this.sections.map((section) => ({ ...section }));
+    copy.stack = this.stack.slice();
+    copy.state = { style: this.state.style };
+    copy.lastRow = this.lastRow;
+    return copy;
+  }
 
-  const pushLine = (segments: LogSegment[], header: number | null): void => {
+  feed(row: string): void {
+    this.lastRow = row;
+    const markers = row.indexOf('section_') === -1 ? [] : [...row.matchAll(SECTION_MARKER)];
+    if (markers.length === 0) {
+      this.pushLine(renderRow(row, this.state), null);
+      return;
+    }
+
+    // Row = text, marker, text, marker, ..., text. Each text chunk is interpreted after the marker
+    // before it: a header after section_start, an ordinary line otherwise (dropped when empty,
+    // since the markers themselves are invisible in a terminal).
+    let cursor = 0;
+    for (let k = 0; k <= markers.length; k += 1) {
+      const marker = k < markers.length ? markers[k] : null;
+      const chunk = row.slice(cursor, marker ? marker.index : row.length);
+      const previous = k > 0 ? markers[k - 1] : null;
+      const segments = renderRow(chunk, this.state);
+
+      if (previous && previous[1] === 'start') {
+        const id = this.openSection(Number(previous[2]), previous[3], previous[4]);
+        this.pushLine(segments.length ? segments : [{ text: this.sections[id].name, style: null }], id);
+      } else {
+        if (previous) this.closeSection(Number(previous[2]), previous[3]);
+        if (textOf(segments) !== '') this.pushLine(segments, null);
+      }
+
+      if (marker) cursor = marker.index + marker[0].length;
+    }
+  }
+
+  finish(): ParsedLog {
+    // Runners finish with a bare `ESC[0;m` row; it renders as nothing, so don't show an empty line.
+    const last = this.lines[this.lines.length - 1];
+    if (last && !last.isSectionHeader && last.text === '' && this.lastRow) {
+      this.lines.pop();
+      for (const section of this.sections) {
+        section.lastIndex = Math.min(section.lastIndex, this.lines.length - 1);
+      }
+    }
+    return { lines: this.lines, sections: this.sections };
+  }
+
+  private pushLine(segments: LogSegment[], header: number | null): void {
+    const { lines, sections, stack } = this;
     const text = textOf(segments);
     lines.push({
       lineNumber: lines.length + 1,
@@ -408,29 +460,30 @@ export function parseJobLog(raw: string): ParsedLog {
       isSectionHeader: header !== null,
     });
     for (const id of stack) sections[id].lastIndex = lines.length - 1;
-  };
+  }
 
-  const openSection = (time: number, name: string, options: string | undefined): number => {
+  private openSection(time: number, name: string, options: string | undefined): number {
     const { collapsed, hideDuration } = parseOptions(options);
-    const id = sections.length;
-    sections.push({
+    const id = this.sections.length;
+    this.sections.push({
       id,
       name,
-      parent: stack.length ? stack[stack.length - 1] : null,
-      headerIndex: lines.length,
-      lastIndex: lines.length,
+      parent: this.stack.length ? this.stack[this.stack.length - 1] : null,
+      headerIndex: this.lines.length,
+      lastIndex: this.lines.length,
       startedAt: time,
       endedAt: null,
       durationSeconds: null,
       collapsed,
       hideDuration,
     });
-    stack.push(id);
+    this.stack.push(id);
     return id;
-  };
+  }
 
-  const closeSection = (time: number, name: string): void => {
+  private closeSection(time: number, name: string): void {
     // Close the matching section and anything still open inside it; ignore unknown names.
+    const { stack, sections } = this;
     let at = -1;
     for (let k = stack.length - 1; k >= 0; k -= 1) {
       if (sections[stack[k]].name === name) {
@@ -443,57 +496,49 @@ export function parseJobLog(raw: string): ParsedLog {
       sections[id].endedAt = time;
       sections[id].durationSeconds = Math.max(0, time - sections[id].startedAt);
     }
-  };
-
-  for (const row of rows) {
-    const markers = row.indexOf('section_') === -1 ? [] : [...row.matchAll(SECTION_MARKER)];
-    if (markers.length === 0) {
-      pushLine(renderRow(row, state), null);
-      continue;
-    }
-
-    // Row = text, marker, text, marker, ..., text. Each text chunk is interpreted after the marker
-    // before it: a header after section_start, an ordinary line otherwise (dropped when empty,
-    // since the markers themselves are invisible in a terminal).
-    let cursor = 0;
-    for (let k = 0; k <= markers.length; k += 1) {
-      const marker = k < markers.length ? markers[k] : null;
-      const chunk = row.slice(cursor, marker ? marker.index : row.length);
-      const previous = k > 0 ? markers[k - 1] : null;
-      const segments = renderRow(chunk, state);
-
-      if (previous && previous[1] === 'start') {
-        const id = openSection(Number(previous[2]), previous[3], previous[4]);
-        pushLine(segments.length ? segments : [{ text: sections[id].name, style: null }], id);
-      } else {
-        if (previous) closeSection(Number(previous[2]), previous[3]);
-        if (textOf(segments) !== '') pushLine(segments, null);
-      }
-
-      if (marker) cursor = marker.index + marker[0].length;
-    }
   }
-
-  // Runners finish with a bare `ESC[0;m` row; it renders as nothing, so don't show an empty line.
-  const lastRow = rows[rows.length - 1];
-  const last = lines[lines.length - 1];
-  if (last && !last.isSectionHeader && last.text === '' && lastRow !== undefined && lastRow !== '') {
-    lines.pop();
-    for (const section of sections) section.lastIndex = Math.min(section.lastIndex, lines.length - 1);
-  }
-
-  return { lines, sections };
 }
 
+export function parseJobLog(raw: string): ParsedLog {
+  const parser = new LogParser();
+  const rows = raw.split('\n');
+  if (rows[rows.length - 1] === '') rows.pop();
+  for (const row of rows) parser.feed(row);
+  return parser.finish();
+}
+
+// Parser state after the last complete ('\n'-terminated) row of the previous trace.
+let checkpoint: { prefix: string; parser: LogParser } | null = null;
 let cached: { raw: string; parsed: ParsedLog } | null = null;
 
 /**
- * `parseJobLog` with a one-entry cache: the inline log tab and the full-screen viewer show the
- * same trace, and a live job re-renders both every few seconds.
+ * Same result as `parseJobLog`, but a trace that only grew since the previous call (a running job
+ * being polled) is parsed from where the last call stopped instead of from the start. The last
+ * trace is also memoized, since the inline log tab and the full viewer render the same one.
  */
 export function parseJobLogCached(raw: string): ParsedLog {
-  if (cached?.raw !== raw) cached = { raw, parsed: parseJobLog(raw) };
-  return cached.parsed;
+  if (cached?.raw === raw) return cached.parsed;
+
+  let parser: LogParser;
+  let offset: number;
+  if (checkpoint && raw.startsWith(checkpoint.prefix)) {
+    parser = checkpoint.parser.clone();
+    offset = checkpoint.prefix.length;
+  } else {
+    parser = new LogParser();
+    offset = 0;
+  }
+
+  const completeEnd = raw.lastIndexOf('\n') + 1;
+  if (completeEnd > offset) {
+    for (const row of raw.slice(offset, completeEnd - 1).split('\n')) parser.feed(row);
+    checkpoint = { prefix: raw.slice(0, completeEnd), parser: parser.clone() };
+  }
+  if (completeEnd < raw.length) parser.feed(raw.slice(completeEnd));
+
+  const parsed = parser.finish();
+  cached = { raw, parsed };
+  return parsed;
 }
 
 // ---------------------------------------------------------------------------
