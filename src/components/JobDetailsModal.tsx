@@ -339,8 +339,10 @@ export default function JobDetailsModal({ job, projectId, onClose }: JobDetailsM
                     </div>
                   </div>
                 ) : (
+                  // Bounded height: the log must scroll on its own for row virtualization to work.
                   <JobLogContent
                     id="job-log-container"
+                    className="max-h-[calc(90vh-14rem)]"
                     log={parsedLog}
                     follow={job.status === 'running'}
                   />

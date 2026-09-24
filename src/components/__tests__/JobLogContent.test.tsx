@@ -144,6 +144,16 @@ describe('JobLogContent', () => {
 
       rerender(<JobLogContent log={parseJobLog('a\nb\nc\nd')} follow />);
       expect(scroller.scrollTop).toBe(4000);
+
+      // The user scrolls up to read: new output must not yank the view back down.
+      fireEvent.scroll(scroller, { target: { scrollTop: 100 } });
+      rerender(<JobLogContent log={parseJobLog('a\nb\nc\nd\ne')} follow />);
+      expect(scroller.scrollTop).toBe(100);
+
+      // Back at the bottom: following resumes.
+      fireEvent.scroll(scroller, { target: { scrollTop: 4000 } });
+      rerender(<JobLogContent log={parseJobLog('a\nb\nc\nd\ne\nf')} follow />);
+      expect(scroller.scrollTop).toBe(4000);
     } finally {
       scrollHeight.mockRestore();
     }

@@ -36,7 +36,7 @@ interface JobLogContentProps {
   log: ParsedLog;
   searchTerm?: string;
   filterLevel?: LogFilterLevel;
-  /** Keep the view pinned to the last line as the log grows. */
+  /** Keep the view on the last line as the log grows (paused while the user scrolls up). */
   follow?: boolean;
   id?: string;
   className?: string;
@@ -184,19 +184,29 @@ export default function JobLogContent({
     return () => observer.disconnect();
   }, []);
 
+  // Following pauses while the user has scrolled up to read, and resumes at the bottom.
+  const atBottomRef = useRef(true);
+  const followedRef = useRef(follow);
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (!follow || !el) return;
+    const turnedOn = follow && !followedRef.current;
+    followedRef.current = follow;
+    if (!follow || !el || (!atBottomRef.current && !turnedOn)) return;
     el.scrollTop = el.scrollHeight;
+    atBottomRef.current = true;
     setScrollTop(el.scrollTop);
   }, [follow, rows.length, log]);
 
-  const onScroll = (e: UIEvent<HTMLDivElement>) => setScrollTop(e.currentTarget.scrollTop);
+  const onScroll = (e: UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= LOG_ROW_HEIGHT * 2;
+    setScrollTop(el.scrollTop);
+  };
 
   const toggle = (sectionId: number) =>
     setToggled((prev) => ({ ...prev, [sectionId]: !isCollapsed(sectionId) }));
 
-  const gutterWidth = `${Math.max(3, String(log.lines.length).length) + 2}ch`;
+  const gutterWidth = `${Math.max(3, String(log.lines.length).length) + 4}ch`;
   const first = Math.max(0, Math.floor(scrollTop / LOG_ROW_HEIGHT) - OVERSCAN);
   const last = Math.min(rows.length, Math.ceil((scrollTop + viewport) / LOG_ROW_HEIGHT) + OVERSCAN);
 
