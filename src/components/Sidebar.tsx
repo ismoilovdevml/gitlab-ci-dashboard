@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, Bell, LogOut, User, Download, Sparkles, TrendingUp } from 'lucide-react';
+import { Activity, Boxes, GitBranch, Settings, PlayCircle, Package, FileArchive, Bell, LogOut, User, Download, Sparkles, TrendingUp, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDashboardStore } from '@/store/dashboard-store';
@@ -16,6 +16,11 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
+
+const DRAWER_ID = 'app-sidebar';
+// Matches Tailwind's `lg` breakpoint: below it the sidebar is an off-canvas drawer.
+const MOBILE_QUERY = '(max-width: 1023.98px)';
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const router = useRouter();
@@ -33,6 +38,69 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     releaseDate: string;
   } | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef(false);
+
+  const closeDrawer = useCallback((restoreFocus = true) => {
+    restoreFocusRef.current = restoreFocus;
+    setDrawerOpen(false);
+  }, []);
+
+  // Drawer open: move focus inside, trap Tab, close on Escape.
+  useEffect(() => {
+    if (!drawerOpen) {
+      if (restoreFocusRef.current) {
+        restoreFocusRef.current = false;
+        menuButtonRef.current?.focus();
+      }
+      return;
+    }
+
+    closeButtonRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDrawer();
+        return;
+      }
+      if (event.key !== 'Tab' || !drawerRef.current) return;
+      const focusable = Array.from(drawerRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !drawerRef.current.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !drawerRef.current.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [drawerOpen, closeDrawer]);
+
+  // Growing past the breakpoint turns the drawer back into the static sidebar.
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(MOBILE_QUERY);
+    const onChange = (event: MediaQueryListEvent) => {
+      if (!event.matches) closeDrawer(false);
+    };
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, [closeDrawer]);
+
+  const handleSelect = (tab: string) => {
+    onTabChange(tab);
+    if (drawerOpen) closeDrawer();
+  };
 
   // Get user info on mount
   useEffect(() => {
@@ -118,9 +186,62 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
 
+  const activeLabel = menuItems.find((item) => item.id === activeTab)?.label;
+  const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500';
+
   return (
-    <div className={`w-64 h-screen flex flex-col transition-colors ${sidebar}`}>
-      <div className={`p-6 ${theme === 'light' ? 'border-b border-gray-200' : 'border-b border-zinc-800'}`}>
+    <>
+      <header
+        className={cn(
+          'lg:hidden fixed inset-x-0 top-0 z-30 h-14 flex items-center gap-2 px-2 backdrop-blur-sm transition-colors',
+          theme === 'light' ? 'bg-white/95 border-b border-gray-200' : 'bg-zinc-950/95 border-b border-zinc-800'
+        )}
+      >
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={drawerOpen}
+          aria-controls={DRAWER_ID}
+          className={cn(
+            'w-10 h-10 shrink-0 flex items-center justify-center rounded-lg transition-colors',
+            focusRing,
+            theme === 'light' ? 'text-gray-700 hover:bg-gray-100' : 'text-zinc-300 hover:bg-zinc-800'
+          )}
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <Image src="/gitlab-logo-500-rgb.svg" alt="" width={28} height={28} className="shrink-0" />
+        <p className={`min-w-0 truncate text-base font-semibold ${textPrimary}`}>
+          GitLab CI/CD
+          {activeLabel && <span className={`font-normal ${textMuted}`}> / {activeLabel}</span>}
+        </p>
+      </header>
+
+      {drawerOpen && (
+        <div
+          aria-hidden="true"
+          data-testid="sidebar-overlay"
+          onClick={() => closeDrawer()}
+          className="lg:hidden fixed inset-0 z-40 bg-black/60"
+        />
+      )}
+
+      <aside
+        id={DRAWER_ID}
+        ref={drawerRef}
+        aria-label="Main navigation"
+        role={drawerOpen ? 'dialog' : undefined}
+        aria-modal={drawerOpen || undefined}
+        className={cn(
+          `w-64 h-screen flex flex-col transition-colors ${sidebar}`,
+          'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:h-auto max-lg:w-72 max-lg:max-w-[85vw]',
+          'max-lg:transition-[translate,visibility] max-lg:duration-200 max-lg:ease-out motion-reduce:transition-none',
+          drawerOpen ? 'max-lg:translate-x-0 max-lg:shadow-2xl' : 'max-lg:-translate-x-full max-lg:invisible'
+        )}
+      >
+      <div className={`p-6 max-lg:p-4 ${theme === 'light' ? 'border-b border-gray-200' : 'border-b border-zinc-800'}`}>
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-xl flex items-center justify-center">
             <Image
@@ -140,17 +261,31 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               </div>
             )}
           </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={() => closeDrawer()}
+            aria-label="Close navigation"
+            className={cn(
+              'lg:hidden w-10 h-10 shrink-0 flex items-center justify-center rounded-lg transition-colors',
+              focusRing,
+              theme === 'light' ? 'text-gray-600 hover:bg-gray-100' : 'text-zinc-400 hover:bg-zinc-800'
+            )}
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto p-4">
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
             return (
               <li key={item.id}>
                 <button
-                  onClick={() => onTabChange(item.id)}
+                  onClick={() => handleSelect(item.id)}
+                  aria-current={activeTab === item.id ? 'page' : undefined}
                   className={cn(
                     'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
                     activeTab === item.id
@@ -174,7 +309,11 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         {/* Version Info */}
         {versionInfo && (
           <button
-            onClick={() => versionInfo.updateAvailable && setShowUpdateModal(true)}
+            onClick={() => {
+              if (!versionInfo.updateAvailable) return;
+              if (drawerOpen) closeDrawer(false);
+              setShowUpdateModal(true);
+            }}
             disabled={!versionInfo.updateAvailable}
             className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
               versionInfo.updateAvailable
@@ -228,10 +367,11 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </div>
             <button
               onClick={handleLogout}
-              className={`p-2 rounded-lg transition-all ${
+              className={`p-2 max-lg:p-3 rounded-lg transition-all ${
                 theme === 'light' ? 'hover:bg-red-50 text-red-600' : 'hover:bg-red-950 text-red-400'
               }`}
               title="Logout"
+              aria-label="Logout"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -262,8 +402,9 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </p>
         )}
       </div>
+      </aside>
 
-      {/* Update Modal */}
+      {/* Rendered outside the drawer: a transformed ancestor would clip a fixed-position modal. */}
       {showUpdateModal && versionInfo && (
         <UpdateModal
           currentVersion={versionInfo.currentVersion}
@@ -273,6 +414,6 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           onClose={() => setShowUpdateModal(false)}
         />
       )}
-    </div>
+    </>
   );
 }
