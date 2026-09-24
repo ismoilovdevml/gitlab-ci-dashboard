@@ -15,5 +15,5 @@ Which runners you see depends on the token:
 - **Any other token**: runners assigned to your projects, collected from up to 20 projects and
   de-duplicated.
 
-The list is cached in the browser for up to two minutes, and **Refresh** reads that cache too.
-Reload the page to fetch it from GitLab immediately.
+The list is cached in the browser for two minutes; **Refresh** skips the cache and reloads it
+from GitLab.

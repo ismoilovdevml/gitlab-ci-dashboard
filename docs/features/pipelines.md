@@ -1,3 +1,7 @@
+<script setup>
+import { withBase } from 'vitepress'
+</script>
+
 # Overview and pipelines
 
 ## Overview
@@ -43,3 +47,14 @@ is filtered and paginated by GitLab, 20 per page.
 The light theme is available under **Settings → Preferences → Theme**:
 
 ![Pipelines page in the light theme](/screenshots/pipelines-light.webp){.screenshot}
+
+## On phones and small screens
+
+Below 1024 px the sidebar turns into a drawer. A top bar shows the current page and a menu button;
+the drawer closes when you pick a page, tap outside it or press <kbd>Esc</kbd>. Cards and tables
+reflow into fewer columns, and wide tables scroll sideways.
+
+<div class="phone-shots">
+  <img :src="withBase('/screenshots/overview-mobile.webp')" alt="Overview on a phone" width="390" height="844" />
+  <img :src="withBase('/screenshots/nav-mobile.webp')" alt="Navigation drawer open on a phone" width="390" height="844" />
+</div>

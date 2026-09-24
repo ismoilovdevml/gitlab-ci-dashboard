@@ -14,8 +14,9 @@ All commands run in the install directory, the one with `docker-compose.yml` and
 - Network access from the VM to GitLab, and from GitLab to the VM if you use
   [webhooks](/features/alerting)
 
-PostgreSQL holds all persistent state: users, sessions, GitLab connections, alert channels and
-history, DORA data. Redis is a cache and rate-limit store and does not need a backup.
+PostgreSQL holds all persistent state (users, sessions, GitLab connections, alert channels and
+history, recorded DORA data). The Analytics page reads its DORA metrics from GitLab. Redis holds
+caches and rate-limit counters and does not need a backup.
 
 ## Install on a VM
 

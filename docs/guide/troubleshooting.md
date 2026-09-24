@@ -71,6 +71,33 @@ causes:
   ```
   A `401 Unauthorized` answer here means GitLab is reachable.
 
+### "Connection failed" although GitLab is reachable (DNS)
+
+Some internal DNS servers answer IPv6 (`AAAA`) queries with `SERVFAIL`. On the Alpine-based image
+the whole lookup then fails with `EAI_AGAIN`, even though the IPv4 (`A`) record exists. Check the
+lookup from inside the container:
+
+```bash
+docker compose exec app node -e "require('dns').lookup('gitlab.example.com',(e,a)=>console.log(e?e.code:a))"
+```
+
+If it prints `EAI_AGAIN` while the host resolves elsewhere, pin the address until the fix
+([#98](https://github.com/ismoilovdevml/gitlab-ci-dashboard/issues/98)) is released. Create
+`docker-compose.override.yml` next to `docker-compose.yml`:
+
+```yaml
+services:
+  app:
+    extra_hosts:
+      - "gitlab.example.com:10.0.0.10"
+```
+
+```bash
+docker compose up -d
+```
+
+Compose merges the override file automatically. Remove it once you run a release with the fix.
+
 ## GitLab tokens cannot be decrypted after an upgrade
 
 Older installs encrypted GitLab tokens with `LICENSE_ENCRYPTION_KEY`. Current versions use

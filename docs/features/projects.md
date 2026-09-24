@@ -5,7 +5,8 @@ first (up to 50).
 
 ![Projects page](/screenshots/projects.webp){.screenshot}
 
-- **Cards** show visibility, stars, forks, commit count and the full path.
+- **Cards** show visibility, stars, forks, commit, branch and tag counts, and the full path. Branch
+  and tag counts load in the background; `—` means GitLab did not report the count.
 - **Totals** at the top count all, public and private projects.
 - **Search** by name and filter by visibility (public, private, internal).
 - **Star** or unstar a project (needs the `api` scope).

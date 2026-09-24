@@ -21,14 +21,14 @@ features:
     details: Running, pending and failed pipelines from all your projects on one page, with stage graphs, retry and cancel.
     link: /features/pipelines
   - title: Jobs and logs
-    details: Active jobs, per-stage job status and a searchable log viewer with error and warning filters.
+    details: Active jobs, per-stage job status and a log viewer with runner colours, collapsible sections, search and level filters.
     link: /features/jobs-and-logs
-  - title: Runners
-    details: Online, offline and paused runners, their tags, versions, projects and recent jobs.
+  - title: DORA metrics
+    details: Deployment frequency, lead time, time to recovery and change failure rate from your production deployments or default-branch pipelines.
+    link: /features/analytics
+  - title: Runners, artifacts, registry
+    details: Runner status and recent jobs; download and clean up job artifacts and container registry tags.
     link: /features/runners
-  - title: Artifacts and registry
-    details: Browse, download and delete job artifacts and container registry tags without opening every project.
-    link: /features/artifacts
   - title: Alerts from GitLab webhooks
     details: GitLab events forwarded to Slack, Telegram or Discord, with a delivery history.
     link: /features/alerting

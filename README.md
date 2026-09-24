@@ -16,12 +16,13 @@ Self-hosted dashboard for GitLab CI/CD pipelines, jobs, runners, artifacts and a
 
 ![Dashboard overview](docs/public/screenshots/overview.webp)
 
-- Pipelines, active jobs and job logs from all your projects on one page, with retry and cancel
+- Pipelines, active jobs and job logs (colours, collapsible sections) from all your projects, with retry and cancel
+- DORA metrics and trends from production deployments or default-branch pipelines
 - Runners, artifacts and container registry tags, with download and cleanup
 - GitLab webhook events forwarded to Slack, Telegram or Discord, with a delivery history
-- Runs on your server with Docker Compose; the GitLab token is encrypted and never reaches the browser
 
-Works with GitLab.com and self-managed GitLab. MIT licensed, no feature limits.
+Runs on your server with Docker Compose and works with GitLab.com and self-managed GitLab. The
+GitLab token is encrypted and never reaches the browser. MIT licensed, no feature limits.
 
 ## Quick start
 

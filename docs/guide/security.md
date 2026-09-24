@@ -16,9 +16,10 @@ except that the dashboard checks the latest release on the GitHub API to show an
 | Sessions | `sessions` | Random token in an `HttpOnly`, `SameSite=Lax` cookie, `Secure` over HTTPS; expire after 7 days |
 | GitLab URL and access token | `users` | Token encrypted with AES-256-GCM using `TOKEN_ENCRYPTION_KEY`; plain text if the key is not set |
 | Alert channel settings (bot tokens, webhook URLs) | `alert_channels` | Not encrypted at rest; never returned to the browser, only masked |
-| Alert history, DORA data, preferences | their tables | Organization-scoped |
+| Alert history, recorded DORA data, preferences | their tables | Organization-scoped |
 
-Redis holds only caches and rate-limit counters.
+Redis holds only caches (including computed DORA reports, per user, for 2 minutes) and
+rate-limit counters. The GitLab token is never part of a cache key or value.
 
 ## Secrets in `.env`
 

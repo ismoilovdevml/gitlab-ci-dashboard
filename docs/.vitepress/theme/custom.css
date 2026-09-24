@@ -64,3 +64,20 @@ html:not(.dark) .home-shot .dark-only {
     padding: 0 64px;
   }
 }
+
+/* Two phone screenshots side by side. */
+.vp-doc .phone-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 20px 0;
+}
+
+.vp-doc .phone-shots img {
+  width: 260px;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 22px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
