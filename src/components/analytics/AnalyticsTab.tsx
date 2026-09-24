@@ -150,7 +150,7 @@ export default function AnalyticsTab() {
             {trendCard(trendData.leadTime, 'Lead Time (median)', 'Hours', '#3b82f6')}
           </div>
           <div className="grid grid-cols-1">
-            {trendCard(trendData.successRate, 'Deployment Success Rate', 'Success Rate (%)', '#f59e0b')}
+            {trendCard(trendData.successRate, 'Deployment Success Rate', 'Success %', '#f59e0b')}
           </div>
         </>
       )}
