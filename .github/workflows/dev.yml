@@ -6,13 +6,16 @@ on:
   pull_request:
     branches: [ dev ]
 
+permissions:
+  contents: read
+
 # Cancel in-progress runs for same workflow
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
 
 jobs:
   test-and-build:
@@ -30,15 +33,6 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
-    # Cache node_modules for faster installs
-    - name: Cache node_modules
-      uses: actions/cache@v6
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
-
     - name: Install dependencies
       run: npm ci --prefer-offline --no-audit
 
@@ -49,11 +43,17 @@ jobs:
     - name: Lint code
       run: npm run lint
 
+    # next build only type-checks files reachable from the app; this also covers
+    # test files and prisma/seed.ts.
     - name: Type check
       run: npx tsc --noEmit
 
-    - name: Build application
-      run: npm run build
+    - name: Run tests
+      run: npm run test
+
+    # Builds with a canary GitLab token and fails if it reaches the client bundle
+    - name: Build and check client bundle
+      run: npm run check:bundle
       env:
         NODE_ENV: production
 
