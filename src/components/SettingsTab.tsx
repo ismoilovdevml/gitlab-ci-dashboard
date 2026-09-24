@@ -31,7 +31,6 @@ export default function SettingsTab() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [appVersion, setAppVersion] = useState('');
 
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
   const { theme, card, textPrimary, textSecondary } = useTheme();
@@ -44,6 +43,8 @@ export default function SettingsTab() {
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  // Set from package.json at build time (next.config.js).
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION;
 
   // Load user config on mount
   useEffect(() => {
@@ -79,20 +80,7 @@ export default function SettingsTab() {
       }
     };
 
-    const loadVersionInfo = async () => {
-      try {
-        const response = await axios.get('/api/version');
-        if (!ignore && response.data) {
-          setAppVersion(response.data.currentVersion || '1.2.0');
-        }
-      } catch (error) {
-        console.error('Failed to load version:', error);
-        if (!ignore) setAppVersion('1.2.0');
-      }
-    };
-
     loadUserConfig();
-    loadVersionInfo();
     return () => {
       ignore = true;
     };
@@ -560,10 +548,12 @@ export default function SettingsTab() {
                 <span className={`text-xs ${textSecondary}`}>Product</span>
                 <span className={`text-sm font-medium ${textPrimary}`}>GitLab CI/CD Dashboard</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-xs ${textSecondary}`}>Version</span>
-                <span className={`text-sm font-medium ${textPrimary}`}>v{appVersion}</span>
-              </div>
+              {appVersion && (
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs ${textSecondary}`}>Version</span>
+                  <span className={`text-sm font-medium ${textPrimary}`}>v{appVersion}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

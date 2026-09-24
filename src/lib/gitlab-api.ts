@@ -127,10 +127,13 @@ function setCache(key: string, data: unknown, ttlSeconds: number): void {
 async function cachedFetch<T>(
   key: string,
   fetcher: () => Promise<T>,
-  ttlSeconds: number
+  ttlSeconds: number,
+  force = false
 ): Promise<T> {
-  const cached = getCached<T>(key);
-  if (cached) return cached;
+  if (!force) {
+    const cached = getCached<T>(key);
+    if (cached) return cached;
+  }
 
   const data = await fetcher();
   setCache(key, data, ttlSeconds);
@@ -463,6 +466,24 @@ export function parsePagination(headers: unknown, page: number, perPage: number)
   };
 }
 
+export interface ProjectRefCounts {
+  branches: number | null;
+  tags: number | null;
+}
+
+/**
+ * Total from a `per_page=1` list request. GitLab omits `X-Total` for very
+ * large collections; then the count is only known when there is no next page.
+ */
+export function countFromResponse(data: unknown, headers: unknown): number | null {
+  const total = headerInt(headers, 'x-total');
+  if (total !== null) return total;
+  const length = Array.isArray(data) ? data.length : 0;
+  if (length === 0) return 0;
+  const nextPage = (headers as Record<string, unknown> | undefined)?.['x-next-page'];
+  return nextPage === '' ? length : null;
+}
+
 class GitLabAPI {
   private api: AxiosInstance;
 
@@ -480,6 +501,15 @@ class GitLabAPI {
 
   private async delete(path: string): Promise<void> {
     await withCsrf((headers) => this.api.delete(path, { headers }));
+  }
+
+  private async countItems(path: string): Promise<number | null> {
+    try {
+      const response = await this.api.get<unknown[]>(path, { params: { per_page: 1 } });
+      return countFromResponse(response.data, response.headers);
+    } catch {
+      return null;
+    }
   }
 
   // Health check - no cache
@@ -534,30 +564,27 @@ class GitLabAPI {
     return response.data;
   }
 
-  async getProjectBranchesCount(projectId: number): Promise<number> {
-    try {
-      const response = await this.api.get(apiPath('projects', projectId, 'repository', 'branches'), {
-        params: { per_page: 1 },
-      });
-      // Get total count from pagination headers
-      const total = response.headers['x-total'];
-      return total ? parseInt(total, 10) : 0;
-    } catch {
-      return 0;
-    }
+  async getProjectBranchesCount(projectId: number): Promise<number | null> {
+    return this.countItems(apiPath('projects', projectId, 'repository', 'branches'));
   }
 
-  async getProjectTagsCount(projectId: number): Promise<number> {
-    try {
-      const response = await this.api.get(apiPath('projects', projectId, 'repository', 'tags'), {
-        params: { per_page: 1 },
-      });
-      // Get total count from pagination headers
-      const total = response.headers['x-total'];
-      return total ? parseInt(total, 10) : 0;
-    } catch {
-      return 0;
-    }
+  async getProjectTagsCount(projectId: number): Promise<number | null> {
+    return this.countItems(apiPath('projects', projectId, 'repository', 'tags'));
+  }
+
+  /** Branch and tag totals; `null` where GitLab did not report one. */
+  async getProjectRefCounts(projectId: number): Promise<ProjectRefCounts> {
+    return cachedFetch(
+      `gitlab:project-ref-counts:${projectId}`,
+      async () => {
+        const [branches, tags] = await Promise.all([
+          this.getProjectBranchesCount(projectId),
+          this.getProjectTagsCount(projectId),
+        ]);
+        return { branches, tags };
+      },
+      CacheTTL.LONG
+    );
   }
 
   // Pipelines
@@ -674,7 +701,8 @@ class GitLabAPI {
   }
 
   // Runners - optimized with batch processing
-  async getRunners(page = 1, perPage = 20): Promise<Runner[]> {
+  /** `force` skips the client cache, e.g. for an explicit refresh. */
+  async getRunners(page = 1, perPage = 20, options: { force?: boolean } = {}): Promise<Runner[]> {
     return cachedFetch(
       `gitlab:runners:${page}:${perPage}`,
       async () => {
@@ -757,7 +785,8 @@ class GitLabAPI {
           }
         }
       },
-      CacheTTL.MEDIUM // 2 minutes cache for runners
+      CacheTTL.MEDIUM, // 2 minutes cache for runners
+      options.force
     );
   }
 

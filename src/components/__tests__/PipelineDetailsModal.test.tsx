@@ -6,9 +6,10 @@ import type { Job } from '@/lib/gitlab-api';
 
 const mockGetPipelineJobs = jest.fn();
 const mockRetryJob = jest.fn();
+const mockPlayJob = jest.fn();
 jest.mock('@/lib/gitlab-api', () => ({
   getGitLabAPIAsync: jest.fn(() =>
-    Promise.resolve({ getPipelineJobs: mockGetPipelineJobs, retryJob: mockRetryJob })
+    Promise.resolve({ getPipelineJobs: mockGetPipelineJobs, retryJob: mockRetryJob, playJob: mockPlayJob })
   ),
 }));
 
@@ -72,6 +73,22 @@ describe('PipelineDetailsModal', () => {
     expect(useDashboardStore.getState().notifications[0]).toMatchObject({
       type: 'success',
       title: 'Job Retrying',
+    });
+  });
+
+  it('plays a manual job and reloads the jobs', async () => {
+    mockGetPipelineJobs.mockResolvedValue([makeJob({ id: 9, name: 'deploy', status: 'manual' })]);
+    mockPlayJob.mockResolvedValue({});
+
+    render(<PipelineDetailsModal pipeline={pipeline} projectId={1} onClose={jest.fn()} />);
+    fireEvent.click(await screen.findByTitle('Run job'));
+
+    await waitFor(() => expect(mockPlayJob).toHaveBeenCalledWith(1, 9));
+    expect(mockRetryJob).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockGetPipelineJobs).toHaveBeenCalledTimes(2));
+    expect(useDashboardStore.getState().notifications[0]).toMatchObject({
+      type: 'success',
+      title: 'Job Started',
     });
   });
 });

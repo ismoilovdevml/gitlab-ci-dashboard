@@ -23,6 +23,8 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
   // Id of the project whose pipelines are loaded.
   const [loadedProjectId, setLoadedProjectId] = useState<number | null>(null);
   const loading = loadedProjectId !== project.id;
+  // All pipelines of the project (X-Total); null when GitLab does not report it.
+  const [pipelineTotal, setPipelineTotal] = useState<number | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     running: 0,
@@ -37,9 +39,11 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
     const loadProjectData = async () => {
       try {
         const api = await getGitLabAPIAsync();
-        const pipelinesList = await api.getPipelines(projectId, 1, 50);
+        const page = await api.getPipelinePage(projectId, { perPage: 50 });
         if (ignore) return;
+        const pipelinesList = page.pipelines;
         setPipelines(pipelinesList);
+        setPipelineTotal(page.total ?? (page.nextPage ? null : pipelinesList.length));
 
         // Calculate stats
         setStats({
@@ -152,7 +156,9 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
                   <GitBranch className="w-4 h-4" />
                   <span>Pipelines</span>
                 </div>
-                <p className={`text-2xl font-bold ${textPrimary}`}>{stats.total}</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>
+                  {pipelineTotal === null ? '—' : pipelineTotal.toLocaleString()}
+                </p>
               </div>
               <div className={`rounded-lg p-4 ${
                 theme === 'light' ? 'bg-white border border-[#d2d2d7]/50' : 'bg-zinc-900'

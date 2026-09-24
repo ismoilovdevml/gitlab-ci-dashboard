@@ -117,6 +117,18 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
     }
   };
 
+  const handlePlayJob = async (job: Job) => {
+    try {
+      const api = await getGitLabAPIAsync();
+      await api.playJob(projectId, job.id);
+      notifySuccess('Job Started', `Job "${job.name}" has been started`);
+      loadJobs();
+    } catch (error) {
+      console.error('Failed to start job:', error);
+      notifyError('Start Failed', `Failed to start job "${job.name}"`);
+    }
+  };
+
   const handleCancelJob = async (job: Job) => {
     try {
       const api = await getGitLabAPIAsync();
@@ -388,6 +400,7 @@ export default function PipelineDetailsModal({ pipeline, projectId, onClose }: P
               onJobClick={loadJobLogs}
               onRetryJob={handleRetryJob}
               onCancelJob={handleCancelJob}
+              onPlayJob={handlePlayJob}
               onViewLogs={loadJobLogs}
             />
           ) : (

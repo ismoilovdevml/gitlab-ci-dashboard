@@ -4,6 +4,7 @@ import GitLabAPI, {
   getGitLabAPIAsync,
   GITLAB_NOT_CONFIGURED_MESSAGE,
   GITLAB_PROXY_BASE_URL,
+  countFromResponse,
   invalidateCache,
   parsePagination,
   resetGitLabAPI,
@@ -70,6 +71,7 @@ const METHOD_CALLS: Record<string, unknown[]> = {
   getProject: [7],
   getProjectBranchesCount: [7],
   getProjectTagsCount: [7],
+  getProjectRefCounts: [7],
   getPipelines: [7],
   getPipelinePage: [7, { page: 2, status: 'failed', updatedAfter: NOW }],
   getAllActivePipelines: [],
@@ -101,7 +103,7 @@ const METHOD_CALLS: Record<string, unknown[]> = {
   getDeploymentFrequency: [],
 };
 
-const PRIVATE_HELPERS = new Set(['constructor', 'post', 'delete']);
+const PRIVATE_HELPERS = new Set(['constructor', 'post', 'delete', 'countItems']);
 
 function publicMethodNames(): string[] {
   return Object.getOwnPropertyNames(GitLabAPI.prototype).filter((name) => !PRIVATE_HELPERS.has(name));
@@ -262,6 +264,100 @@ describe('GitLabAPI (browser client via the server proxy)', () => {
 
       expect(seen).toHaveLength(2);
       expect(seen[0].params).toEqual({ page: 1, per_page: 20, order_by: 'updated_at' });
+    });
+  });
+
+  describe('project ref counts', () => {
+    function withHeaders(headers: Record<string, string>, data: unknown[] = [ITEM]) {
+      const api = new GitLabAPI();
+      const seen: InternalAxiosRequestConfig[] = [];
+      const http = (api as unknown as { api: AxiosInstance }).api;
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+        seen.push(config);
+        const total = config.url?.endsWith('branches') ? headers.branches : headers.tags;
+        return {
+          data,
+          status: 200,
+          statusText: 'OK',
+          headers: total === undefined ? {} : { 'x-total': total },
+          config,
+        };
+      };
+      return { api, seen };
+    }
+
+    it('reads branch and tag totals from X-Total with per_page=1', async () => {
+      const { api, seen } = withHeaders({ branches: '14', tags: '3' });
+
+      await expect(api.getProjectRefCounts(7)).resolves.toEqual({ branches: 14, tags: 3 });
+      expect(seen.map((c) => [c.url, c.params])).toEqual([
+        ['projects/7/repository/branches', { per_page: 1 }],
+        ['projects/7/repository/tags', { per_page: 1 }],
+      ]);
+    });
+
+    it('caches the counts per project', async () => {
+      const { api, seen } = withHeaders({ branches: '2', tags: '0' });
+
+      await api.getProjectRefCounts(7);
+      await api.getProjectRefCounts(7);
+
+      expect(seen).toHaveLength(2);
+    });
+
+    it('reports an unknown count when GitLab omits X-Total', async () => {
+      const { api } = withHeaders({});
+
+      await expect(api.getProjectRefCounts(7)).resolves.toEqual({ branches: null, tags: null });
+    });
+
+    it('reports an unknown count when the request fails', async () => {
+      const api = new GitLabAPI();
+      const http = (api as unknown as { api: AxiosInstance }).api;
+      http.defaults.adapter = async () => {
+        throw new Error('boom');
+      };
+
+      await expect(api.getProjectBranchesCount(7)).resolves.toBeNull();
+    });
+
+    it.each([
+      [[], {}, 0],
+      [[ITEM], { 'x-next-page': '' }, 1],
+      [[ITEM], { 'x-next-page': '2' }, null],
+      [[ITEM], { 'x-total': '10001' }, 10001],
+    ])('countFromResponse(%p, %p) is %p', (data, headers, expected) => {
+      expect(countFromResponse(data, headers)).toBe(expected);
+    });
+  });
+
+  describe('job actions', () => {
+    it.each([
+      ['playJob', 'projects/7/jobs/13/play'],
+      ['retryJob', 'projects/7/jobs/13/retry'],
+      ['cancelJob', 'projects/7/jobs/13/cancel'],
+    ] as const)('%s posts to %s', async (method, url) => {
+      const api = new GitLabAPI();
+      const requests = attachRecorder(api);
+
+      await api[method](7, 13);
+
+      expect(requests.map((r) => `${r.method} ${r.url}`)).toEqual([`POST ${url}`]);
+    });
+  });
+
+  describe('getRunners', () => {
+    it('serves repeat calls from the cache unless forced', async () => {
+      const api = new GitLabAPI();
+      const requests = attachRecorder(api);
+      const listCalls = () => requests.filter((r) => r.url === 'runners/all').length;
+
+      await api.getRunners(1, 100);
+      await api.getRunners(1, 100);
+      expect(listCalls()).toBe(1);
+
+      await api.getRunners(1, 100, { force: true });
+      expect(listCalls()).toBe(2);
     });
   });
 
